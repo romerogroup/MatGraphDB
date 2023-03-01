@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pyvista as pv
+
 from coxeter.shapes import ConvexPolyhedron
 
 def rot_z(theta):
@@ -15,6 +15,7 @@ def rot_z(theta):
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
 def plot_adjacency(plotter:pv.Plotter, adj_matrix, points):
+    import pyvista as pv
     lines = []
     for i in range(len(points)):
         for j in range(i+1, len(points)):

@@ -10,7 +10,7 @@ def main():
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
 
-    mpcif_data_dir = f'C:/Users/lllang/Desktop/Romero Group Research/Research Projects/crystal_generation_project/Voronoi_Project/datasets/mp_cif'
+    mpcif_data_dir = f'/users/lllang/SCRATCH/crystal_gen/Graph_Network_Project/datasets/raw/mp_cif'
 
     feature_set_indices = [0,1,2,3,4,5]
     val_size=0.15
