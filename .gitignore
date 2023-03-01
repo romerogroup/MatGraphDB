@@ -1,5 +1,5 @@
 
-data/
+datasets/
 energy_model/
 similarity_model/
 similarity_model_w_voronoi/
