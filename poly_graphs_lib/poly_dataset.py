@@ -107,11 +107,11 @@ class PolyhedraDataset(Dataset):
         self.device=device
         self.y_val = y_val
         self.database_dir = database_dir
-
+        
         filenames = database_dir + "/*.json"
 
         files = glob(filenames)
-
+        
         self.n_polyhedra = len(files)
 
         if n_max_entries and n_max_entries < self.n_polyhedra:

@@ -1,0 +1,302 @@
+import os
+import copy
+from typing import List
+import numpy as np
+import matplotlib.pyplot as plt
+import mlflow
+
+import torch
+import torch.nn as nn
+from torch.nn import BatchNorm1d
+from torch.nn import functional as F
+from torch_geometric.nn import CGConv, global_add_pool, global_mean_pool, global_max_pool, Sequential
+from torch_geometric.loader import DataLoader
+import torch_geometric.nn as pyg_nn
+from torchmetrics.functional import mean_absolute_percentage_error
+
+
+from poly_graphs_lib.poly_dataset import PolyhedraDataset
+from poly_graphs_lib.callbacks import EarlyStopping
+
+
+class PolyhedronModel(nn.Module):
+    """This is the main Polyhedron Model. 
+
+    Parameters
+    ----------
+        n_node_features : int
+        The number of node features
+    n_edge_features : int
+        The number of edge features, by default 2
+    n_gc_layers : int, optional
+        The number of graph convolution layers, by default 1
+    global_pooling_method : str, optional
+        The global pooling method to be used, by default 'add'
+    """
+
+    def __init__(self,
+                n_node_features:int,
+                n_edge_features:int, 
+                n_gc_layers:int=1, 
+                n_hidden_layers:List[int]=[5],
+                global_pooling_method:str='add'):
+        """This is the main Polyhedron Model. 
+
+        Parameters
+        ----------
+         n_node_features : int
+            The number of node features
+        n_edge_features : int
+            The number of edge features, by default 2
+        n_gc_layers : int, optional
+            The number of graph convolution layers, by default 1
+        global_pooling_method : str, optional
+            The global pooling method to be used, by default 'add'
+        """
+        super().__init__()
+
+            
+        layers=[]
+        for i_gc_layer in range(n_gc_layers):
+            if i_gc_layer == 0:
+                vals = " x, edge_index, edge_attr -> x0 "
+            else:
+                vals = " x" + repr(i_gc_layer - 1) + " , edge_index, edge_attr -> x" + repr(i_gc_layer)
+
+            layers.append((pyg_nn.CGConv(n_node_features, dim=n_edge_features,aggr = 'add'),vals))
+
+        # self.cg_conv_layers = Sequential(" x, edge_index, edge_attr, batch " , layers)
+        self.bn_node = pyg_nn.norm.BatchNorm(in_channels=n_node_features)
+        self.bn_edge = pyg_nn.norm.BatchNorm(in_channels=n_edge_features)
+        self.bn = BatchNorm1d(n_hidden_layers[0])
+
+        self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
+        
+        self.relu = nn.ReLU()
+        self.sig = nn.Sigmoid()
+        self.leaky_relu = torch.nn.LeakyReLU(negative_slope=0.01, inplace=False)
+
+        
+
+        self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
+        self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
+        
+        # self.layer_norm = nn.LayerNorm(self.angle_fea_len)
+
+        if global_pooling_method == 'add':
+            self.global_pooling_layer = global_add_pool
+        elif global_pooling_method == 'mean':
+            self.global_pooling_layer = global_mean_pool
+        elif global_pooling_method == 'max':
+            self.global_pooling_layer = global_max_pool
+
+
+    def forward(self, data_batch, targets=None):
+        """The forward pass of of the network
+
+        Parameters
+        ----------
+        x : pygeometic.Data
+            The pygeometric data object
+        targets : float, optional
+            The target value to use to calculate the loss, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        
+        x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
+
+        x_out = self.bn_node(x)
+        edge_out = self.bn_edge(edge_attr )
+
+        # x_out = x
+        # edge_out = edge_attr
+        # print(x_out[0,:])
+        # print(x_out.mean(dim=0))
+        # print(x_out.std(dim=0))
+        # print(x_out[1])
+        # print()
+        # for node in x:
+        #     print(node)
+        # print(x.edge_attr)
+        # print(edge_out)
+        # print(x.x.shape)
+        # print(out.shape)
+        # Convolutional layers combine nodes and edge interactions
+        out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
+        
+        # out = self.sig(out) # out -> (n_total_nodes_in_batch, n_node_features)
+        out = self.leaky_relu(out)
+        # Fully connected layer
+        out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.sig(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+
+        # batch is index list differteriating which nodes belong to which graph
+        out = self.global_pooling_layer(out, batch = data_batch.batch) # out -> (n_graphs, n_hidden_layers[0])
+
+
+        out = self.out_layer(out) # out -> (n_graphs, 1)
+        out = self.relu(out) # out -> (n_graphs, 1)
+
+        # Loss handling
+        if targets is None:
+            loss = None
+            mape_loss = None
+        else:
+            loss_fn = torch.nn.MSELoss()
+            mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
+            loss = loss_fn(torch.squeeze(out, dim=1), targets)
+
+        return out,  loss, mape_loss
+
+    def generate_encoding(self, x):
+        """This method generates the polyhedra encoding
+
+        Parameters
+        ----------
+        x : pyg.Data object
+            The pygeometric Data object
+
+        Returns
+        -------
+        torch.Tensor
+            The encoded polyhedra vector
+        """
+
+        out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr )
+        out = self.sig(out)
+        out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
+        out = self.sig(out)
+        out = self.global_pooling_layer(out, batch = x.batch)
+        return out
+    
+
+project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+# hyperparameters
+save_model = True
+
+# Training params
+n_epochs = 1000
+learning_rate = 1e-4
+batch_size = 16
+early_stopping_patience = 20
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# polyhedron model parameters
+n_gc_layers = 3
+n_hidden_layers=[3]
+global_pooling_method = 'add'
+
+# dataset parameters
+dataset = 'material_random_polyhedra'
+feasture_set_index = 3
+y_val = ['energy_per_verts','dihedral_energy'][0]
+
+###################################################################
+# Start of the the training run
+###################################################################
+
+train_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
+test_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
+val_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
+
+val_dataset = PolyhedraDataset(database_dir=val_dir, device=device, y_val=y_val)
+n_node_features = val_dataset[0].x.shape[1]
+n_edge_features = val_dataset[0].edge_attr.shape[1]
+del val_dataset
+
+
+train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, y_val=y_val)
+# train_2_dataset = PolyhedraDataset(database_dir=train_2_dir,device=device, y_val=y_val)
+test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, y_val=y_val)
+val_dataset = PolyhedraDataset(database_dir=val_dir,device=device, y_val=y_val)
+
+n_train = len(train_dataset)
+n_validation = len(val_dataset)
+
+# Creating data loaders
+train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0)
+# train_2_loader = DataLoader(train_2_dataset, batch_size=batch_size, num_workers=0)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=0)
+
+
+
+model = PolyhedronModel(n_node_features=n_node_features, 
+                                n_edge_features=n_edge_features, 
+                                n_gc_layers=n_gc_layers,
+                                n_hidden_layers=n_hidden_layers,
+                                global_pooling_method=global_pooling_method)
+m = model.to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+es = EarlyStopping(patience = early_stopping_patience)
+
+
+sample = next(iter(test_loader))
+# print(sample)
+# print(sample.batch)
+# print(sample.x[torch.where(sample.batch == 0)])
+# model(sample , targets = sample.y)
+
+
+
+n_epoch_0 = 0
+model.train()
+for epoch in range(n_epochs):
+    n_epoch = n_epoch_0 + epoch
+    batch_train_loss = 0.0
+    batch_train_mape = 0.0
+    for i,sample in enumerate(train_loader):
+        optimizer.zero_grad()
+        out, train_loss, mape_loss = model(sample , targets = sample.y)
+        train_loss.backward()
+        optimizer.step()
+        batch_train_loss += train_loss.item()
+        batch_train_mape += mape_loss.item()
+
+    batch_train_loss = batch_train_loss / (i+1)
+    batch_train_mape = batch_train_mape / (i+1)
+
+    batch_val_loss = 0.0
+    batch_val_mape = 0.0
+    for i,sample in enumerate(val_loader):
+        torch.set_grad_enabled(False)
+        out, val_loss, mape_val_loss = model(sample , targets = sample.y)
+        torch.set_grad_enabled(True)
+        batch_val_loss += val_loss.item()
+        batch_val_mape += mape_val_loss.item()
+    batch_val_loss = batch_val_loss / (i+1)
+    batch_val_mape = batch_val_mape / (i+1)
+
+
+    batch_test_loss = 0.0
+    batch_test_mape = 0.0
+    for i,sample in enumerate(test_loader):
+        torch.set_grad_enabled(False)
+        out, test_loss, mape_test_loss = model(sample , targets = sample.y)
+        torch.set_grad_enabled(True)
+        batch_test_loss += test_loss.item()
+        batch_test_mape += mape_test_loss.item()
+    batch_test_loss = batch_test_loss / (i+1)
+    batch_test_mape = batch_test_mape / (i+1)
+
+
+    # val_loss *= (factor)  # to put it on the same scale as the training running loss)
+    if n_epoch % 10 == 0:
+        print(repr(n_epoch) + ",  " + repr(batch_train_loss) + ",  " + repr(batch_val_loss)+ ",  " + repr(batch_test_loss))
+
+    if es(model=model, val_loss=batch_val_loss,mape_val_loss=batch_val_mape):
+        mlflow.log_metric('best_mse_val_loss',es.best_loss)
+        # mlflow.log_metric('best_mae_loss',batch_train_loss**0.5)
+        mlflow.log_metric('best_mae_val_loss',es.best_loss**0.5)
+        # mlflow.log_metric('best_mape_loss',batch_val_mape)
+        mlflow.log_metric('best_mape_val_loss',es.best_mape_loss)
+        mlflow.log_metric('stopping_epoch',epoch - es.counter)
+        print(f'Stopping : {epoch - es.counter}')
+        print(f'mae_val : {es.best_loss**0.5}')
+        print(f'mape_val : {es.best_mape_loss}')
+        break

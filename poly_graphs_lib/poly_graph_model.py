@@ -26,7 +26,7 @@ class PolyhedronModel(nn.Module):
                 n_node_features:int,
                 n_edge_features:int, 
                 n_gc_layers:int=1, 
-                n_hidden_layers:List[int]=5,
+                n_hidden_layers:List[int]=[5],
                 global_pooling_method:str='add'):
         """This is the main Polyhedron Model. 
 
@@ -57,8 +57,7 @@ class PolyhedronModel(nn.Module):
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
         self.relu = nn.ReLU()
         self.sig = nn.Sigmoid()
-
-        self.linear_1 = nn.Linear( n_node_features, n_hidden_layers)
+        self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
         self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
 
         if global_pooling_method == 'add':
@@ -123,7 +122,7 @@ class PolyhedronModel(nn.Module):
             The encoded polyhedra vector
         """
         out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr )
-        out = self.relu(out)
+        out = self.sig(out)
         out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
         out = self.sig(out)
         out = self.global_pooling_layer(out, batch = x.batch)
