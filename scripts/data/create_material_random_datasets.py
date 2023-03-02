@@ -6,7 +6,7 @@ from poly_graphs_lib.data.create_datasets import create_material_random_polyhedr
 def main():
     parent_dir = os.path.dirname(os.path.dirname(__file__))
     dataset_dir = os.path.dirname(parent_dir) + os.sep + 'data'
-
+    print(dataset_dir)
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
 

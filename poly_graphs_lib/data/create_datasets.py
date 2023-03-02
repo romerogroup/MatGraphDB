@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 
-import pyvista as pv
+from coxeter.families import PlatonicFamily
 from coxeter.shapes import ConvexPolyhedron
 from sklearn.model_selection import train_test_split
 from scipy.spatial import ConvexHull
@@ -198,10 +198,10 @@ def create_plutonic_dataset(data_dir:str, feature_set_index:int, val_size:float=
         shutil.rmtree(val_dir)
     os.makedirs(val_dir)
 
-    verts_tetra = pv.Tetrahedron().points
-    verts_cube = pv.Cube().points
-    verts_oct = pv.Octahedron().points
-    verts_dod = pv.Dodecahedron().points
+    verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
+    verts_cube = PlatonicFamily.get_shape("Cube").vertices
+    verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
+    verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
     verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))*2 + 1
 
 
@@ -271,11 +271,12 @@ def create_material_random_polyhedra_dataset(data_dir:str, mpcif_data_dir: str, 
 
 
     
-    verts_tetra = pv.Tetrahedron().points
-    verts_cube = pv.Cube().points
-    verts_oct = pv.Octahedron().points
-    verts_dod = pv.Dodecahedron().points
+    verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
+    verts_cube = PlatonicFamily.get_shape("Cube").vertices
+    verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
+    verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
     verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))*2 + 1
+
     test_poly = []
     test_poly.extend([verts_tetra, verts_cube,verts_oct,verts_dod, verts_tetra_rot])
     test_poly.extend([verts_mp567387_Ti,verts_mp4019_Ti,verts_mp3397_Ti,verts_mp15502_Ba,verts_mp15502_Ti])
