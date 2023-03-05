@@ -14,8 +14,7 @@ def rot_z(theta):
     c, s = np.cos(theta), np.sin(theta)
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
-def plot_adjacency(plotter:pv.Plotter, adj_matrix, points):
-    import pyvista as pv
+def plot_adjacency(plotter, adj_matrix, points):
     lines = []
     for i in range(len(points)):
         for j in range(i+1, len(points)):

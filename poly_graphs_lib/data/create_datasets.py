@@ -262,7 +262,7 @@ def create_material_random_polyhedra_dataset(data_dir:str, mpcif_data_dir: str, 
                                             database_id=mp_id,
                                             neighbor_tol=0.1)
         except:
-            pass
+            continue
             # print(f'{cif_file} failed')
         voronoi_structure_dict = voronoi_structure.as_dict()
 

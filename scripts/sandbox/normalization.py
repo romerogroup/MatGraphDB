@@ -3,7 +3,6 @@ import copy
 from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
-import mlflow
 
 import torch
 import torch.nn as nn
@@ -13,7 +12,6 @@ from torch_geometric.nn import CGConv, global_add_pool, global_mean_pool, global
 from torch_geometric.loader import DataLoader
 import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
-
 
 from poly_graphs_lib.poly_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
@@ -68,17 +66,14 @@ class PolyhedronModel(nn.Module):
         # self.cg_conv_layers = Sequential(" x, edge_index, edge_attr, batch " , layers)
         self.bn_node = pyg_nn.norm.BatchNorm(in_channels=n_node_features)
         self.bn_edge = pyg_nn.norm.BatchNorm(in_channels=n_edge_features)
-        self.bn = BatchNorm1d(n_hidden_layers[0])
-
-        self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
-        
         self.relu = nn.ReLU()
         self.sig = nn.Sigmoid()
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=0.01, inplace=False)
 
-        
 
+        self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
         self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
+        self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[1])
         self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
         
         # self.layer_norm = nn.LayerNorm(self.angle_fea_len)
@@ -108,12 +103,13 @@ class PolyhedronModel(nn.Module):
         """
         
         x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
+        batch = data_batch.batch
+
 
         x_out = self.bn_node(x)
-        edge_out = self.bn_edge(edge_attr )
-
-        # x_out = x
+        edge_out = self.bn_edge(edge_attr)
         # edge_out = edge_attr
+
         # print(x_out[0,:])
         # print(x_out.mean(dim=0))
         # print(x_out.std(dim=0))
@@ -133,11 +129,15 @@ class PolyhedronModel(nn.Module):
         # Fully connected layer
         out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
         # out = self.sig(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.bn(out)
         out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
         # batch is index list differteriating which nodes belong to which graph
-        out = self.global_pooling_layer(out, batch = data_batch.batch) # out -> (n_graphs, n_hidden_layers[0])
+        out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
+        
+        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
+        out = self.leaky_relu(out) 
 
         out = self.out_layer(out) # out -> (n_graphs, 1)
         out = self.relu(out) # out -> (n_graphs, 1)
@@ -168,10 +168,12 @@ class PolyhedronModel(nn.Module):
         """
 
         out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr )
-        out = self.sig(out)
+        out = self.leaky_relu(out)
         out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
-        out = self.sig(out)
+        out = self.leaky_relu(out)
         out = self.global_pooling_layer(out, batch = x.batch)
+        out = self.linear_2(out)
+        out = self.leaky_relu(out) 
         return out
     
 
@@ -181,14 +183,15 @@ save_model = True
 
 # Training params
 n_epochs = 1000
-learning_rate = 1e-4
-batch_size = 16
+learning_rate = 1e-3
+batch_size = 128
 early_stopping_patience = 20
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(torch.cuda.mem_get_info())
 
 # polyhedron model parameters
 n_gc_layers = 3
-n_hidden_layers=[3]
+n_hidden_layers=[4,3]
 global_pooling_method = 'add'
 
 # dataset parameters
@@ -200,9 +203,9 @@ y_val = ['energy_per_verts','dihedral_energy'][0]
 # Start of the the training run
 ###################################################################
 
-train_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
-test_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
-val_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
+train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
+test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
+val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
 
 val_dataset = PolyhedraDataset(database_dir=val_dir, device=device, y_val=y_val)
 n_node_features = val_dataset[0].x.shape[1]
@@ -234,12 +237,21 @@ model = PolyhedronModel(n_node_features=n_node_features,
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 es = EarlyStopping(patience = early_stopping_patience)
+# scheduler =  torch.optim.StepLR(optimizer, 
+#                                 step_size = 4, # Period of learning rate decay
+#                                 gamma = 0.5)
 
+scheduler =  torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                            factor=0.1,
+                                            patience=10,
+                                            threshold=1e-4,
+                                            min_lr=0,
+                                            )
 
-sample = next(iter(test_loader))
-# print(sample)
-# print(sample.batch)
-# print(sample.x[torch.where(sample.batch == 0)])
+# sample = next(iter(test_loader))
+# # print(sample)
+# # print(sample.batch)
+# # print(sample.x[torch.where(sample.batch == 0)])
 # model(sample , targets = sample.y)
 
 
@@ -271,6 +283,7 @@ for epoch in range(n_epochs):
         batch_val_mape += mape_val_loss.item()
     batch_val_loss = batch_val_loss / (i+1)
     batch_val_mape = batch_val_mape / (i+1)
+    scheduler.step(batch_val_loss)
 
 
     batch_test_loss = 0.0
@@ -284,18 +297,18 @@ for epoch in range(n_epochs):
     batch_test_loss = batch_test_loss / (i+1)
     batch_test_mape = batch_test_mape / (i+1)
 
-
+    current_lr = scheduler.optimizer.param_groups[0]['lr']
     # val_loss *= (factor)  # to put it on the same scale as the training running loss)
     if n_epoch % 10 == 0:
-        print(repr(n_epoch) + ",  " + repr(batch_train_loss) + ",  " + repr(batch_val_loss)+ ",  " + repr(batch_test_loss))
-
+        print(repr(n_epoch) + ",  " + repr(batch_train_loss) + ",  " + repr(batch_val_loss) + ",  " + repr(batch_test_loss) + ",  " + repr(100*batch_test_mape) + '%')
+    
     if es(model=model, val_loss=batch_val_loss,mape_val_loss=batch_val_mape):
-        mlflow.log_metric('best_mse_val_loss',es.best_loss)
-        # mlflow.log_metric('best_mae_loss',batch_train_loss**0.5)
-        mlflow.log_metric('best_mae_val_loss',es.best_loss**0.5)
-        # mlflow.log_metric('best_mape_loss',batch_val_mape)
-        mlflow.log_metric('best_mape_val_loss',es.best_mape_loss)
-        mlflow.log_metric('stopping_epoch',epoch - es.counter)
+
+        print(f'Stopping : {epoch - es.counter}')
+        print(f'mae_val : {es.best_loss**0.5}')
+        print(f'mape_val : {es.best_mape_loss}')
+        break
+    elif current_lr < 1e-5:
         print(f'Stopping : {epoch - es.counter}')
         print(f'mae_val : {es.best_loss**0.5}')
         print(f'mape_val : {es.best_mape_loss}')

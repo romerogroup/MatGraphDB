@@ -62,16 +62,22 @@ class PolyhedronModel(nn.Module):
             else:
                 vals = " x" + repr(i_gc_layer - 1) + " , edge_index, edge_attr -> x" + repr(i_gc_layer)
 
-            layers.append((pyg_nn.CGConv(n_node_features, dim=n_edge_features),vals))
+            layers.append((pyg_nn.CGConv(n_node_features, dim=n_edge_features,aggr = 'add'),vals))
 
         # self.cg_conv_layers = Sequential(" x, edge_index, edge_attr, batch " , layers)
-        self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
+        self.bn_node = pyg_nn.norm.BatchNorm(in_channels=n_node_features)
+        self.bn_edge = pyg_nn.norm.BatchNorm(in_channels=n_edge_features)
         self.relu = nn.ReLU()
         self.sig = nn.Sigmoid()
-        self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
-        self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
+        self.leaky_relu = torch.nn.LeakyReLU(negative_slope=0.01, inplace=False)
 
-        self.layer_norm = nn.LayerNorm(self.angle_fea_len)
+
+        self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
+        self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
+        self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[1])
+        self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
+        
+        # self.layer_norm = nn.LayerNorm(self.angle_fea_len)
 
         if global_pooling_method == 'add':
             self.global_pooling_layer = global_add_pool
@@ -81,7 +87,7 @@ class PolyhedronModel(nn.Module):
             self.global_pooling_layer = global_max_pool
 
 
-    def forward(self, x, targets=None):
+    def forward(self, data_batch, targets=None):
         """The forward pass of of the network
 
         Parameters
@@ -96,16 +102,26 @@ class PolyhedronModel(nn.Module):
         _type_
             _description_
         """
+        
+        x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
+        batch = data_batch.batch
+
+        x_out = self.bn_node(x)
+        edge_out = self.bn_edge(edge_attr)
+ 
         # Convolutional layers combine nodes and edge interactions
-        out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr ) # out -> (n_total_node_in_batch, n_node_features)
-        out = self.sig(out) # out -> (n_total_nodes_in_batch, n_node_features)
+        out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
+        out = self.leaky_relu(out)
 
         # Fully connected layer
         out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        out = self.sig(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
         # batch is index list differteriating which nodes belong to which graph
-        out = self.global_pooling_layer(out, batch = x.batch) # out -> (n_graphs, n_hidden_layers[0])
+        out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
+        
+        out = self.linear_2(out) 
+        out = self.leaky_relu(out) 
 
         out = self.out_layer(out) # out -> (n_graphs, 1)
         out = self.relu(out) # out -> (n_graphs, 1)
@@ -116,6 +132,7 @@ class PolyhedronModel(nn.Module):
             mape_loss = None
         else:
             loss_fn = torch.nn.MSELoss()
+            # loss_fn = torch.nn.MAELoss()
             mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
             loss = loss_fn(torch.squeeze(out, dim=1), targets)
 
@@ -134,11 +151,14 @@ class PolyhedronModel(nn.Module):
         torch.Tensor
             The encoded polyhedra vector
         """
+
         out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr )
-        out = self.sig(out)
+        out = self.leaky_relu(out)
         out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
-        out = self.sig(out)
+        out = self.leaky_relu(out)
         out = self.global_pooling_layer(out, batch = x.batch)
+        out = self.linear_2(out)
+        out = self.leaky_relu(out) 
         return out
     
 
@@ -156,7 +176,8 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # polyhedron model parameters
-    n_gc_layers = 2
+    n_gc_layers = 3
+    n_hidden_layers=[4,3]
     global_pooling_method = 'add'
 
     # dataset parameters
@@ -168,16 +189,17 @@ def main():
     # Start of the the training run
     ###################################################################
 
-    train_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
-    test_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
-    val_dir = f"{project_dir}{os.sep}data{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
+    train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
+    test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
+    val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
 
     val_dataset = PolyhedraDataset(database_dir=val_dir, device=device, y_val=y_val)
     n_node_features = val_dataset[0].x.shape[1]
     n_edge_features = val_dataset[0].edge_attr.shape[1]
     del val_dataset
 
-    experiment_name = f'single_test_run'
+    experiment_name = f'model_architecture'
+    architecture_num=0
     mlflow_dir = f"file:{project_dir}{os.sep}mlruns"
     mlflow.set_tracking_uri(mlflow_dir)
     
@@ -203,13 +225,15 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=0)
 
-    run_name = f'{y_val}_pooling-{global_pooling_method}'
+    run_name = f'architecture-{architecture_num}'
     with mlflow.start_run(experiment_id=experiment_id,run_name=run_name):
         model = PolyhedronModel(n_node_features=n_node_features, 
                                 n_edge_features=n_edge_features, 
                                 n_gc_layers=n_gc_layers,
+                                n_hidden_layers=n_hidden_layers,
                                 global_pooling_method=global_pooling_method)
         m = model.to(device)
+        print(model)
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
         es = EarlyStopping(patience = early_stopping_patience)
 
@@ -286,7 +310,6 @@ def main():
                 # mlflow.log_metric('best_mape_loss',batch_val_mape)
                 mlflow.log_metric('best_mape_val_loss',es.best_mape_loss)
                 mlflow.log_metric('stopping_epoch',epoch - es.counter)
-
                 break
 
 

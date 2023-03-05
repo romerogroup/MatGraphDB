@@ -1,0 +1,15 @@
+artifact_uri: file:///scratch/lllang/crystal_gen/Graph_Network_Project/mlruns/412467138025613432/cba1096ed672490aacd6d2e71d63032b/artifacts
+end_time: 1678023455625
+entry_point_name: ''
+experiment_id: '412467138025613432'
+lifecycle_stage: active
+run_id: cba1096ed672490aacd6d2e71d63032b
+run_name: architecture-0
+run_uuid: cba1096ed672490aacd6d2e71d63032b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1678023455580
+status: 4
+tags: []
+user_id: lllang
