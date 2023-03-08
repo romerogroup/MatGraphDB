@@ -1,0 +1,15 @@
+artifact_uri: file:///scratch/lllang/crystal_gen/Graph_Network_Project/mlruns/258649588870017545/20dd4e5d3f614859ab52abb10c21d617/artifacts
+end_time: 1678233102385
+entry_point_name: ''
+experiment_id: '258649588870017545'
+lifecycle_stage: active
+run_id: 20dd4e5d3f614859ab52abb10c21d617
+run_name: energy_per_verts_pooling-mean
+run_uuid: 20dd4e5d3f614859ab52abb10c21d617
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1678232935018
+status: 3
+tags: []
+user_id: lllang

@@ -182,12 +182,12 @@ project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 save_model = True
 
 # Training params
-n_epochs = 1000
+n_epochs = 300
 learning_rate = 1e-3
 batch_size = 128
-early_stopping_patience = 20
+early_stopping_patience = 10
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print(torch.cuda.mem_get_info())
+# print(torch.cuda.mem_get_info())
 
 # polyhedron model parameters
 n_gc_layers = 3

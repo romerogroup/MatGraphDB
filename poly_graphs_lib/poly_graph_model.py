@@ -55,8 +55,12 @@ class PolyhedronModel(nn.Module):
 
         # self.cg_conv_layers = Sequential(" x, edge_index, edge_attr, batch " , layers)
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
+
+        self.bn_node = pyg_nn.norm.BatchNorm(in_channels=n_node_features)
+        self.bn_edge = pyg_nn.norm.BatchNorm(in_channels=n_edge_features)
         self.relu = nn.ReLU()
-        self.sig = nn.Sigmoid()
+        self.leaky_relu = torch.nn.LeakyReLU(negative_slope=0.01, inplace=False)
+
         self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
         self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
 
@@ -85,11 +89,11 @@ class PolyhedronModel(nn.Module):
         """
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x.x, x.edge_index, x.edge_attr ) # out -> (n_total_node_in_batch, n_node_features)
-        out = self.sig(out) # out -> (n_total_nodes_in_batch, n_node_features)
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_node_features)
 
         # Fully connected layer
         out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        out = self.sig(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
         # batch is index list differteriating which nodes belong to which graph
         out = self.global_pooling_layer(out, batch = x.batch) # out -> (n_graphs, n_hidden_layers[0])

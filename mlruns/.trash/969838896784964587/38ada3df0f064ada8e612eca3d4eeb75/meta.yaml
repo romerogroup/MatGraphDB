@@ -1,0 +1,15 @@
+artifact_uri: file:///scratch/lllang/crystal_gen/Graph_Network_Project/mlruns/969838896784964587/38ada3df0f064ada8e612eca3d4eeb75/artifacts
+end_time: 1678281014413
+entry_point_name: ''
+experiment_id: '969838896784964587'
+lifecycle_stage: active
+run_id: 38ada3df0f064ada8e612eca3d4eeb75
+run_name: dihedral_energy_pooling-add
+run_uuid: 38ada3df0f064ada8e612eca3d4eeb75
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1678281002437
+status: 3
+tags: []
+user_id: lllang

@@ -1,0 +1,15 @@
+artifact_uri: file:///scratch/lllang/crystal_gen/Graph_Network_Project/mlruns/258649588870017545/291f2585a96e45e8a0c0c5abc657fdb6/artifacts
+end_time: 1678232935014
+entry_point_name: ''
+experiment_id: '258649588870017545'
+lifecycle_stage: active
+run_id: 291f2585a96e45e8a0c0c5abc657fdb6
+run_name: moi_pooling-mean
+run_uuid: 291f2585a96e45e8a0c0c5abc657fdb6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1678232915587
+status: 3
+tags: []
+user_id: lllang
