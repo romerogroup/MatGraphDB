@@ -73,10 +73,13 @@ class PolyhedronModel(nn.Module):
 
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
         self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
-        self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[1])
+        self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[-1])
+
+        # self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
+        # self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[1])
+
         self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
         
-        # self.layer_norm = nn.LayerNorm(self.angle_fea_len)
 
         if global_pooling_method == 'add':
             self.global_pooling_layer = global_add_pool
@@ -108,36 +111,26 @@ class PolyhedronModel(nn.Module):
 
         x_out = self.bn_node(x)
         edge_out = self.bn_edge(edge_attr)
+
+        # x_out = x
         # edge_out = edge_attr
 
-        # print(x_out[0,:])
-        # print(x_out.mean(dim=0))
-        # print(x_out.std(dim=0))
-        # print(x_out[1])
-        # print()
-        # for node in x:
-        #     print(node)
-        # print(x.edge_attr)
-        # print(edge_out)
-        # print(x.x.shape)
-        # print(out.shape)
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
         
-        # out = self.sig(out) # out -> (n_total_nodes_in_batch, n_node_features)
         out = self.leaky_relu(out)
+    
+        
         # Fully connected layer
         out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        # out = self.sig(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        # out = self.bn(out)
         out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-
+        
         # batch is index list differteriating which nodes belong to which graph
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
         
-        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
-        out = self.leaky_relu(out) 
+        # out = self.leaky_relu(out) 
 
         out = self.out_layer(out) # out -> (n_graphs, 1)
         out = self.relu(out) # out -> (n_graphs, 1)
@@ -171,31 +164,34 @@ class PolyhedronModel(nn.Module):
         out = self.leaky_relu(out)
         out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
         out = self.leaky_relu(out)
-        out = self.global_pooling_layer(out, batch = x.batch)
-        out = self.linear_2(out)
-        out = self.leaky_relu(out) 
         return out
     
+def weight_init(m):
+    """
+    Initializes the weights of a module using Xavier initialization.
+    """
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        nn.init.xavier_uniform_(m.weight.data)
 
 project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 # hyperparameters
 save_model = True
 
 # Training params
-n_epochs = 300
+n_epochs = 500
 learning_rate = 1e-3
 batch_size = 128
-early_stopping_patience = 10
+early_stopping_patience = 20
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # print(torch.cuda.mem_get_info())
 
 # polyhedron model parameters
-n_gc_layers = 3
-n_hidden_layers=[4,3]
+n_gc_layers = 2
+n_hidden_layers=[4]
 global_pooling_method = 'add'
 
 # dataset parameters
-dataset = 'material_random_polyhedra'
+dataset = 'material_polyhedra'
 feasture_set_index = 3
 y_val = ['energy_per_verts','dihedral_energy'][0]
 
@@ -207,16 +203,47 @@ train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_
 test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
 val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
 
-val_dataset = PolyhedraDataset(database_dir=val_dir, device=device, y_val=y_val)
-n_node_features = val_dataset[0].x.shape[1]
-n_edge_features = val_dataset[0].edge_attr.shape[1]
-del val_dataset
+train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, y_val=y_val)
+n_node_features = train_dataset[0].x.shape[1]
+n_edge_features = train_dataset[0].edge_attr.shape[1]
 
+node_max = torch.zeros(n_node_features, device = device)
+node_min = torch.zeros(n_node_features, device = device)
+edge_max = torch.zeros(n_edge_features, device = device)
+edge_min = torch.zeros(n_edge_features, device = device)
+for data in train_dataset:
 
-train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, y_val=y_val)
-# train_2_dataset = PolyhedraDataset(database_dir=train_2_dir,device=device, y_val=y_val)
-test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, y_val=y_val)
-val_dataset = PolyhedraDataset(database_dir=val_dir,device=device, y_val=y_val)
+    # Finding node max and min
+    current_node_max = data.x.max(axis=0)[0]
+    node_max = torch.vstack( [node_max,current_node_max] )
+    node_max = node_max.max(axis=0)[0]
+
+    current_node_min = data.x.min(axis=0)[0]
+    node_min = torch.vstack( [node_min,current_node_min] )
+    node_min = node_min.min(axis=0)[0]
+
+    # Finding edge max and min
+    current_edge_max = data.edge_attr.max(axis=0)[0]
+    edge_max = torch.vstack( [edge_max,current_edge_max] )
+    edge_max = edge_max.max(axis=0)[0]
+
+    current_edge_min = data.edge_attr.min(axis=0)[0]
+    edge_min = torch.vstack( [edge_min,current_edge_min] )
+    edge_min = edge_min.min(axis=0)[0]
+
+del train_dataset
+
+def min_max_scaler(data):
+    data.x = ( data.x - node_min ) / (node_min - node_max)
+    data.edge_attr = ( data.edge_attr - edge_min ) / (edge_min - edge_max)
+
+    data.edge_attr=data.edge_attr.nan_to_num()
+    data.x=data.x.nan_to_num()
+    return data
+
+train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, y_val=y_val, transform = min_max_scaler)
+test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, y_val=y_val, transform = min_max_scaler)
+val_dataset = PolyhedraDataset(database_dir=val_dir,device=device, y_val=y_val, transform = min_max_scaler)
 
 n_train = len(train_dataset)
 n_validation = len(val_dataset)
@@ -234,6 +261,8 @@ model = PolyhedronModel(n_node_features=n_node_features,
                                 n_gc_layers=n_gc_layers,
                                 n_hidden_layers=n_hidden_layers,
                                 global_pooling_method=global_pooling_method)
+
+model.apply(weight_init)
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 es = EarlyStopping(patience = early_stopping_patience)
@@ -270,6 +299,9 @@ for epoch in range(n_epochs):
         batch_train_loss += train_loss.item()
         batch_train_mape += mape_loss.item()
 
+    sample = next(iter(train_loader))
+    # print(model.generate_encoding(sample))
+    # print(getattr(model,'linear_1').weight.grad)
     batch_train_loss = batch_train_loss / (i+1)
     batch_train_mape = batch_train_mape / (i+1)
 
@@ -299,16 +331,19 @@ for epoch in range(n_epochs):
 
     current_lr = scheduler.optimizer.param_groups[0]['lr']
     # val_loss *= (factor)  # to put it on the same scale as the training running loss)
-    if n_epoch % 10 == 0:
+    if n_epoch % 1 == 0:
         print(repr(n_epoch) + ",  " + repr(batch_train_loss) + ",  " + repr(batch_val_loss) + ",  " + repr(batch_test_loss) + ",  " + repr(100*batch_test_mape) + '%')
     
     if es(model=model, val_loss=batch_val_loss,mape_val_loss=batch_val_mape):
-
+        print("Early stopping")
+        print('_______________________')
         print(f'Stopping : {epoch - es.counter}')
         print(f'mae_val : {es.best_loss**0.5}')
         print(f'mape_val : {es.best_mape_loss}')
         break
-    elif current_lr < 1e-5:
+    elif current_lr < 1e-6:
+        print("Under min learning rate")
+        print('_______________________')
         print(f'Stopping : {epoch - es.counter}')
         print(f'mae_val : {es.best_loss**0.5}')
         print(f'mape_val : {es.best_mape_loss}')

@@ -26,7 +26,7 @@ def main():
     # Training params
     train_model = True
     n_epochs = 200
-    learning_rate = 1e-3
+    learning_rate = 1e-2
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Other params
@@ -34,9 +34,9 @@ def main():
     dropout = 0.2
 
     # polyhedron model parameters
-    n_gc_layers = 3
+    n_gc_layers = 2
     n_hidden_layers=[4]
-    global_pooling_method = 'add'
+    # global_pooling_method = 'add'
 
     # dataset parameters
     dataset = 'material_random_polyhedra'
