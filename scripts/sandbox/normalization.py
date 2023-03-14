@@ -109,11 +109,11 @@ class PolyhedronModel(nn.Module):
         batch = data_batch.batch
 
 
-        x_out = self.bn_node(x)
-        edge_out = self.bn_edge(edge_attr)
+        # x_out = self.bn_node(x)
+        # edge_out = self.bn_edge(edge_attr)
 
-        # x_out = x
-        # edge_out = edge_attr
+        x_out = x
+        edge_out = edge_attr
 
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
@@ -128,9 +128,12 @@ class PolyhedronModel(nn.Module):
         # batch is index list differteriating which nodes belong to which graph
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
         
-        # out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) 
 
-        # out = self.leaky_relu(out) 
+        # # Fully connected layer
+        # out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
         out = self.out_layer(out) # out -> (n_graphs, 1)
         out = self.relu(out) # out -> (n_graphs, 1)
@@ -164,6 +167,11 @@ class PolyhedronModel(nn.Module):
         out = self.leaky_relu(out)
         out = self.linear_1(out) # out -> (n_total_atoms_in_batch, 1)
         out = self.leaky_relu(out)
+        out = self.global_pooling_layer(out, batch = x.batch) # out -> (n_graphs, n_hidden_layers[0])
+    
+        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) 
+
         return out
     
 def weight_init(m):
@@ -179,7 +187,7 @@ save_model = True
 
 # Training params
 n_epochs = 500
-learning_rate = 1e-3
+learning_rate = 1e-2
 batch_size = 128
 early_stopping_patience = 20
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -187,21 +195,21 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # polyhedron model parameters
 n_gc_layers = 2
-n_hidden_layers=[4]
+n_hidden_layers=[8,4]
 global_pooling_method = 'add'
 
 # dataset parameters
 dataset = 'material_polyhedra'
-feasture_set_index = 3
+feature_set_index = 3
 y_val = ['energy_per_verts','dihedral_energy'][0]
 
 ###################################################################
 # Start of the the training run
 ###################################################################
 
-train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}train"
-test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}test"
-val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feasture_set_index}{os.sep}val"
+train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}train"
+test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}test"
+val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}val"
 
 train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, y_val=y_val)
 n_node_features = train_dataset[0].x.shape[1]
@@ -348,3 +356,16 @@ for epoch in range(n_epochs):
         print(f'mae_val : {es.best_loss**0.5}')
         print(f'mape_val : {es.best_mape_loss}')
         break
+
+if save_model:
+    checkpoint = {
+            "epoch":n_epoch,
+            "model_state": model.state_dict(),
+            "optim_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict(),
+            "train_loss": batch_train_loss,
+            "val_loss": batch_val_loss,
+            "test_loss": batch_test_loss,
+            }
+    torch.save(checkpoint, f"{project_dir}{os.sep}models{os.sep}model_checkpoint.pth")
+
