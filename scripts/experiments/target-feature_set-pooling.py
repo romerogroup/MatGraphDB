@@ -33,6 +33,8 @@ def main():
     batch_size = 128
     dropout = 0.2
 
+    # model parameters
+
     # polyhedron model parameters
     n_gc_layers = 3
     n_hidden_layers=[4]

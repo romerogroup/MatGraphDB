@@ -44,7 +44,8 @@ def is_valid_augmentation(verts):
     return is_valid
 
 def random_vertex_translation(verts, random_range=[-0.1,0.1] ):
-    n_verts = len(verts )
+
+    n_verts = len(verts)
 
     i_vert = random.randint(0,n_verts-1)
 
