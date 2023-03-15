@@ -6,5 +6,5 @@ similarity_model_w_voronoi/
 models/
 examples/
 docs/
-
+notebooks/data/
 __pycache__/
