@@ -17,7 +17,8 @@ def main():
     for feature_set_index in feature_set_indices:
        create_plutonic_dataset(data_dir=dataset_dir, 
                                 feature_set_index=feature_set_index, 
-                                val_size=val_size)
+                                val_size=val_size,
+                                graph_type ='face_edge')
 
 if __name__ == '__main__':
     main()

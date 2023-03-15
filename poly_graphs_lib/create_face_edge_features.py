@@ -326,11 +326,53 @@ def get_pyg_graph_components(points, set_index: int = 0):
 
     return x, edge_index, edge_attr, pos , y, y_labels
 
+def get_pyg_vertex_edge_components(points, set_index: int = 0):
+
+    """Creates the pygeometric graph components for points that form a convex polyhedron
+
+    Parameters
+    ----------
+    points : np.ndarray
+        The vertces of a convex polyhedron
+
+    set_index : int
+        The feature set to generate
+
+    Returns
+    -------
+    Tuple
+        The x, edge_index, edge_attr, pos , y, y_labels
+    """
+
+    poly = ConvexPolyhedron(vertices=points)
+    
+    print(poly.vertices)
+    n_nodes = len(poly.vertices)
+    node_adjacency_matrix = np.zeros((n_nodes, n_nodes))
+
+    # edge_matrix = np.zeros((num_faces, num_faces))
+    # x = create_graph_node_featutres(node_feature_list = node_feature_list)
+    # edge_index, edge_attr  = create_graph_edge_featutres(edge_feature_list = edge_feature_list)
+    # edge_index, edge_attr  = create_graph_edge_featutres_2(edge_feature_list=edge_feature_list)
+
+    # pos = face_normals
+
+    # # print(edge_attr.shape)
+
+    # # Getting the y value of the graph
+    # dihedral_energy = three_body_energy(points=pos, dihedral_matrix=dihedral_matrix,sep_const=1,theta=1)
+    # moi = moment_of_inertia(points=pos)
+    # energy_per_verts = energy_per_n_verts(points)
+    # y = [dihedral_energy,moi,energy_per_verts]
+    # y_labels = ['dihedral_energy','moi','energy_per_verts']
+
+    # return x, edge_index, edge_attr, pos , y, y_labels
 
 def collect_data(polyhedra_verts:List[np.ndarray], 
                  indices:List[int], 
                  save_dir:str='',
-                 feature_set_index:int=0):
+                 feature_set_index:int=0,
+                 graph_type:str='vert_edge'):
     """Convert a list of polyhedra 
 
     Parameters
@@ -351,7 +393,10 @@ def collect_data(polyhedra_verts:List[np.ndarray],
     """
     for index in indices:
         verts_list = polyhedra_verts[index].tolist()
-        x, edge_index, edge_attr, pos, y, y_labels = get_pyg_graph_components(points=polyhedra_verts[index], set_index = feature_set_index)
+        if graph_type == 'face_edge':
+            x, edge_index, edge_attr, pos, y, y_labels = get_pyg_graph_components(points=polyhedra_verts[index], set_index = feature_set_index)
+        elif graph_type =='vert_edge':
+            x, edge_index, edge_attr, pos, y, y_labels = get_pyg_vertex_edge_components(points=polyhedra_verts[index], set_index = feature_set_index)
         # print('____________________')
         # print(x.shape,edge_index.shape, edge_attr.shape)
         data = {
