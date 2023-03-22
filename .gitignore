@@ -8,3 +8,4 @@ examples/
 docs/
 notebooks/data/
 __pycache__/
+my_tests/

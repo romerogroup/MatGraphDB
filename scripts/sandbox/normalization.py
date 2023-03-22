@@ -17,6 +17,7 @@ from poly_graphs_lib.poly_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
 
 
+
 class PolyhedronModel(nn.Module):
     """This is the main Polyhedron Model. 
 
@@ -75,10 +76,9 @@ class PolyhedronModel(nn.Module):
         self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
         self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[-1])
 
-        # self.linear_1 = nn.Linear( n_node_features, n_hidden_layers[0])
-        # self.linear_2 = nn.Linear( n_hidden_layers[0], n_hidden_layers[1])
-
         self.out_layer= nn.Linear( n_hidden_layers[-1],  1)
+
+        # self.out_layer= nn.Linear( n_node_features,  1)
         
 
         if global_pooling_method == 'add':
@@ -122,18 +122,20 @@ class PolyhedronModel(nn.Module):
     
         
         # Fully connected layer
-        out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
         
         # batch is index list differteriating which nodes belong to which graph
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
         
-        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        out = self.leaky_relu(out) 
+        # out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # out = self.leaky_relu(out) 
 
-        # # Fully connected layer
-        # out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
-        # out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        # Fully connected layer
+        out = self.linear_1(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.linear_2(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
+        out = self.leaky_relu(out) # out -> (n_total_nodes_in_batch, n_hidden_layers[0])
 
         out = self.out_layer(out) # out -> (n_graphs, 1)
         out = self.relu(out) # out -> (n_graphs, 1)
@@ -187,33 +189,31 @@ save_model = True
 
 # Training params
 n_epochs = 500
-learning_rate = 1e-2
-batch_size = 128
+learning_rate = 1e-1
+batch_size = 20
 early_stopping_patience = 20
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # print(torch.cuda.mem_get_info())
 
 # polyhedron model parameters
 n_gc_layers = 2
-n_hidden_layers=[8,4]
-global_pooling_method = 'add'
-
-# dataset parameters
-dataset = 'material_polyhedra'
-feature_set_index = 3
-y_val = ['energy_per_verts','dihedral_energy'][0]
-
+n_hidden_layers=[8,8]
+global_pooling_method = 'mean'
+y_val='dihedral_energy'
 ###################################################################
 # Start of the the training run
 ###################################################################
 
-train_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}train"
-test_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}test"
-val_dir = f"{project_dir}{os.sep}datasets{os.sep}{dataset}{os.sep}feature_set_{feature_set_index}{os.sep}val"
+train_dir = f"{project_dir}{os.sep}datasets{os.sep}{os.sep}material_polyhedra{os.sep}face_nodes{os.sep}train"
+test_dir = f"{project_dir}{os.sep}datasets{os.sep}{os.sep}material_polyhedra{os.sep}face_nodes{os.sep}test"
+val_dir = f"{project_dir}{os.sep}datasets{os.sep}{os.sep}material_polyhedra{os.sep}face_nodes{os.sep}val"
 
 train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, y_val=y_val)
 n_node_features = train_dataset[0].x.shape[1]
+print(train_dataset[0])
 n_edge_features = train_dataset[0].edge_attr.shape[1]
+
+
 
 node_max = torch.zeros(n_node_features, device = device)
 node_min = torch.zeros(n_node_features, device = device)
@@ -300,14 +300,15 @@ for epoch in range(n_epochs):
     batch_train_loss = 0.0
     batch_train_mape = 0.0
     for i,sample in enumerate(train_loader):
-        optimizer.zero_grad()
-        out, train_loss, mape_loss = model(sample , targets = sample.y)
-        train_loss.backward()
-        optimizer.step()
-        batch_train_loss += train_loss.item()
-        batch_train_mape += mape_loss.item()
+        if i == 0:
+            optimizer.zero_grad()
+            out, train_loss, mape_loss = model(sample , targets = sample.y)
+            train_loss.backward()
+            optimizer.step()
+            batch_train_loss += train_loss.item()
+            batch_train_mape += mape_loss.item()
 
-    sample = next(iter(train_loader))
+    # sample = next(iter(train_loader))
     # print(model.generate_encoding(sample))
     # print(getattr(model,'linear_1').weight.grad)
     batch_train_loss = batch_train_loss / (i+1)

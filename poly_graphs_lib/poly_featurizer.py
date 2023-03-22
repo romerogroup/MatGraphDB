@@ -137,7 +137,7 @@ class PolyFeaturizer:
             i = edge[0]
             j = edge[1]
             dihedral_angles[index] = np.arccos(np.dot(-self.face_normals[i], self.face_normals[j]))
-        return dihedral_angles
+        return dihedral_angles.reshape(-1,1)
     
     def get_edge_lengths(self):
         n_edges = len(self.edges)
@@ -169,7 +169,16 @@ class PolyFeaturizer:
             for j in range(i+1, n_nodes):
                 if adj_mat[i,j] > 0:
                     sep_vec = nodes[i] - nodes[j]
-                    dihedral_angle = np.arccos(np.dot(-nodes[i], nodes[j]))
+                    
+                    dot_ij = np.dot(-nodes[i], nodes[j])
+
+                    print(nodes[i],nodes[j] )
+                    if abs(dot_ij) > 1:
+                        dot_ij =1
+                    print('________________')
+                    print(dot_ij)
+                    dihedral_angle = np.arccos(dot_ij)
+                    print(dihedral_angle)
                     energy += 0.5*np.linalg.norm(sep_vec)**2 + 0.5 * dihedral_angle**2
         return energy
      
@@ -192,7 +201,7 @@ class PolyFeaturizer:
             y = 1
 
         self.x=x
-        self.edge_index=edge_index
+        self.edge_index=edge_index.T
         self.edge_attr=edge_attr 
         self.y=y 
         self.pos = pos
@@ -209,7 +218,7 @@ class PolyFeaturizer:
             y = 1
 
         self.x=x
-        self.edge_index=edge_index
+        self.edge_index=edge_index.T
         self.edge_attr=edge_attr 
         self.y=y 
         self.pos = pos
@@ -241,16 +250,16 @@ if __name__ == "__main__":
 
     obj = PolyFeaturizer(vertices=verts_cube)
 
-    vert_adj_matrix = obj.verts_adj_mat
-    face_adj_matrix = obj.faces_adj_mat
+    # vert_adj_matrix = obj.verts_adj_mat
+    # face_adj_matrix = obj.faces_adj_mat
 
 
     # print(obj.get_dihedral_angles())
     # print(vert_adj_matrix)
     # print(face_adj_matrix)
     # print(obj.edges)
-    print(obj.face_edges)
-    print(obj.face_edges)
+    # print(obj.face_edges)
+    # print(obj.face_edges)
     # x, edge_index, edge_attr, y, pos = obj.get_pyg_faces()
     # print(x.shape)
     # print(obj.get_dihedral_angles())

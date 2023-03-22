@@ -1,6 +1,6 @@
 import os
 
-from poly_graphs_lib.data.create_datasets import create_material_polyhedra_dataset_2
+from poly_graphs_lib.data.create_datasets import create_material_polyhedra_dataset_2,create_material_polyhedra_dataset_3
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
@@ -17,11 +17,11 @@ class DataGeneratorConfig:
 class DataGenerator:
 
     def __init__(self):
-        self.config = DataGeneratorConfig()
+        self.config = DataGeneratorConfig() 
 
     def initialize_ingestion(self):
         try:
-            create_material_polyhedra_dataset_2(data_dir=self.config.dataset_dir,
+            create_material_polyhedra_dataset_3(data_dir=self.config.dataset_dir,
                                             mpcif_data_dir=self.config.mpcif_data_dir,
                                             node_type=self.config.node_type, 
                                             val_size=self.config.val_size)

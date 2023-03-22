@@ -361,14 +361,14 @@ def create_material_polyhedra_dataset(data_dir:str, mpcif_data_dir: str, feature
     collect_data(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir,feature_set_index=feature_set_index)
 
 
-def create_material_polyhedra_dataset_2(data_dir:str, mpcif_data_dir: str, node_type:str='face', val_size:float=0.20):
+def create_material_polyhedra_dataset_2(data_dir:str, mpcif_data_dir: str, node_type:str='face', val_size:float=0.20,y_val = 'energy_per_node'):
 
 
     ###########################################################################################################
     # Start of data generation
     ###########################################################################################################
 
-    feature_dir = data_dir + os.sep + 'material_polyhedra' + os.sep + node_type + '_nodes'
+    feature_dir = data_dir + os.sep + y_val +os.sep+ 'material_polyhedra' + os.sep + node_type + '_nodes'
     if os.path.exists(feature_dir):
         shutil.rmtree(feature_dir)
     os.makedirs(feature_dir)
@@ -428,12 +428,78 @@ def create_material_polyhedra_dataset_2(data_dir:str, mpcif_data_dir: str, node_
     train_indices,val_indices = train_test_split(data_indices, test_size = val_size, random_state=0)
     test_indices = np.arange(0,len(test_poly))
     
-    process_polythedra(polyhedra_verts=polyhedra_verts,indices=train_indices, save_dir=train_dir)
-    process_polythedra(polyhedra_verts=polyhedra_verts,indices=val_indices, save_dir=val_dir)
-    process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir)
+    process_polythedra(polyhedra_verts=polyhedra_verts,indices=train_indices, save_dir=train_dir,node_type=node_type,y_val=y_val)
+    process_polythedra(polyhedra_verts=polyhedra_verts,indices=val_indices, save_dir=val_dir,node_type=node_type, y_val=y_val)
+    process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir ,node_type=node_type,y_val=y_val)
+
+def create_material_polyhedra_dataset_3(data_dir:str, mpcif_data_dir: str, node_type:str='face', val_size:float=0.20,y_val = 'energy_per_node'):
 
 
-def process_polythedra(polyhedra_verts, indices, save_dir, node_type):
+    ###########################################################################################################
+    # Start of data generation
+    ###########################################################################################################
+
+    feature_dir = data_dir + os.sep + y_val +os.sep+ 'material_polyhedra' + os.sep + node_type + '_nodes'
+    if os.path.exists(feature_dir):
+        shutil.rmtree(feature_dir)
+    os.makedirs(feature_dir)
+
+    train_dir = f"{feature_dir}{os.sep}train"
+    test_dir = f"{feature_dir}{os.sep}test"
+
+
+    # Creating train,text, val directory
+    if os.path.exists(train_dir):
+        shutil.rmtree(train_dir)
+    os.makedirs(train_dir)
+
+    if os.path.exists(test_dir):
+        shutil.rmtree(test_dir)
+    os.makedirs(test_dir)
+
+    polyhedra_verts = []
+
+    # Material polyhedra
+    cif_files = os.listdir(mpcif_data_dir)
+    for cif_file in cif_files:
+        # print(cif_file)
+        mp_id = cif_file.split('.')[0]
+
+        try:
+            voronoi_structure = VoronoiStructure(structure_id = f'{mpcif_data_dir}{os.sep}{cif_file}', 
+                                            database_source='mp',
+                                            database_id=mp_id,
+                                            neighbor_tol=0.1)
+        except Exception as e:
+            print(e)
+            continue
+            # print(f'{cif_file} failed')
+        voronoi_structure_dict = voronoi_structure.as_dict()
+
+        for polyhedra_dict in voronoi_structure_dict['voronoi_polyhedra_info']:
+            polyhedra_verts.append(np.array(polyhedra_dict['vertices']))
+
+
+    # print(polyhedra_verts)
+    verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
+    verts_cube = PlatonicFamily.get_shape("Cube").vertices
+    verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
+    verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
+    verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))*2 + 1
+
+    test_poly = []
+    test_poly.extend([verts_tetra, verts_cube,verts_oct,verts_dod, verts_tetra_rot])
+    test_poly.extend([verts_mp567387_Ti,verts_mp4019_Ti,verts_mp3397_Ti,verts_mp15502_Ba,verts_mp15502_Ti])
+    data_indices = np.arange(0,len(polyhedra_verts))
+
+
+    test_indices = np.arange(0,len(test_poly))
+    
+    process_polythedra(polyhedra_verts=polyhedra_verts,indices=data_indices, save_dir=train_dir,node_type=node_type,y_val=y_val)
+    process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir ,node_type=node_type,y_val=y_val)
+
+
+def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val):
     for index in indices:
         poly_vert = polyhedra_verts[index]
         if node_type =='face':
@@ -449,7 +515,10 @@ def process_polythedra(polyhedra_verts, indices, save_dir, node_type):
                 pos = obj.face_centers
                 adj_mat = obj.faces_adj_mat
 
-                target_variable = obj.get_energy_per_node(pos,adj_mat)
+                if y_val == 'three_body_energy':
+                    target_variable = obj.get_three_body_energy(pos,adj_mat)
+                elif y_val =='energy_per_node':
+                    target_variable = obj.get_energy_per_node(pos,adj_mat)
 
                 obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
 
@@ -467,7 +536,11 @@ def process_polythedra(polyhedra_verts, indices, save_dir, node_type):
                 pos = obj.vertices
                 adj_mat = obj.verts_adj_mat
 
-                target_variable = obj.get_energy_per_node(pos,adj_mat)
+                if y_val == 'three_body_energy':
+                    target_variable = obj.get_three_body_energy(pos,adj_mat)
+                elif y_val =='energy_per_node':
+                    target_variable = obj.get_energy_per_node(pos,adj_mat)
+
 
                 obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
 
