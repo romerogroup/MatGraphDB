@@ -163,22 +163,16 @@ class PolyFeaturizer:
     def get_three_body_energy(self, nodes, adj_mat):
         energy = 0
         n_nodes = len(nodes)
-
-        nodes = (nodes - nodes.mean(axis=0))/nodes.std(axis=0)
         for i in range(n_nodes):
             for j in range(i+1, n_nodes):
                 if adj_mat[i,j] > 0:
                     sep_vec = nodes[i] - nodes[j]
-                    
-                    dot_ij = np.dot(-nodes[i], nodes[j])
 
-                    print(nodes[i],nodes[j] )
+                    dot_ij = np.dot(-nodes[i], nodes[j])
                     if abs(dot_ij) > 1:
                         dot_ij =1
-                    print('________________')
-                    print(dot_ij)
                     dihedral_angle = np.arccos(dot_ij)
-                    print(dihedral_angle)
+                    
                     energy += 0.5*np.linalg.norm(sep_vec)**2 + 0.5 * dihedral_angle**2
         return energy
      
@@ -248,12 +242,22 @@ if __name__ == "__main__":
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
-    obj = PolyFeaturizer(vertices=verts_cube)
+    obj = PolyFeaturizer(vertices=verts_tetra)
 
+
+
+    pos = obj.face_normals
+    adj_mat = obj.faces_adj_mat
+
+    print(pos)
+    obj.get_three_body_energy(pos,adj_mat)
+    # pos = obj.face_normals
+    # adj_mat = obj.faces_adj_mat
+
+    # print(pos)
+    # obj.get_three_body_energy(pos,adj_mat)
     # vert_adj_matrix = obj.verts_adj_mat
     # face_adj_matrix = obj.faces_adj_mat
-
-
     # print(obj.get_dihedral_angles())
     # print(vert_adj_matrix)
     # print(face_adj_matrix)

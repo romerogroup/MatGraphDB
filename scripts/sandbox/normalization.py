@@ -251,16 +251,16 @@ def min_max_scaler(data):
 
 train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, y_val=y_val, transform = min_max_scaler)
 test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, y_val=y_val, transform = min_max_scaler)
-val_dataset = PolyhedraDataset(database_dir=val_dir,device=device, y_val=y_val, transform = min_max_scaler)
+# val_dataset = PolyhedraDataset(database_dir=val_dir,device=device, y_val=y_val, transform = min_max_scaler)
 
 n_train = len(train_dataset)
-n_validation = len(val_dataset)
+# n_validation = len(val_dataset)
 
 # Creating data loaders
 train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0)
 # train_2_loader = DataLoader(train_2_dataset, batch_size=batch_size, num_workers=0)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=0)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=0)
+# val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=0)
 
 
 
@@ -314,17 +314,17 @@ for epoch in range(n_epochs):
     batch_train_loss = batch_train_loss / (i+1)
     batch_train_mape = batch_train_mape / (i+1)
 
-    batch_val_loss = 0.0
-    batch_val_mape = 0.0
-    for i,sample in enumerate(val_loader):
-        torch.set_grad_enabled(False)
-        out, val_loss, mape_val_loss = model(sample , targets = sample.y)
-        torch.set_grad_enabled(True)
-        batch_val_loss += val_loss.item()
-        batch_val_mape += mape_val_loss.item()
-    batch_val_loss = batch_val_loss / (i+1)
-    batch_val_mape = batch_val_mape / (i+1)
-    scheduler.step(batch_val_loss)
+    # batch_val_loss = 0.0
+    # batch_val_mape = 0.0
+    # for i,sample in enumerate(val_loader):
+    #     torch.set_grad_enabled(False)
+    #     out, val_loss, mape_val_loss = model(sample , targets = sample.y)
+    #     torch.set_grad_enabled(True)
+    #     batch_val_loss += val_loss.item()
+    #     batch_val_mape += mape_val_loss.item()
+    # batch_val_loss = batch_val_loss / (i+1)
+    # batch_val_mape = batch_val_mape / (i+1)
+    # scheduler.step(batch_val_loss)
 
 
     batch_test_loss = 0.0

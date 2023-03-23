@@ -164,8 +164,7 @@ def main():
     # filenames = train_dir + "/*.json"
     # files = glob(filenames)
     # get_polyhedra_graph(file_name=files[0])
-
-    dataset = PolyhedraDataset(database_dir=train_dir)
+    
 
     print(dataset.get_file_name(idx = 0))
 

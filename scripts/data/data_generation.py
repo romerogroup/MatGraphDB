@@ -10,6 +10,7 @@ class DataGeneratorConfig:
     mpcif_data_dir : str = f"{dataset_dir}{os.sep}raw{os.sep}nelement_max_2_nsites_max_6_3d"
     node_type: str = "face"
     val_size : int = 0.10
+    y_val : str = 'three_body_energy'
     def __init__(self):
         if self.node_type not in ['face', 'vert']:
             raise ValueError("node_type must be either 'face' or 'vert'")
@@ -24,7 +25,8 @@ class DataGenerator:
             create_material_polyhedra_dataset_3(data_dir=self.config.dataset_dir,
                                             mpcif_data_dir=self.config.mpcif_data_dir,
                                             node_type=self.config.node_type, 
-                                            val_size=self.config.val_size)
+                                            val_size=self.config.val_size,
+                                            y_val = self.config.y_val)
         except Exception as e:
             print(e)
 

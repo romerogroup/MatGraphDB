@@ -432,14 +432,14 @@ def create_material_polyhedra_dataset_2(data_dir:str, mpcif_data_dir: str, node_
     process_polythedra(polyhedra_verts=polyhedra_verts,indices=val_indices, save_dir=val_dir,node_type=node_type, y_val=y_val)
     process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir ,node_type=node_type,y_val=y_val)
 
-def create_material_polyhedra_dataset_3(data_dir:str, mpcif_data_dir: str, node_type:str='face', val_size:float=0.20,y_val = 'energy_per_node'):
+def create_material_polyhedra_dataset_3(data_dir:str, mpcif_data_dir: str, node_type:str='face', val_size:float=0.20, y_val = 'energy_per_node'):
 
 
     ###########################################################################################################
     # Start of data generation
     ###########################################################################################################
 
-    feature_dir = data_dir + os.sep + y_val +os.sep+ 'material_polyhedra' + os.sep + node_type + '_nodes'
+    feature_dir = data_dir + os.sep + y_val + os.sep + 'material_polyhedra' + os.sep + node_type + '_nodes'
     if os.path.exists(feature_dir):
         shutil.rmtree(feature_dir)
     os.makedirs(feature_dir)
@@ -512,7 +512,7 @@ def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val):
                 dihedral_angles = obj.get_dihedral_angles()
                 edge_features = dihedral_angles
 
-                pos = obj.face_centers
+                pos = obj.face_normals
                 adj_mat = obj.faces_adj_mat
 
                 if y_val == 'three_body_energy':
