@@ -436,7 +436,7 @@ def compare_polyhedra(loader, model):
 
     df = pd.DataFrame(columns)
     df['n_nodes']  = n_nodes
-    df.to_csv(f'{project_dir}{os.sep}reports{os.sep}energy_test.csv',index=names)
+    df.to_csv(f'{project_dir}{os.sep}reports{os.sep}energy_test.csv')
     return None
 
 compare_polyhedra(loader=test_loader, model=model)
