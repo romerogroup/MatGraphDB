@@ -69,10 +69,11 @@ class PolyhedronModel(nn.Module):
         self.relu = nn.ReLU()
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
 
-        self.linear_1 = nn.Linear(n_node_features,n_node_features)
-        self.linear_2 = nn.Linear(n_node_features,4)
+        self.linear_1 = nn.Linear(n_node_features,4)
+        self.linear_2 = nn.Linear(4,4)
+        
+
         self.out_layer= nn.Linear( n_node_features,  1)
-        # self.out_layer= nn.Linear( n_node_features,  1)
         
 
         if global_pooling_method == 'add':
@@ -108,12 +109,10 @@ class PolyhedronModel(nn.Module):
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
         out = self.relu(out)
-        # out = self.linear_1(out)
-        # out = self.relu(out)
+
         # Batch global pooling
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
-        # out = self.linear_1(out)
-        # out = self.relu(out)
+
         out = self.out_layer(out) # out -> (n_graphs, 1)
 
         # Loss handling
@@ -141,6 +140,8 @@ class PolyhedronModel(nn.Module):
         
         # Batch global pooling
         out = self.global_pooling_layer(out, batch = batch)
+        # out = self.ln(out)
+        # out = self.ln_f(out)
         # out = self.linear_1(out)
         # out = self.relu(out)
         return out
@@ -161,10 +162,11 @@ project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 # hyperparameters
 
 # Training params
-n_epochs = 30
+n_epochs = 200
 early_stopping_patience = 5
 learning_rate = 1e-2
 batch_size = 64
+single_batch = False
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # polyhedron model parameters
@@ -319,7 +321,7 @@ model.train()
 for epoch in range(n_epochs):
     n_epoch = n_epoch_0 + epoch
 
-    batch_train_loss, batch_train_mape = train(single_batch=False)
+    batch_train_loss, batch_train_mape = train(single_batch=single_batch)
     batch_test_loss, batch_test_mape = test()
 
     if es(model=model, val_loss=batch_test_loss,mape_val_loss=batch_test_mape):
@@ -374,7 +376,7 @@ def compare_polyhedra(loader, model):
     print(expected_values)
     n_nodes = np.array(n_nodes)
     data = np.array(data)
-    
+    print(data)
     # polyhedra = [(data[0],'tetra'),(data[1],'cube'),(data[2],'oct'),(data[3],'dod'),(data[4],'rotated_tetra'),
     #             (data[5],'verts_mp567387_Ti_dod'),(data[6],'verts_mp4019_Ti_cube'),(data[7],'verts_mp3397_Ti_tetra'),
     #             (data[8],'verts_mp15502_Ba_cube'),(data[9],'verts_mp15502_Ti_oct')]
@@ -415,25 +417,26 @@ def compare_polyhedra(loader, model):
     print("--------------------------")
     print(cosine_similarity_mat)
 
-
+    n_nodes = [poly[2] for poly in polyhedra]
+    names = [poly[1] for poly in polyhedra]
     encodings = [poly[0] for poly in polyhedra]
-    df = pd.DataFrame(encodings, index = [poly[1] for poly in polyhedra])
+    df = pd.DataFrame(encodings, index = names)
     df['n_nodes']  = n_nodes
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}encodings.csv')
 
-    df = pd.DataFrame(cosine_similarity_mat, columns = [poly[1] for poly in polyhedra], index = [poly[1] for poly in polyhedra])
+    df = pd.DataFrame(cosine_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}cosine_similarity.csv')
 
-    df = pd.DataFrame(distance_similarity_mat, columns = [poly[1] for poly in polyhedra], index = [poly[1] for poly in polyhedra])
+    df = pd.DataFrame(distance_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}distance_similarity.csv')
 
     df = pd.DataFrame(columns)
     df['n_nodes']  = n_nodes
-    df.to_csv(f'{project_dir}{os.sep}reports{os.sep}energy_test.csv')
+    df.to_csv(f'{project_dir}{os.sep}reports{os.sep}energy_test.csv',index=names)
     return None
 
 compare_polyhedra(loader=test_loader, model=model)
