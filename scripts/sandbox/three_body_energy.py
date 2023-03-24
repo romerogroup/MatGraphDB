@@ -13,6 +13,7 @@ from torch_geometric.nn import CGConv, global_add_pool, global_mean_pool, global
 from torch_geometric.loader import DataLoader
 import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
+from torch.nn import functional as F
 
 from poly_graphs_lib.poly_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
@@ -69,8 +70,6 @@ class PolyhedronModel(nn.Module):
         self.relu = nn.ReLU()
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
 
-        self.linear_1 = nn.Linear(n_node_features,4)
-        self.linear_2 = nn.Linear(4,4)
         
 
         self.out_layer= nn.Linear( n_node_features,  1)
@@ -112,7 +111,6 @@ class PolyhedronModel(nn.Module):
 
         # Batch global pooling
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
-
         out = self.out_layer(out) # out -> (n_graphs, 1)
 
         # Loss handling
@@ -137,13 +135,8 @@ class PolyhedronModel(nn.Module):
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
         out = self.relu(out)
 
-        
         # Batch global pooling
         out = self.global_pooling_layer(out, batch = batch)
-        # out = self.ln(out)
-        # out = self.ln_f(out)
-        # out = self.linear_1(out)
-        # out = self.relu(out)
         return out
 
 def weight_init(m):
@@ -165,7 +158,7 @@ project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 n_epochs = 200
 early_stopping_patience = 5
 learning_rate = 1e-2
-batch_size = 64
+batch_size = 20
 single_batch = False
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -339,6 +332,8 @@ for epoch in range(n_epochs):
 # Train average y_val: 85.29576873779297
 # Train std y_val: 105.39012145996094
 
+###############################################################################################
+################################################################################################
 def cosine_similarity(x,y):
     return x.dot(y) / (np.linalg.norm(x) * np.linalg.norm(y))
 
@@ -350,31 +345,36 @@ def compare_polyhedra(loader, model):
     data = []
     expected_values = []
     columns = {
-        'expected_values':[],
-        'prediction_values':[],
-        'Percent error':[],
+        'expected_value':[],
+        'prediction_value':[],
+        'percent_error':[],
+        'label':[],
+        'n_nodes':[],
+
         }
+    
     n_nodes = []
     for sample in loader:
         predictions = model(sample)
-        # print(sample.edge_index.shape)
-        # print(sample.batch.shape)
-        # print(sample.num_edges)
-        # print(dir(sample))
-        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode(sample),sample.edge_stores[0]['edge_attr']):
+        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode(sample),sample.node_stores[0]['pos']):
         #     print('______________________________________________________')
             print(f"Prediction : {pred.item()} | Expected : {real.item()} | Percent error : { 100*abs(real.item() - pred.item()) / real.item() }")
-            columns['prediction_values'].append(round(pred.item(),3))
-            columns['expected_values'].append(round(real.item(),3))
-            columns['Percent error'].append(round(abs(real.item() - pred.item()) / real.item(),3))
+            columns['prediction_value'].append(round(pred.item(),3))
+            columns['expected_value'].append(round(real.item(),3))
+            columns['percent_error'].append(round(100* abs(real.item() - pred.item()) / real.item(),3))
+            columns['label'].append(sample.label[0])
+            columns['n_nodes'].append(sample.num_nodes)
+            
             # print(f"Encodings : {encoding.tolist()}")
-            n_node = sample.num_nodes
+            n_node = len(pos)
             n_nodes.append(n_node)
             expected_values.append(real.item())
             data.append(np.array(encoding.tolist()) )
+
+
     print(n_nodes)
     print(expected_values)
-    n_nodes = np.array(n_nodes)
+    n_nodes_before_sort = np.array(n_nodes)
     data = np.array(data)
     print(data)
     # polyhedra = [(data[0],'tetra'),(data[1],'cube'),(data[2],'oct'),(data[3],'dod'),(data[4],'rotated_tetra'),
@@ -435,7 +435,7 @@ def compare_polyhedra(loader, model):
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}distance_similarity.csv')
 
     df = pd.DataFrame(columns)
-    df['n_nodes']  = n_nodes
+    # df['n_nodes']  = n_nodes_before_sort
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}energy_test.csv')
     return None
 

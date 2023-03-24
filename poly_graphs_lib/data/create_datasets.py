@@ -491,62 +491,75 @@ def create_material_polyhedra_dataset_3(data_dir:str, mpcif_data_dir: str, node_
     test_poly.extend([verts_tetra, verts_cube,verts_oct,verts_dod, verts_tetra_rot])
     test_poly.extend([verts_mp567387_Ti,verts_mp4019_Ti,verts_mp3397_Ti,verts_mp15502_Ba,verts_mp15502_Ti])
     data_indices = np.arange(0,len(polyhedra_verts))
-
-
-    test_indices = np.arange(0,len(test_poly))
+    poly_name = ['tetra','cube','oct','dod','rotated_tetra',
+                 'dod-like','cube-like','tetra-like','cube-like','oct-like']
     
+    test_indices = np.arange(0,len(test_poly))
+    print("Processing Train polyhedra")
     process_polythedra(polyhedra_verts=polyhedra_verts,indices=data_indices, save_dir=train_dir,node_type=node_type,y_val=y_val)
-    process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir ,node_type=node_type,y_val=y_val)
+    print("Processing Test polyhedra")
+    process_polythedra(polyhedra_verts=test_poly,indices=test_indices, save_dir=test_dir ,node_type=node_type,y_val=y_val,labels=poly_name)
 
 
-def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val):
+def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val,labels=None):
     for index in indices:
-        poly_vert = polyhedra_verts[index]
-        if node_type =='face':
-                obj = PolyFeaturizer(vertices=poly_vert)
+        try:
+            poly_vert = polyhedra_verts[index]
+            if node_type =='face':
+                    obj = PolyFeaturizer(vertices=poly_vert)
 
-                face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
-                face_areas_features = obj.face_areas
-                node_features = np.concatenate([face_areas_features,face_sides_features,],axis=1)
-                
-                dihedral_angles = obj.get_dihedral_angles()
-                edge_features = dihedral_angles
+                    face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+                    face_areas_features = obj.face_areas
+                    node_features = np.concatenate([face_areas_features,face_sides_features,],axis=1)
+                    
+                    dihedral_angles = obj.get_dihedral_angles()
+                    edge_features = dihedral_angles
 
-                pos = obj.face_normals
-                adj_mat = obj.faces_adj_mat
+                    pos = obj.face_normals
+                    adj_mat = obj.faces_adj_mat
 
-                if y_val == 'three_body_energy':
-                    target_variable = obj.get_three_body_energy(pos,adj_mat)
-                elif y_val =='energy_per_node':
-                    target_variable = obj.get_energy_per_node(pos,adj_mat)
+                    if y_val == 'three_body_energy':
+                        target_variable = obj.get_three_body_energy(pos,adj_mat)
+                    elif y_val =='energy_per_node':
+                        target_variable = obj.get_energy_per_node(pos,adj_mat)
 
-                obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+                    obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+                    if labels is not None:
+                        label = labels[index]
+                    else:
+                        label = None
+                    obj.set_label(label)
+                    filename = save_dir + os.sep + str(index) + '.json'
+                    obj.export_pyg_json(filename)
 
-                filename = save_dir + os.sep + str(index) + '.json'
-                obj.export_pyg_json(filename)
+            elif node_type=='vert':
+                    obj = PolyFeaturizer(vertices=poly_vert)
 
-        elif node_type=='vert':
-                obj = PolyFeaturizer(vertices=poly_vert)
+                    node_features = None
 
-                node_features = None
+                    edge_lengths = obj.get_edge_lengths()
+                    edge_features = edge_lengths
 
-                edge_lengths = obj.get_edge_lengths()
-                edge_features = edge_lengths
+                    pos = obj.vertices
+                    adj_mat = obj.verts_adj_mat
 
-                pos = obj.vertices
-                adj_mat = obj.verts_adj_mat
-
-                if y_val == 'three_body_energy':
-                    target_variable = obj.get_three_body_energy(pos,adj_mat)
-                elif y_val =='energy_per_node':
-                    target_variable = obj.get_energy_per_node(pos,adj_mat)
+                    if y_val == 'three_body_energy':
+                        target_variable = obj.get_three_body_energy(pos,adj_mat)
+                    elif y_val =='energy_per_node':
+                        target_variable = obj.get_energy_per_node(pos,adj_mat)
 
 
-                obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
-
-                filename = save_dir + os.sep + str(index) + '.json'
-                obj.export_pyg_json(filename)
-
+                    obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+                    if labels is not None:
+                        label = labels[index]
+                    else:
+                        label = None
+                    obj.set_label(label)
+                    filename = save_dir + os.sep + str(index) + '.json'
+                    obj.export_pyg_json(filename)
+        except Exception as e:
+            print(e)
+            
 if __name__ == '__main__':
     # parameters
     feature_set_index = 5

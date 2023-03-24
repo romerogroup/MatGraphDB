@@ -2,13 +2,14 @@ import json
 import numpy as np
 from coxeter.families import PlatonicFamily
 from coxeter.shapes import ConvexPolyhedron
-
+from torch.nn import functional as F
 
 class PolyFeaturizer:
     
     def __init__(self, vertices, norm:bool=False):
 
         self.poly = ConvexPolyhedron(vertices=vertices)
+        self.poly.merge_faces(atol=1e-4, rtol=1e-5)
 
         self.norm = norm
 
@@ -219,13 +220,19 @@ class PolyFeaturizer:
 
         return x, edge_index, edge_attr, y, pos
     
+    def set_label(self, label):
+        self.label = label
+
+        return None
+    
     def export_pyg_json(self, filename:str = None):
         data = {
                 'x':self.x.tolist(),
                 'edge_index':self.edge_index.tolist(),
                 'edge_attr':self.edge_attr.tolist(),
                 'pos':self.pos.tolist(),
-                'y':self.y
+                'y':self.y,
+                'label':self.label
                 }
         
         if filename:
@@ -242,15 +249,19 @@ if __name__ == "__main__":
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
-    obj = PolyFeaturizer(vertices=verts_tetra)
-
-
-
+    obj = PolyFeaturizer(vertices=verts_dod)
+    
+    poly = ConvexPolyhedron(vertices=verts_dod)
+    print(poly.num_faces)
+    print(poly.merge_faces(atol=1e-4, rtol=1e-5))
+    print(poly.num_faces)
     pos = obj.face_normals
     adj_mat = obj.faces_adj_mat
-
-    print(pos)
-    obj.get_three_body_energy(pos,adj_mat)
+    # print(len(obj.face_centers))
+    # print(len(obj.vertices))
+    # print(len(obj.face_sides))
+    # print(pos)
+    # obj.get_three_body_energy(pos,adj_mat)
     # pos = obj.face_normals
     # adj_mat = obj.faces_adj_mat
 

@@ -41,6 +41,7 @@ def get_polyhedra_graph(file_name: str, device:str=None, y_val:str=None) -> Data
     edge_index = np.array(data['edge_index'])
     edge_attr = np.array(data['edge_attr'])
     pos = np.array(data['pos'])
+    label = data['label']
 
 
     if y_val is None:
@@ -61,7 +62,7 @@ def get_polyhedra_graph(file_name: str, device:str=None, y_val:str=None) -> Data
 
     pos = pos
 
-    data = Data(x=x, edge_index=edge_index,edge_attr=edge_attr,pos = pos, y=y)
+    data = Data(x=x, edge_index=edge_index,edge_attr=edge_attr,pos = pos, y=y, label=label)
     data.to(device)
     return data
 
@@ -166,9 +167,9 @@ def main():
     # get_polyhedra_graph(file_name=files[0])
     
 
-    print(dataset.get_file_name(idx = 0))
+    # print(dataset.get_file_name(idx = 0))
 
-    print(dataset.get(idx = 0))
+    # print(dataset.get(idx = 0))
 
 
 
