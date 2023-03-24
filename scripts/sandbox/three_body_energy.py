@@ -107,7 +107,7 @@ class PolyhedronModel(nn.Module):
 
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
-        out = self.relu(out)
+        # out = self.relu(out)
 
         # Batch global pooling
         out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, n_hidden_layers[0])
@@ -338,7 +338,7 @@ def cosine_similarity(x,y):
     return x.dot(y) / (np.linalg.norm(x) * np.linalg.norm(y))
 
 def distance_similarity(x,y):
-    return np.linalg.norm(x/np.linalg.norm(x) -y/np.linalg.norm(x))
+    return np.linalg.norm(x/np.linalg.norm(x) - y/np.linalg.norm(y))
 
 
 def compare_polyhedra(loader, model):
