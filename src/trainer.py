@@ -15,7 +15,7 @@ import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 from torch.nn import functional as F
 
-from poly_graphs_lib.pyg_dataset import PolyhedraDataset
+from poly_graphs_lib.pyg_json_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
 
 large_width = 400
@@ -70,11 +70,8 @@ class PolyhedronModel(nn.Module):
         self.relu = nn.ReLU()
         self.cg_conv_layers = Sequential(" x, edge_index, edge_attr " , layers)
 
-        
-
         self.out_layer= nn.Linear( n_node_features,  1)
-        
-
+    
         if global_pooling_method == 'add':
             self.global_pooling_layer = global_add_pool
         elif global_pooling_method == 'mean':
@@ -151,7 +148,8 @@ def weight_init(m):
 # Parameters
 ###################################################################
 
-project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+project_dir = os.path.dirname(os.path.dirname(__file__))
+print(project_dir)
 # hyperparameters
 
 # Training params
@@ -165,16 +163,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # polyhedron model parameters
 n_gc_layers = 2
 n_hidden_layers=[8,8]
-global_pooling_method = 'add'
+global_pooling_method = 'mean'
 
 ###################################################################
 # Start of the the training run
 ###################################################################
 
-train_dir = f"{project_dir}{os.sep}datasets{os.sep}three_body_energy{os.sep}material_polyhedra{os.sep}face_nodes{os.sep}train"
-test_dir = f"{project_dir}{os.sep}datasets{os.sep}three_body_energy{os.sep}material_polyhedra{os.sep}face_nodes{os.sep}test"
+train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
+test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
 
-train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, y_val='y')
+train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, feature_set='face_feature_set_1')
 n_node_features = train_dataset[0].x.shape[1]
 n_edge_features = train_dataset[0].edge_attr.shape[1]
 
@@ -214,8 +212,8 @@ def min_max_scaler(data):
     data.x=data.x.nan_to_num()
     return data
 
-train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, y_val='y', transform = min_max_scaler)
-test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, y_val='y', transform = min_max_scaler)
+train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set='face_feature_set_1', transform = min_max_scaler)
+test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set='face_feature_set_1', transform = min_max_scaler)
 
 y_train_vals = []
 n_graphs = len(train_dataset)
@@ -342,7 +340,6 @@ def distance_similarity(x,y):
 
 
 def compare_polyhedra(loader, model):
-    data = []
     expected_values = []
     columns = {
         'expected_value':[],
@@ -351,7 +348,7 @@ def compare_polyhedra(loader, model):
         'label':[],
         'n_nodes':[],
         }
-    
+    polyhedra_encodings = []
     n_nodes = []
     for sample in loader:
         predictions = model(sample)
@@ -368,31 +365,12 @@ def compare_polyhedra(loader, model):
             n_node = len(pos)
             n_nodes.append(n_node)
             expected_values.append(real.item())
-            data.append(np.array(encoding.tolist()) )
+            polyhedra_encodings.append((np.array(encoding.tolist()),sample.label[0] , sample.num_nodes ))
 
-
-    print(n_nodes)
-    print(expected_values)
-    n_nodes_before_sort = np.array(n_nodes)
-    data = np.array(data)
-    print(data)
-    # polyhedra = [(data[0],'tetra'),(data[1],'cube'),(data[2],'oct'),(data[3],'dod'),(data[4],'rotated_tetra'),
-    #             (data[5],'verts_mp567387_Ti_dod'),(data[6],'verts_mp4019_Ti_cube'),(data[7],'verts_mp3397_Ti_tetra'),
-    #             (data[8],'verts_mp15502_Ba_cube'),(data[9],'verts_mp15502_Ti_oct')]
-    
-    polyhedra = [(data[0],'tetra'),(data[2],'cube'),(data[4],'oct'),(data[6],'dod'),(data[8],'rotated_tetra'),
-                (data[9],'verts_mp567387_Ti_dod'),(data[1],'verts_mp4019_Ti_cube'),(data[3],'verts_mp3397_Ti_tetra'),
-                (data[5],'verts_mp15502_Ba_cube'),(data[7],'verts_mp15502_Ti_oct')]
-    
-    polyhedra = [(data[0],'tetra',n_nodes[0]),(data[2],'cube',n_nodes[2]),(data[4],'oct',n_nodes[4]),
-                 (data[6],'dod',n_nodes[6]),(data[8],'rotated_tetra',n_nodes[8]),(data[9],'dod-like',n_nodes[9]),
-                 (data[1],'cube-like',n_nodes[1]),(data[3],'tetra-like',n_nodes[3]),
-                (data[5],'cube-like',n_nodes[5]),(data[7],'oct-like',n_nodes[7])]
-    poly_names= []
-    distance_similarity_mat = np.zeros(shape = (len(polyhedra),len(polyhedra)))
-    cosine_similarity_mat = np.zeros(shape = (len(polyhedra),len(polyhedra)))
-    for i,poly_a in enumerate(polyhedra):
-        for j,poly_b in enumerate(polyhedra):
+    distance_similarity_mat = np.zeros(shape = (len(polyhedra_encodings),len(polyhedra_encodings)))
+    cosine_similarity_mat = np.zeros(shape = (len(polyhedra_encodings),len(polyhedra_encodings)))
+    for i,poly_a in enumerate(polyhedra_encodings):
+        for j,poly_b in enumerate(polyhedra_encodings):
             # print('_______________________________________')
             # print(f'Poly_a - {poly_a[1]} | Poly_b - {poly_b[1]}')
             # print(f'Cosine : {cosine_similarity(x=poly_a[0],y=poly_b[0])}')
@@ -401,12 +379,9 @@ def compare_polyhedra(loader, model):
             cosine_similarity_mat[i,j] = cosine_similarity(x=poly_a[0],y=poly_b[0]).round(3)
             
 
-    print(polyhedra[0][1],polyhedra[1][1],polyhedra[2][1],polyhedra[3][1],polyhedra[4][1],
-        polyhedra[5][1],polyhedra[6][1],polyhedra[7][1],polyhedra[8][1],polyhedra[9][1],)
-    
-    # print(distance_similarty,decimals=3)
-    # for x in distance_similarty:
-    #     print(x)
+    print(polyhedra_encodings[0][1],polyhedra_encodings[1][1],polyhedra_encodings[2][1],polyhedra_encodings[3][1],polyhedra_encodings[4][1],
+        polyhedra_encodings[5][1],polyhedra_encodings[6][1],polyhedra_encodings[7][1],polyhedra_encodings[8][1])
+
     print("--------------------------")
     print("Distance Similarity Matrix")
     print("--------------------------")
@@ -416,9 +391,9 @@ def compare_polyhedra(loader, model):
     print("--------------------------")
     print(cosine_similarity_mat)
 
-    n_nodes = [poly[2] for poly in polyhedra]
-    names = [poly[1] for poly in polyhedra]
-    encodings = [poly[0] for poly in polyhedra]
+    n_nodes = [poly[2] for poly in polyhedra_encodings]
+    names = [poly[1] for poly in polyhedra_encodings]
+    encodings = [poly[0] for poly in polyhedra_encodings]
     df = pd.DataFrame(encodings, index = names)
     df['n_nodes']  = n_nodes
     df.to_csv(f'{project_dir}{os.sep}reports{os.sep}encodings.csv')

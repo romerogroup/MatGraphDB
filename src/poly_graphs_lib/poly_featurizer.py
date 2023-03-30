@@ -3,6 +3,7 @@ import numpy as np
 from coxeter.families import PlatonicFamily
 from coxeter.shapes import ConvexPolyhedron
 from torch.nn import functional as F
+# import encoder
 
 from voronoi_statistics.similarity_measure_random import similarity_measure_random
 
@@ -260,14 +261,24 @@ if __name__ == "__main__":
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
-    obj = PolyFeaturizer(vertices=verts_dod)
+    # obj = PolyFeaturizer(vertices=verts_dod)
     
-    poly = ConvexPolyhedron(vertices=verts_dod)
-    print(poly.num_faces)
-    print(poly.merge_faces(atol=1e-4, rtol=1e-5))
-    print(poly.num_faces)
-    pos = obj.face_normals
-    adj_mat = obj.faces_adj_mat
+    # # Creating node features
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features,],axis=1)
+
+    # # Creating edge features
+    # dihedral_angles = obj.get_dihedral_angles()
+
+    # dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/4, max_val=np.pi, sigma= 0.2)
+    
+    # print(dihedral_angles_features)
+    # # edge_features = dihedral_angles
+
+
+
+
     # print(len(obj.face_centers))
     # print(len(obj.vertices))
     # print(len(obj.face_sides))

@@ -13,7 +13,7 @@ from torch_geometric.loader import DataLoader
 import torch_geometric.nn as pyg_nn
 
 
-from poly_graphs_lib.poly_dataset import PolyhedraDataset
+from poly_graphs_lib.pyg_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
 from poly_graphs_lib.poly_graph_model import PolyhedronModel
 
