@@ -16,7 +16,7 @@ from torchmetrics import MeanAbsolutePercentageError
 
 from poly_graphs_lib.pyg_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.poly_graph_model import PolyhedronModel
+from poly_graphs_lib.poly_regression_model import PolyhedronModel
 
 def main():
     experiment_dir = os.path.dirname(os.path.abspath(__file__))
