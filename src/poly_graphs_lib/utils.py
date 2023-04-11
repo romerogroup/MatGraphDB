@@ -167,7 +167,8 @@ verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
 verts_cube = PlatonicFamily.get_shape("Cube").vertices
 verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
 verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
-verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))*2 + 1
+verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))
+verts_tetra_scaled = verts_tetra*2
 
-test_polys = [verts_tetra,verts_cube,verts_oct,verts_dod,verts_tetra_rot, verts_mp567387_Ti, verts_mp4019_Ti, verts_mp3397_Ti , verts_mp15502_Ba, verts_mp15502_Ti,]
-test_names = ['tetra','cube','oct','dod','rotated_tetra','dod-like','cube-like','tetra-like','cube-like','oct-like']
+test_polys = [verts_tetra,verts_cube,verts_oct,verts_dod,verts_tetra_rot,verts_tetra_scaled, verts_mp567387_Ti, verts_mp4019_Ti, verts_mp3397_Ti , verts_mp15502_Ba, verts_mp15502_Ti,]
+test_names = ['tetra','cube','oct','dod','rotated_tetra','scaled_tetra','dod-like','cube-like_1','tetra-like','cube-like_2','oct-like']

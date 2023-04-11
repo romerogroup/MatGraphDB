@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import json
 
 import torch
 import torch.nn as nn
@@ -43,7 +44,7 @@ print(project_dir)
 # hyperparameters
 
 # Training params
-n_epochs = 250
+n_epochs = 200
 early_stopping_patience = 5
 learning_rate = 1e-3
 batch_size = 20
@@ -52,9 +53,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # model parameters
 n_gc_layers = 4
-layers_1 = [7]
-layers_2 = [6,4]
-dropout=0.2
+layers_1 = [4*9]
+layers_2 = [4*9]
+dropout= None
 apply_layer_norms=True
 global_pooling_method = 'mean'
 
@@ -63,8 +64,10 @@ global_pooling_method = 'mean'
 feature_set = 'face_feature_set_1'
 train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
 test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
-reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}overfit_model_mean_long_train"
+reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}test_add"
 
+
+os.makedirs(reports_dir,exist_ok=True)
 
 ###################################################################
 # Start of the the training run
@@ -75,7 +78,6 @@ reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}overfit
 # Initializing Model
 ###################################################################
 
-os.makedirs(reports_dir,exist_ok=True)
 
 train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, feature_set=feature_set)
 n_node_features = train_dataset[0].x.shape[1]
@@ -117,8 +119,11 @@ def min_max_scaler(data):
     data.x=data.x.nan_to_num()
     return data
 
-train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
-test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
+# train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
+# test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
+
+train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set)#, transform = min_max_scaler)
+test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set)#, transform = min_max_scaler)
 
 y_train_vals = []
 n_graphs = len(train_dataset)
@@ -172,12 +177,23 @@ model = PolyhedronResidualModel(n_node_features=n_node_features,
                                 global_pooling_method=global_pooling_method,
                                 target_mean=avg_y_val_train)
 print(model)
+pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print("Number of trainable parameters: " + str(pytorch_total_params))
+
+print("Number of training samples: " + str(n_train) )
+print("Number of training samples: " + str(n_test) )
 # model.apply(weight_init)
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 es = EarlyStopping(patience = early_stopping_patience)
 es = None
-
+metrics_dict = {
+                "train_mse":[],
+                "test_mse":[],
+                "train_mape":[],
+                "test_mape":[],
+                "trainable_params":pytorch_total_params
+                }
 
 ###################################################################
 # Train and Test epoch steps
@@ -236,6 +252,11 @@ for epoch in range(n_epochs):
     batch_train_loss, batch_train_mape = train(single_batch=single_batch)
     batch_test_loss, batch_test_mape = test()
 
+    metrics_dict['train_mse'].append(batch_train_loss)
+    metrics_dict['test_mse'].append(batch_test_loss)
+
+    metrics_dict['train_mape'].append(batch_train_mape)
+    metrics_dict['test_mape'].append(batch_test_mape)
 
     if es is not None:
         if es(model=model, val_loss=batch_test_loss,mape_val_loss=batch_test_mape):
@@ -248,6 +269,9 @@ for epoch in range(n_epochs):
 
     if n_epoch % 1 == 0:
         print(f"{n_epoch}, {batch_train_loss:.5f}, {batch_test_loss:.5f}, {100*batch_test_mape:.3f}")
+
+with open(f'{reports_dir}{os.sep}metrics.json','w') as outfile:
+    json.dump(metrics_dict, outfile,indent=4)
 
 # batch = next(iter(train_loader))
 
@@ -276,8 +300,11 @@ def compare_polyhedra(loader, model):
         }
     polyhedra_encodings = []
     n_nodes = []
+    model.eval()
     for sample in loader:
         predictions = model(sample)
+        print(sample.label)
+        # print(sample.x)
         for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode(sample),sample.node_stores[0]['pos']):
         #     print('______________________________________________________')
             print(f"Prediction : {pred.item()} | Expected : {real.item()} | Percent error : { 100*abs(real.item() - pred.item()) / real.item() }")

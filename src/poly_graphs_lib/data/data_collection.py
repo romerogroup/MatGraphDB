@@ -10,7 +10,7 @@ from ..utils import test_polys,test_names
 
 
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 class PolyCollectorConfig:
 

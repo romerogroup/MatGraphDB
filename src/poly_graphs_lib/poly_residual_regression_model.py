@@ -115,6 +115,9 @@ class PolyhedronResidualModel(nn.Module):
         if apply_layer_norms:
             self.ln1 = nn.LayerNorm(n_node_features)
             self.ln2 = nn.LayerNorm(n_node_features)
+        else:
+            self.ln1 = None
+            self.ln2 = None
             # self.ln_out = nn.LayerNorm(n_node_features)
 
 

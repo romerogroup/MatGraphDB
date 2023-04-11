@@ -5,6 +5,7 @@ from coxeter.shapes import ConvexPolyhedron
 from torch.nn import functional as F
 # import encoder
 
+
 from voronoi_statistics.similarity_measure_random import similarity_measure_random
 
 class PolyFeaturizer:
@@ -164,7 +165,7 @@ class PolyFeaturizer:
                     non_zero_edges +=1
         return energy / non_zero_edges
 
-    def get_three_body_energy(self, nodes, adj_mat):
+    def get_three_body_energy(self, nodes, face_normals, adj_mat):
         energy = 0
         n_nodes = len(nodes)
         for i in range(n_nodes):
@@ -172,7 +173,7 @@ class PolyFeaturizer:
                 if adj_mat[i,j] > 0:
                     sep_vec = nodes[i] - nodes[j]
 
-                    dot_ij = np.dot(-nodes[i], nodes[j])
+                    dot_ij = np.dot(-face_normals[i], face_normals[j])
                     if abs(dot_ij) > 1:
                         dot_ij =1
                     dihedral_angle = np.arccos(dot_ij)
@@ -261,8 +262,26 @@ if __name__ == "__main__":
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
-    # obj = PolyFeaturizer(vertices=verts_dod)
+    # verts_tetra_rot, verts_tetra
+
+    # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
+    # verts_tetra  = (verts_tetra - verts_tetra.mean(axis=0))/verts_tetra.std(axis=0)
+
+    poly_rotated = ConvexPolyhedron(vertices=verts_tetra_rot)
+    poly_tetra = ConvexPolyhedron(vertices=verts_tetra)
+
+
+    # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
+    # verts_tetra  = (verts_tetra - verts_tetra.mean(axis=0))/verts_tetra.std(axis=0)
     
+    # # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.min(axis=0))/(verts_tetra_rot.max(axis=0) - verts_tetra_rot.min(axis=0))
+    # # verts_tetra  = (verts_tetra - verts_tetra.min(axis=0))/(verts_tetra.max(axis=0) - verts_tetra.min(axis=0))
+    # obj = PolyFeaturizer(vertices=verts_tetra_rot)
+    # print(obj.face_areas)
+
+    # obj = PolyFeaturizer(vertices=verts_tetra)
+    # print(obj.face_areas)
+
     # # Creating node features
     # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
     # face_areas_features = obj.face_areas

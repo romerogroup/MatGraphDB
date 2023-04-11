@@ -72,11 +72,13 @@ class FeatureGenerator:
                 with open(poly_file) as f:
                     poly_dict = json.load(f)
             
-            if self.config.feature_set_index == 0:
-                self._feature_set_0(poly_dict, save_path)
-            elif self.config.feature_set_index == 1:
-                self._feature_set_1(poly_dict, save_path)
-            
+            # if self.config.feature_set_index == 0:
+            #     self._feature_set_0(poly_dict, save_path)
+            # elif self.config.feature_set_index == 1:
+            #     self._feature_set_1(poly_dict, save_path)
+            self._feature_set_0(poly_dict, save_path)
+            self._feature_set_1(poly_dict, save_path)
+            self._feature_set_2(poly_dict, save_path)
         except Exception as e:
             print(poly_file)
             print(e)
@@ -93,17 +95,17 @@ class FeatureGenerator:
 
         face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = obj.face_areas
-        node_features = np.concatenate([face_areas_features,face_sides_features,],axis=1)
+        node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
         
         dihedral_angles = obj.get_dihedral_angles()
         edge_features = dihedral_angles
 
-        pos = obj.face_normals
+        pos = obj.face_centers
         adj_mat = obj.faces_adj_mat
         
-        target_variable = obj.get_three_body_energy(pos,adj_mat)
-    
-        target_variable = obj.get_energy_per_node(pos,adj_mat)
+        target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+                                                    face_normals=obj.face_normals,
+                                                    adj_mat=adj_mat)
 
         obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
         obj.set_label(label)
@@ -131,18 +133,22 @@ class FeatureGenerator:
         # Creating node features
         face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = obj.face_areas
-        node_features = np.concatenate([face_areas_features,face_sides_features,],axis=1)
+        node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
         
         # Creating edge features
-
         dihedral_angles = obj.get_dihedral_angles()
-        dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/4, max_val=np.pi, sigma= 0.2)
+        dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, 
+                                                                           min_val=np.pi/8, 
+                                                                           max_val=np.pi, 
+                                                                           sigma= 0.2)
         edge_features = dihedral_angles_features
 
-        pos = obj.face_normals
+        pos = obj.face_centers
         adj_mat = obj.faces_adj_mat
         
-        target_variable = obj.get_three_body_energy(pos,adj_mat)
+        target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+                                                    face_normals=obj.face_normals,
+                                                    adj_mat=adj_mat)
         # target_variable = obj.get_energy_per_node(pos,adj_mat)
 
         obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
@@ -152,6 +158,53 @@ class FeatureGenerator:
         feature_set = obj.export_pyg_json()
 
         poly_dict.update({'face_feature_set_1' :feature_set })
+
+        with open(save_path,'w') as outfile:
+            json.dump(poly_dict, outfile,indent=4)
+
+        return None
+
+    def _feature_set_2(self,poly_dict, save_path):
+
+        # Getting label information
+        filename = save_path.split(os.sep)[-1]
+        label = filename.split('.')[0]
+        poly_vert = poly_dict['vertices']
+
+        # Initializing Polyehdron Featureizer
+        # poly_vert = np.array(poly_vert)
+        # poly_vert  = (poly_vert - poly_vert.mean(axis=0))/poly_vert.std(axis=0)
+        obj = PolyFeaturizer(vertices=poly_vert)
+        
+        # Creating node features
+        face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+        face_areas_features = encoder.gaussian_continuous_bin_encoder(values = obj.face_areas, 
+                                                                           min_val=0, 
+                                                                           max_val=40, 
+                                                                           sigma= 2)
+        node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+        
+        # Creating edge features
+
+        dihedral_angles = obj.get_dihedral_angles()
+        dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
+        edge_features = dihedral_angles_features
+
+        pos = obj.face_centers
+        adj_mat = obj.faces_adj_mat
+        
+        target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+                                                    face_normals=obj.face_normals,
+                                                    adj_mat=adj_mat)
+        # target_variable = obj.get_energy_per_node(pos,adj_mat)
+
+        obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+        obj.set_label(label)
+
+
+        feature_set = obj.export_pyg_json()
+
+        poly_dict.update({'face_feature_set_2' :feature_set })
 
         with open(save_path,'w') as outfile:
             json.dump(poly_dict, outfile,indent=4)
