@@ -61,10 +61,10 @@ global_pooling_method = 'mean'
 
 
 # data parameters
-feature_set = 'face_feature_set_1'
+feature_set = 'face_feature_set_2'
 train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
 test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
-reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}test_add"
+reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}test_no_dropout"
 
 
 os.makedirs(reports_dir,exist_ok=True)
@@ -176,7 +176,7 @@ model = PolyhedronResidualModel(n_node_features=n_node_features,
                                 apply_layer_norms=apply_layer_norms,
                                 global_pooling_method=global_pooling_method,
                                 target_mean=avg_y_val_train)
-print(model)
+print(str(model))
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print("Number of trainable parameters: " + str(pytorch_total_params))
 
@@ -192,7 +192,8 @@ metrics_dict = {
                 "test_mse":[],
                 "train_mape":[],
                 "test_mape":[],
-                "trainable_params":pytorch_total_params
+                "trainable_params":pytorch_total_params,
+                "model":str(model)
                 }
 
 ###################################################################
