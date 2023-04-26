@@ -14,6 +14,7 @@ def main():
         data_generator = PolyCollector()
         data_generator.initialize_ingestion()
 
+    
     if generate_features:
         data_generator = FeatureGenerator()
         data_generator.initialize_generation()

@@ -24,7 +24,7 @@ class RegressionGeneratorConfig:
     processed_dir : str = f"{data_dir}{os.sep}processed"
 
 
-    raw_dirname : str = "nelement_max_2_nsites_max_6_3d"
+    raw_dirname : str = "nelement_max_3_nsites_max_10_3d"
     interim_json_dir : str = f"{interim_dir}{os.sep}{raw_dirname}"
     interim_test_dir : str = f"{interim_dir}{os.sep}test"
 

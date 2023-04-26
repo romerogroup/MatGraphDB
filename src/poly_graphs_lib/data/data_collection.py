@@ -20,7 +20,7 @@ class PolyCollectorConfig:
     interim_dir : str = f"{data_dir}{os.sep}interim"
     external_dir : str = f"{data_dir}{os.sep}external"
 
-    cif_dirname : str = "nelement_max_2_nsites_max_6_3d"
+    cif_dirname : str = "nelement_max_3_nsites_max_10_3d"
 
     cif_dir: str = f"{external_dir}{os.sep}{cif_dirname}"
     json_dir : str = f"{raw_dir}{os.sep}{cif_dirname}"

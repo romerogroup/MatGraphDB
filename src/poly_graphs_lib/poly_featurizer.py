@@ -27,7 +27,15 @@ class PolyFeaturizer:
 
     def initialize_properties(self):
 
-        
+        if self.norm:
+            self.volume = self.poly.volume
+            self.vertices = self.get_vertices()
+            vertices = self.normalize(self.vertices, volume = self.volume)
+
+            self.poly = ConvexPolyhedron(vertices=vertices)
+            self.poly.merge_faces(atol=1e-4, rtol=1e-5)
+
+        self.volume = self.poly.volume
         self.face_centers = self.get_face_centers()
         self.face_normals = self.get_face_normals()
         self.vertices = self.get_vertices()
@@ -37,10 +45,8 @@ class PolyFeaturizer:
         self.edges = self.get_edges()
         self.edge_centers = self.get_edge_centers()
 
-        if self.norm:
-            self.vertices = self.normalize(self.vertices)
-            self.face_centers = self.normalize(self.face_centers)
-            self.edge_centers = self.normalize(self.edge_centers)
+        
+
 
         self.verts_adj_mat = self.get_vertices_adjacency()
         self.faces_adj_mat = self.get_faces_adjacency()
@@ -49,8 +55,10 @@ class PolyFeaturizer:
 
         return None
 
-    def normalize(self,points):
-        points = (points - points.mean(axis=0))/points.std(axis=0)
+    def normalize(self,points , volume):
+        points = (points - points.mean(axis=0))/volume**(1/3)
+
+        # points = (points - points.mean(axis=0))/points.std(axis=0)
         return points
     
     def get_face_centers(self):
@@ -258,17 +266,17 @@ class PolyFeaturizer:
 if __name__ == "__main__":
 
     verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
-    verts_cube = PlatonicFamily.get_shape("Cube").vertices
+    verts_tetra = PlatonicFamily.get_shape("Cube").vertices
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
     # verts_tetra_rot, verts_tetra
-
+    verts_tetra_scaled  = 2*verts_tetra
     # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
     # verts_tetra  = (verts_tetra - verts_tetra.mean(axis=0))/verts_tetra.std(axis=0)
 
-    poly_rotated = ConvexPolyhedron(vertices=verts_tetra_rot)
-    poly_tetra = ConvexPolyhedron(vertices=verts_tetra)
+    # poly_rotated = ConvexPolyhedron(vertices=verts_tetra_rot)
+    # poly_tetra = ConvexPolyhedron(vertices=verts_tetra)
 
 
     # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
@@ -276,8 +284,66 @@ if __name__ == "__main__":
     
     # # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.min(axis=0))/(verts_tetra_rot.max(axis=0) - verts_tetra_rot.min(axis=0))
     # # verts_tetra  = (verts_tetra - verts_tetra.min(axis=0))/(verts_tetra.max(axis=0) - verts_tetra.min(axis=0))
-    # obj = PolyFeaturizer(vertices=verts_tetra_rot)
-    # print(obj.face_areas)
+    # obj = PolyFeaturizer(vertices=verts_tetra)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra_scaled)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra,norm=True)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra_scaled,norm=True)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # obj = PolyFeaturizer(vertices=verts_tetra)
     # print(obj.face_areas)
