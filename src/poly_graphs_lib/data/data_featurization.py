@@ -27,7 +27,7 @@ class FeatureGeneratorConfig:
     external_dir : str = f"{data_dir}{os.sep}external"
     processed_dir : str = f"{data_dir}{os.sep}processed"
 
-    dirname : str = "nelement_max_2_nsites_max_6_3d"
+    dirname : str = "nelement_max_3_nsites_max_10_3d"
     raw_json_dir : str = f"{raw_dir}{os.sep}{dirname}"
     raw_test_dir : str = f"{raw_dir}{os.sep}test"
 
@@ -35,7 +35,7 @@ class FeatureGeneratorConfig:
     interim_test_dir : str = f"{interim_dir}{os.sep}test"
 
 
-    n_cores : int = 20
+    n_cores : int = 4
     feature_set_index : int = 1
 
 class FeatureGenerator:
@@ -46,7 +46,7 @@ class FeatureGenerator:
     def initialize_generation(self):
         print("___Initializing Feature Generation___")
 
-        self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
+        # self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
         self._featurize_dir(dir=self.config.raw_test_dir,save_dir=self.config.interim_test_dir)
 
 
@@ -55,6 +55,7 @@ class FeatureGenerator:
 
         filenames = dir + '/*.json'
         poly_files = glob(filenames)
+        print("There are this many poly files: ", len(poly_files))
         for poly_file in poly_files:
             self._featurize_poly_file(poly_file,save_dir)
 
@@ -64,21 +65,20 @@ class FeatureGenerator:
             filename = poly_file.split(os.sep)[-1]
             save_path = save_dir + os.sep + filename
 
-            # Checking if interim file exists, if it exists update it
-            if os.path.exists(save_path):
+            # # Checking if interim file exists, if it exists update it
+            # if os.path.exists(save_path):
+            #     with open(poly_file) as f:
+            #         poly_dict = json.load(f)
+            # else:
+            #     with open(poly_file) as f:
+            #         poly_dict = json.load(f)
+            if not os.path.exists(save_path):
                 with open(poly_file) as f:
                     poly_dict = json.load(f)
-            else:
-                with open(poly_file) as f:
-                    poly_dict = json.load(f)
-            
-            # if self.config.feature_set_index == 0:
-            #     self._feature_set_0(poly_dict, save_path)
-            # elif self.config.feature_set_index == 1:
-            #     self._feature_set_1(poly_dict, save_path)
-            self._feature_set_0(poly_dict, save_path)
-            self._feature_set_1(poly_dict, save_path)
-            self._feature_set_2(poly_dict, save_path)
+                self._feature_set_0(poly_dict, save_path)
+                self._feature_set_1(poly_dict, save_path)
+                self._feature_set_2(poly_dict, save_path)
+                self._feature_set_3(poly_dict, save_path)
         except Exception as e:
             print(poly_file)
             print(e)
@@ -91,7 +91,7 @@ class FeatureGenerator:
         poly_vert = poly_dict['vertices']
 
         # Initializing Polyehdron Featureizer
-        obj = PolyFeaturizer(vertices=poly_vert)
+        obj = PolyFeaturizer(vertices=poly_vert, norm = True)
 
         face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = obj.face_areas
@@ -128,7 +128,7 @@ class FeatureGenerator:
         poly_vert = poly_dict['vertices']
 
         # Initializing Polyehdron Featureizer
-        obj = PolyFeaturizer(vertices=poly_vert)
+        obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
         face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
@@ -174,14 +174,14 @@ class FeatureGenerator:
         # Initializing Polyehdron Featureizer
         # poly_vert = np.array(poly_vert)
         # poly_vert  = (poly_vert - poly_vert.mean(axis=0))/poly_vert.std(axis=0)
-        obj = PolyFeaturizer(vertices=poly_vert)
+        obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
         face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = encoder.gaussian_continuous_bin_encoder(values = obj.face_areas, 
                                                                            min_val=0, 
-                                                                           max_val=40, 
-                                                                           sigma= 2)
+                                                                           max_val=20, 
+                                                                           sigma= 1)
         node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
         
         # Creating edge features
@@ -205,6 +205,44 @@ class FeatureGenerator:
         feature_set = obj.export_pyg_json()
 
         poly_dict.update({'face_feature_set_2' :feature_set })
+
+        with open(save_path,'w') as outfile:
+            json.dump(poly_dict, outfile,indent=4)
+
+        return None
+    
+    def _feature_set_3(self,poly_dict, save_path):
+
+        # Getting label information
+        filename = save_path.split(os.sep)[-1]
+        label = filename.split('.')[0]
+        poly_vert = poly_dict['vertices']
+
+        # Initializing Polyehdron Featureizer
+        # poly_vert = np.array(poly_vert)
+        # poly_vert  = (poly_vert - poly_vert.mean(axis=0))/poly_vert.std(axis=0)
+        obj = PolyFeaturizer(vertices=poly_vert, norm = True)
+        
+        # Creating node features
+        node_features = obj.get_verts_areas_encodings()
+        
+        # Creating edge features
+        neighbor_distances = obj.get_verts_neighbor_distance()
+        # dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
+        edge_features = neighbor_distances
+
+        pos = obj.vertices
+        adj_mat = obj.verts_adj_mat
+        
+        target_variable = obj.get_energy_per_node(pos,adj_mat)
+
+        obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+        obj.set_label(label)
+
+
+        feature_set = obj.export_pyg_json()
+
+        poly_dict.update({'face_feature_set_3' :feature_set })
 
         with open(save_path,'w') as outfile:
             json.dump(poly_dict, outfile,indent=4)

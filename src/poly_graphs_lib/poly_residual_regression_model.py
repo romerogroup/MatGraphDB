@@ -207,3 +207,25 @@ class PolyhedronResidualModel(nn.Module):
                 out = out + self.mlp_2(out)
             
         return out
+    
+
+    def encode_2(self, data_batch):
+        x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
+        batch = data_batch.batch
+
+        x_out = x
+        edge_out = edge_attr
+
+        # Convolutional layers combine nodes and edge interactions
+        out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
+
+        if self.mlp_1 is not None:
+            if self.ln1:
+                out = out + self.mlp_1(self.ln1(out))
+            else:
+                out = out + self.mlp_1(out) 
+
+        # Batch global pooling
+        out = self.global_pooling_layer(out, batch = batch)
+        
+        return out

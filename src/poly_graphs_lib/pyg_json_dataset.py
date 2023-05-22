@@ -20,6 +20,7 @@ def get_polyhedra_graph(file_name: str, device:str=None, feature_set:str=None) -
     x = np.array(poly_dict['x'])
     edge_index = np.array(poly_dict['edge_index'])
     edge_attr = np.array(poly_dict['edge_attr'])
+    edge_attr=edge_attr[:,None]
     pos = np.array(poly_dict['pos'])
     label = poly_dict['label']
 
@@ -39,7 +40,7 @@ def get_polyhedra_graph(file_name: str, device:str=None, feature_set:str=None) -
     pos = pos
 
     data = Data(x=x, edge_index=edge_index,edge_attr=edge_attr,pos = pos, y=y, label=label)
-    data.to(device)
+    # data.to(device)
     return data
 
 class PolyhedraDataset(Dataset):

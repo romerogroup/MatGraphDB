@@ -1,12 +1,40 @@
 import json
 import numpy as np
+
+import itertools
+
 from coxeter.families import PlatonicFamily
 from coxeter.shapes import ConvexPolyhedron
 from torch.nn import functional as F
-# import encoder
+
 
 
 from voronoi_statistics.similarity_measure_random import similarity_measure_random
+# from utils import test_polys,test_names
+
+def gaussian_continuous_bin_encoder(values, min_val:float=0, max_val:float=40, sigma:float= 2):
+    """Creates bins graph continuous features by gaussian method
+
+    Parameters
+    ----------
+    values : : float
+        The continuous value to bin
+    min_val : float, optional
+        The minimum value, by default 0
+    max_val : float, optional
+        The max value, by default 40
+    sigma : float, optional
+        The standard dev for the binning, by default 2
+
+    Returns
+    -------
+    np.ndarray
+        The binned feature
+    """
+    filter = np.arange(min_val, max_val + sigma, step=sigma)
+    values = np.array(values)
+    encoded_vec = np.exp(-(values - filter)**2 / sigma**2)
+    return encoded_vec
 
 class PolyFeaturizer:
     
@@ -27,7 +55,15 @@ class PolyFeaturizer:
 
     def initialize_properties(self):
 
-        
+        if self.norm:
+            self.volume = self.poly.volume
+            self.vertices = self.get_vertices()
+            vertices = self.normalize(self.vertices, volume = self.volume)
+
+            self.poly = ConvexPolyhedron(vertices=vertices)
+            self.poly.merge_faces(atol=1e-4, rtol=1e-5)
+
+        self.volume = self.poly.volume
         self.face_centers = self.get_face_centers()
         self.face_normals = self.get_face_normals()
         self.vertices = self.get_vertices()
@@ -37,10 +73,8 @@ class PolyFeaturizer:
         self.edges = self.get_edges()
         self.edge_centers = self.get_edge_centers()
 
-        if self.norm:
-            self.vertices = self.normalize(self.vertices)
-            self.face_centers = self.normalize(self.face_centers)
-            self.edge_centers = self.normalize(self.edge_centers)
+        
+
 
         self.verts_adj_mat = self.get_vertices_adjacency()
         self.faces_adj_mat = self.get_faces_adjacency()
@@ -49,8 +83,10 @@ class PolyFeaturizer:
 
         return None
 
-    def normalize(self,points):
-        points = (points - points.mean(axis=0))/points.std(axis=0)
+    def normalize(self,points , volume):
+        points = (points - points.mean(axis=0))/volume**(1/3)
+
+        # points = (points - points.mean(axis=0))/points.std(axis=0)
         return points
     
     def get_face_centers(self):
@@ -103,6 +139,129 @@ class PolyFeaturizer:
             adj_matrix[edge[1], edge[0]] = 1
         return adj_matrix
     
+    def get_verts_neighbor_angles(self):
+
+        
+        n_verts = len(self.vertices)
+        neighbor_angles = []
+        neighbor_angle_weights = []
+        for i_vert in range(n_verts):    
+            neighbors = self.verts_adj_mat[i_vert,:]
+            non_zero_indexes = np.nonzero(neighbors)[0]
+
+            # For a given vertex find the combinations of 2 neighsbors to from the angle
+            neighbor_permutations = list(itertools.combinations(non_zero_indexes,2))
+
+            weight_angles = []
+            tmp_angles=[]
+            for neighbor_permutation in neighbor_permutations:
+                i = neighbor_permutation[0]
+                j = neighbor_permutation[1]
+
+                #Finding the corresponding face area for the 3 points
+                for i_face,face in enumerate(self.faces):
+                    if i_vert in face and i in face and j in face:
+                        face_area = self.face_areas[i_face]
+
+                # Create vectors pointing to neighbors
+                vec_a = self.vertices[i] - self.vertices[i_vert]
+                vec_b = self.vertices[j] - self.vertices[i_vert]
+                vec_a_norm = np.linalg.norm(vec_a)
+                vec_b_norm = np.linalg.norm(vec_b)
+
+
+                weight_angles.append(vec_a_norm * vec_b_norm * face_area)
+
+                angle = np.arccos( np.around(np.dot(vec_a , vec_b)/(vec_a_norm*vec_b_norm), decimals=8) )
+                tmp_angles.append(angle)
+
+            norm = sum(weight_angles)
+            weight_angles = np.array(weight_angles) / norm
+
+            neighbor_angle_weights.append(weight_angles)
+            neighbor_angles.append(tmp_angles)
+        return neighbor_angles, neighbor_angle_weights
+
+    def get_verts_neighbor_angles_encodings(self):
+        neighbor_angles_list, neighbor_angle_weights = self.get_verts_neighbor_angles()
+        n_verts = len(self.vertices)
+        neighbor_angle_encodings = []
+        for i in range(n_verts):
+            neighbor_angles = neighbor_angles_list[i]
+            neighbor_angles_weights = neighbor_angle_weights[i]
+            neighbor_encoding = None
+            for neighbor_angle,neighbor_angles_weight in zip(neighbor_angles,neighbor_angles_weights):
+                # tmp_encoding =  gaussian_continuous_bin_encoder(values=neighbor_angle, min_val=np.pi/8, max_val=np.pi, sigma=0.2)
+                tmp_encoding = gaussian_continuous_bin_encoder(values=neighbor_angles_weight * neighbor_angle, min_val=np.pi/8, max_val=np.pi, sigma=0.2)
+                if neighbor_encoding is None:
+                    neighbor_encoding = tmp_encoding
+                else:
+                    neighbor_encoding += tmp_encoding
+
+            neighbor_angle_encodings.append(neighbor_encoding)
+
+        return np.array(neighbor_angle_encodings)
+    
+    def get_verts_neighbor_face_areas(self):
+        n_verts = len(self.vertices)
+        neighbor_areas = []
+        for i_vert in range(n_verts):    
+            neighbors = self.verts_adj_mat[i_vert,:]
+            non_zero_indexes = np.nonzero(neighbors)[0]
+
+            # For a given vertex find the combinations of 2 neighsbors to from the angle
+            neighbor_permutations = list(itertools.combinations(non_zero_indexes,2))
+
+            weight_angles = []
+            tmp_areas=[]
+            for neighbor_permutation in neighbor_permutations:
+                i = neighbor_permutation[0]
+                j = neighbor_permutation[1]
+
+                #Finding the corresponding face area for the 3 points
+                for i_face,face in enumerate(self.faces):
+                    if i_vert in face and i in face and j in face:
+                        face_area = self.face_areas[i_face]
+                tmp_areas.append(face_area)
+            neighbor_areas.append(tmp_areas)
+        return neighbor_areas
+    
+    def get_verts_areas_encodings(self):
+        neighbor_areas_list = self.get_verts_neighbor_face_areas()
+        n_verts = len(self.vertices)
+        neighbor_areas_encodings = []
+        for i in range(n_verts):
+            neighbor_angles = neighbor_areas_list[i]
+            neighbor_encoding = None
+            for neighbor_angle in neighbor_angles:
+                tmp_encoding = gaussian_continuous_bin_encoder(values= neighbor_angle, min_val=0, max_val=10, sigma=0.01)
+                if neighbor_encoding is None:
+                    neighbor_encoding = tmp_encoding
+                else:
+                    neighbor_encoding += tmp_encoding
+
+            neighbor_areas_encodings.append(neighbor_encoding)
+
+        return np.array(neighbor_areas_encodings)
+
+    def get_verts_neighbor_distance(self):
+        # n_verts = len(self.vertices)
+        # neighbor_distances = np.zeros((n_verts, n_verts), dtype=int)
+
+        # for i in range(n_verts):
+        #     for j in range(i+1,n_verts):
+        #         if self.verts_adj_mat[i,j] > 0:
+        #             distance = np.linalg.norm(self.vertices[i] - self.vertices[j])
+        #             neighbor_distances[i,j] = distance
+        neighbor_distances = np.zeros(len(self.edges))
+        for index,edge in enumerate(self.edges):
+            i = edge[0]
+            j = edge[1]
+            distance = np.linalg.norm(self.vertices[i] - self.vertices[j])
+            neighbor_distances[index] = distance
+
+        return neighbor_distances
+
     def get_faces_adjacency(self):
         n_faces = len(self.faces)
         adj_matrix = np.zeros((n_faces, n_faces), dtype=int)
@@ -263,12 +422,34 @@ if __name__ == "__main__":
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
     # verts_tetra_rot, verts_tetra
+    verts_tetra_scaled  = 2*verts_cube
 
+    verts = test_polys[-2]
+    print(test_names)
+    print(verts_tetra)
+
+    obj = PolyFeaturizer(vertices=verts, norm=True)
+
+    # print(obj.get_verts_areas_encodings())
+    for x in obj.get_verts_areas_encodings()[:1]:
+        print(x)
+    # print(obj.get_faces())
+
+    # obj.get_verts_neighbor_angles()
+    # print(obj.get_verts_neighbor_angles())
+
+    # print(obj.get_verts_neighbor_angles_encodings())
+    # print(obj.get_vertices_adjacency())
+    # print(obj.volume)
+    # print(obj.get_verts_neighbor_angles())
+    # print(obj.get_verts_neighbor_angles_encodings())
+
+    # print(obj.get_verts_neighbor_distance())
     # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
     # verts_tetra  = (verts_tetra - verts_tetra.mean(axis=0))/verts_tetra.std(axis=0)
 
-    poly_rotated = ConvexPolyhedron(vertices=verts_tetra_rot)
-    poly_tetra = ConvexPolyhedron(vertices=verts_tetra)
+    # poly_rotated = ConvexPolyhedron(vertices=verts_tetra_rot)
+    # poly_tetra = ConvexPolyhedron(vertices=verts_tetra)
 
 
     # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.mean(axis=0))/verts_tetra_rot.std(axis=0)
@@ -276,8 +457,66 @@ if __name__ == "__main__":
     
     # # verts_tetra_rot  = (verts_tetra_rot - verts_tetra_rot.min(axis=0))/(verts_tetra_rot.max(axis=0) - verts_tetra_rot.min(axis=0))
     # # verts_tetra  = (verts_tetra - verts_tetra.min(axis=0))/(verts_tetra.max(axis=0) - verts_tetra.min(axis=0))
-    # obj = PolyFeaturizer(vertices=verts_tetra_rot)
-    # print(obj.face_areas)
+    # obj = PolyFeaturizer(vertices=verts_tetra)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra_scaled)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra,norm=True)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+    # obj = PolyFeaturizer(vertices=verts_tetra_scaled,norm=True)
+    # face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+    # face_areas_features = obj.face_areas
+    # node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
+
+    # target_variable = obj.get_three_body_energy(nodes=obj.face_centers,
+    #                                                 face_normals=obj.face_normals,
+    #                                                 adj_mat=obj.faces_adj_mat)
+    # print(target_variable)
+    # print(node_features)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # obj = PolyFeaturizer(vertices=verts_tetra)
     # print(obj.face_areas)

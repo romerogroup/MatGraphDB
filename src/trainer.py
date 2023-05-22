@@ -44,10 +44,10 @@ print(project_dir)
 # hyperparameters
 
 # Training params
-n_epochs = 200
-early_stopping_patience = 5
+n_epochs = 150
+early_stopping_patience = 10
 learning_rate = 1e-3
-batch_size = 20
+batch_size = 64
 single_batch = False
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -55,16 +55,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 n_gc_layers = 4
 layers_1 = [4*9]
 layers_2 = [4*9]
-dropout= None
+dropout=None
 apply_layer_norms=True
 global_pooling_method = 'mean'
 
 
 # data parameters
-feature_set = 'face_feature_set_2'
+feature_set = 'face_feature_set_3'
 train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
 test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
-reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}test_no_dropout"
+reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}scaled_input_output_no_dropout_es_encoding_after_pooling"
 
 
 os.makedirs(reports_dir,exist_ok=True)
@@ -81,53 +81,58 @@ os.makedirs(reports_dir,exist_ok=True)
 
 train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, feature_set=feature_set)
 n_node_features = train_dataset[0].x.shape[1]
+print(train_dataset[0].edge_attr.shape)
 n_edge_features = train_dataset[0].edge_attr.shape[1]
 
 
 
-node_max = torch.zeros(n_node_features, device = device)
-node_min = torch.zeros(n_node_features, device = device)
-edge_max = torch.zeros(n_edge_features, device = device)
-edge_min = torch.zeros(n_edge_features, device = device)
-for data in train_dataset:
+# node_max = torch.zeros(n_node_features, device = device)
+# node_min = torch.zeros(n_node_features, device = device)
+# edge_max = torch.zeros(n_edge_features, device = device)
+# edge_min = torch.zeros(n_edge_features, device = device)
+# for i,data in enumerate(train_dataset):
+#     data.to(device)
+#     # Finding node max and min
+#     current_node_max = data.x.max(axis=0)[0]
+#     node_max = torch.vstack( [node_max,current_node_max] )
+#     node_max = node_max.max(axis=0)[0]
 
-    # Finding node max and min
-    current_node_max = data.x.max(axis=0)[0]
-    node_max = torch.vstack( [node_max,current_node_max] )
-    node_max = node_max.max(axis=0)[0]
+#     current_node_min = data.x.min(axis=0)[0]
+#     node_min = torch.vstack( [node_min,current_node_min] )
+#     node_min = node_min.min(axis=0)[0]
 
-    current_node_min = data.x.min(axis=0)[0]
-    node_min = torch.vstack( [node_min,current_node_min] )
-    node_min = node_min.min(axis=0)[0]
+#     # Finding edge max and min
+#     current_edge_max = data.edge_attr.max(axis=0)[0]
+#     edge_max = torch.vstack( [edge_max,current_edge_max] )
+#     edge_max = edge_max.max(axis=0)[0]
 
-    # Finding edge max and min
-    current_edge_max = data.edge_attr.max(axis=0)[0]
-    edge_max = torch.vstack( [edge_max,current_edge_max] )
-    edge_max = edge_max.max(axis=0)[0]
-
-    current_edge_min = data.edge_attr.min(axis=0)[0]
-    edge_min = torch.vstack( [edge_min,current_edge_min] )
-    edge_min = edge_min.min(axis=0)[0]
+#     current_edge_min = data.edge_attr.min(axis=0)[0]
+#     edge_min = torch.vstack( [edge_min,current_edge_min] )
+#     edge_min = edge_min.min(axis=0)[0]
 
 del train_dataset
 
-def min_max_scaler(data):
-    data.x = ( data.x - node_min ) / (node_min - node_max)
-    data.edge_attr = ( data.edge_attr - edge_min ) / (edge_min - edge_max)
+# def min_max_scaler(data):
+#     data.x = ( data.x - node_min ) / (node_min - node_max)
+#     data.edge_attr = ( data.edge_attr - edge_min ) / (edge_min - edge_max)
 
-    data.edge_attr=data.edge_attr.nan_to_num()
-    data.x=data.x.nan_to_num()
-    return data
+#     data.edge_attr=data.edge_attr.nan_to_num()
+#     data.x=data.x.nan_to_num()
+#     return data
 
 # train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 # test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 
-train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set)#, transform = min_max_scaler)
-test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set)#, transform = min_max_scaler)
+train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set)
+test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set)
+
+n_train = len(train_dataset)
+n_test = len(test_dataset)
 
 y_train_vals = []
 n_graphs = len(train_dataset)
 for data in train_dataset:
+    data.to(device)
     y_train_vals.append(data.y)
 
 y_train_vals = torch.tensor(y_train_vals).to(device)
@@ -139,33 +144,22 @@ print(f"Train std y_val: {std_y_val}")
 y_test_vals = []
 n_graphs = len(test_dataset)
 for data in test_dataset:
+    data.to(device)
     y_test_vals.append(data.y)
 
 y_test_vals = torch.tensor(y_test_vals).to(device)
 avg_y_val = torch.mean(y_test_vals, axis=0)
 std_y_val = torch.std(y_test_vals, axis=0)
-print(f"Train average y_val: {avg_y_val}")
-print(f"Train std y_val: {std_y_val}")
-
-
-n_train = len(train_dataset)
-n_test = len(test_dataset)
-
+print(f"Test average y_val: {avg_y_val}")
+print(f"Test std y_val: {std_y_val}")
 
 # Creating data loaders
-train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0)
-test_loader = DataLoader(test_dataset, batch_size=1, num_workers=0)
+train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True, num_workers=0)
+test_loader = DataLoader(test_dataset, batch_size=11,shuffle=False, num_workers=0)
 
 ###################################################################
 # Initializing Model
 ###################################################################
-
-# model = PolyhedronModel(n_node_features=n_node_features, 
-#                                 n_edge_features=n_edge_features, 
-#                                 n_gc_layers=n_gc_layers,
-#                                 layers_1=layers_1,
-#                                 layers_2=layers_2,
-#                                 global_pooling_method=global_pooling_method)
 
 model = PolyhedronResidualModel(n_node_features=n_node_features, 
                                 n_edge_features=n_edge_features, 
@@ -179,14 +173,13 @@ model = PolyhedronResidualModel(n_node_features=n_node_features,
 print(str(model))
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print("Number of trainable parameters: " + str(pytorch_total_params))
-
 print("Number of training samples: " + str(n_train) )
-print("Number of training samples: " + str(n_test) )
+print("Number of testing samples: " + str(n_test) )
 # model.apply(weight_init)
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 es = EarlyStopping(patience = early_stopping_patience)
-es = None
+# es = None
 metrics_dict = {
                 "train_mse":[],
                 "test_mse":[],
@@ -204,6 +197,8 @@ def train(single_batch:bool=False):
     batch_train_loss = 0.0
     batch_train_mape = 0.0
     for i,sample in enumerate(train_loader):
+
+        sample.to(device)
         if single_batch:
             if i == 0:
                 optimizer.zero_grad()
@@ -233,6 +228,7 @@ def test():
     batch_test_loss = 0.0
     batch_test_mape = 0.0
     for i,sample in enumerate(test_loader):
+        sample.to(device)
         out, test_loss, mape_test_loss = model(sample , targets = sample.y)
         batch_test_loss += test_loss.item()
         batch_test_mape += mape_test_loss.item()
@@ -303,10 +299,11 @@ def compare_polyhedra(loader, model):
     n_nodes = []
     model.eval()
     for sample in loader:
+        sample.to(device)
         predictions = model(sample)
         print(sample.label)
         # print(sample.x)
-        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode(sample),sample.node_stores[0]['pos']):
+        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode_2(sample),sample.node_stores[0]['pos']):
         #     print('______________________________________________________')
             print(f"Prediction : {pred.item()} | Expected : {real.item()} | Percent error : { 100*abs(real.item() - pred.item()) / real.item() }")
             columns['prediction_value'].append(round(pred.item(),3))
@@ -333,8 +330,13 @@ def compare_polyhedra(loader, model):
             cosine_similarity_mat[i,j] = cosine_similarity(x=poly_a[0],y=poly_b[0]).round(3)
             
     print('________________________________________________________________')
-    print(polyhedra_encodings[0][1],polyhedra_encodings[1][1],polyhedra_encodings[2][1],polyhedra_encodings[3][1],polyhedra_encodings[4][1],
-        polyhedra_encodings[5][1],polyhedra_encodings[6][1],polyhedra_encodings[7][1],polyhedra_encodings[8][1])
+    poly_type_str = ''
+    for i in range(len(polyhedra_encodings)):
+        poly_type_str += polyhedra_encodings[i][1]
+        if i != len(polyhedra_encodings) - 1:
+            poly_type_str += ' , '
+
+    print(poly_type_str)
 
     print("--------------------------")
     print("Distance Similarity Matrix")
