@@ -44,8 +44,8 @@ print(project_dir)
 # hyperparameters
 
 # Training params
-n_epochs = 200
-early_stopping_patience = 20
+n_epochs = 150
+early_stopping_patience = 10
 learning_rate = 1e-3
 batch_size = 64
 single_batch = False
@@ -61,10 +61,10 @@ global_pooling_method = 'mean'
 
 
 # data parameters
-feature_set = 'face_feature_set_2'
+feature_set = 'face_feature_set_3'
 train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
 test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
-reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}scaled_input_output_no_dropout_es"
+reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}scaled_input_output_no_dropout_es_encoding_after_pooling"
 
 
 os.makedirs(reports_dir,exist_ok=True)
@@ -81,6 +81,7 @@ os.makedirs(reports_dir,exist_ok=True)
 
 train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, feature_set=feature_set)
 n_node_features = train_dataset[0].x.shape[1]
+print(train_dataset[0].edge_attr.shape)
 n_edge_features = train_dataset[0].edge_attr.shape[1]
 
 
@@ -298,10 +299,11 @@ def compare_polyhedra(loader, model):
     n_nodes = []
     model.eval()
     for sample in loader:
+        sample.to(device)
         predictions = model(sample)
         print(sample.label)
         # print(sample.x)
-        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode(sample),sample.node_stores[0]['pos']):
+        for real, pred, encoding,pos in zip(sample.y,predictions[0],model.encode_2(sample),sample.node_stores[0]['pos']):
         #     print('______________________________________________________')
             print(f"Prediction : {pred.item()} | Expected : {real.item()} | Percent error : { 100*abs(real.item() - pred.item()) / real.item() }")
             columns['prediction_value'].append(round(pred.item(),3))

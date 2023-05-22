@@ -35,7 +35,7 @@ class FeatureGeneratorConfig:
     interim_test_dir : str = f"{interim_dir}{os.sep}test"
 
 
-    n_cores : int = 20
+    n_cores : int = 4
     feature_set_index : int = 1
 
 class FeatureGenerator:
@@ -46,7 +46,7 @@ class FeatureGenerator:
     def initialize_generation(self):
         print("___Initializing Feature Generation___")
 
-        self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
+        # self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
         self._featurize_dir(dir=self.config.raw_test_dir,save_dir=self.config.interim_test_dir)
 
 
@@ -78,6 +78,7 @@ class FeatureGenerator:
                 self._feature_set_0(poly_dict, save_path)
                 self._feature_set_1(poly_dict, save_path)
                 self._feature_set_2(poly_dict, save_path)
+                self._feature_set_3(poly_dict, save_path)
         except Exception as e:
             print(poly_file)
             print(e)
@@ -204,6 +205,44 @@ class FeatureGenerator:
         feature_set = obj.export_pyg_json()
 
         poly_dict.update({'face_feature_set_2' :feature_set })
+
+        with open(save_path,'w') as outfile:
+            json.dump(poly_dict, outfile,indent=4)
+
+        return None
+    
+    def _feature_set_3(self,poly_dict, save_path):
+
+        # Getting label information
+        filename = save_path.split(os.sep)[-1]
+        label = filename.split('.')[0]
+        poly_vert = poly_dict['vertices']
+
+        # Initializing Polyehdron Featureizer
+        # poly_vert = np.array(poly_vert)
+        # poly_vert  = (poly_vert - poly_vert.mean(axis=0))/poly_vert.std(axis=0)
+        obj = PolyFeaturizer(vertices=poly_vert, norm = True)
+        
+        # Creating node features
+        node_features = obj.get_verts_areas_encodings()
+        
+        # Creating edge features
+        neighbor_distances = obj.get_verts_neighbor_distance()
+        # dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
+        edge_features = neighbor_distances
+
+        pos = obj.vertices
+        adj_mat = obj.verts_adj_mat
+        
+        target_variable = obj.get_energy_per_node(pos,adj_mat)
+
+        obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+        obj.set_label(label)
+
+
+        feature_set = obj.export_pyg_json()
+
+        poly_dict.update({'face_feature_set_3' :feature_set })
 
         with open(save_path,'w') as outfile:
             json.dump(poly_dict, outfile,indent=4)

@@ -7,7 +7,7 @@ def main():
     collect_raw_polys = False
     generate_features = True
     generate_pairs = False
-    generate_regression= True
+    generate_regression= False
     
     # Generate poly data
     if collect_raw_polys:
