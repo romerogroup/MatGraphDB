@@ -41,10 +41,10 @@ class PolyCollector:
             os.makedirs(self.config.test_dir,exist_ok=True)
             self._internal_to_raw()
 
-        if not os.path.exists(self.config.json_dir):
-            print("___processing external polyhedra___")
-            os.makedirs(self.config.json_dir,exist_ok=True)
-            self._external_to_raw()
+        # if not os.path.exists(self.config.json_dir):
+        #     print("___processing external polyhedra___")
+        #     os.makedirs(self.config.json_dir,exist_ok=True)
+        #     self._external_to_raw()
 
     def _internal_to_raw(self):
         """Converts interal poly vertices data to raw poly vertices data"""

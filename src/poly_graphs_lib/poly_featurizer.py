@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 
 
-from voronoi_statistics.similarity_measure_random import similarity_measure_random
+# from voronoi_statistics.similarity_measure_random import similarity_measure_random
 # from utils import test_polys,test_names
 
 def gaussian_continuous_bin_encoder(values, min_val:float=0, max_val:float=40, sigma:float= 2):
@@ -182,7 +182,7 @@ class PolyFeaturizer:
             neighbor_angles.append(tmp_angles)
         return neighbor_angles, neighbor_angle_weights
 
-    def get_verts_neighbor_angles_encodings(self):
+    def get_verts_neighbor_angles_encodings(self,min_val=np.pi/8, max_val=(3/2)*np.pi, sigma=0.2):
         neighbor_angles_list, neighbor_angle_weights = self.get_verts_neighbor_angles()
         n_verts = len(self.vertices)
         neighbor_angle_encodings = []
@@ -191,8 +191,8 @@ class PolyFeaturizer:
             neighbor_angles_weights = neighbor_angle_weights[i]
             neighbor_encoding = None
             for neighbor_angle,neighbor_angles_weight in zip(neighbor_angles,neighbor_angles_weights):
-                # tmp_encoding =  gaussian_continuous_bin_encoder(values=neighbor_angle, min_val=np.pi/8, max_val=np.pi, sigma=0.2)
-                tmp_encoding = gaussian_continuous_bin_encoder(values=neighbor_angles_weight * neighbor_angle, min_val=np.pi/8, max_val=np.pi, sigma=0.2)
+                # tmp_encoding =  gaussian_continuous_bin_encoder(values=neighbor_angle, min_val=min_val, max_val=max_val, sigma=sigma)
+                tmp_encoding = gaussian_continuous_bin_encoder(values=neighbor_angles_weight * neighbor_angle, min_val=min_val, max_val=max_val, sigma=sigma)
                 if neighbor_encoding is None:
                     neighbor_encoding = tmp_encoding
                 else:
@@ -226,7 +226,7 @@ class PolyFeaturizer:
             neighbor_areas.append(tmp_areas)
         return neighbor_areas
     
-    def get_verts_areas_encodings(self):
+    def get_verts_areas_encodings(self,min_val=0, max_val=3, sigma=0.05):
         neighbor_areas_list = self.get_verts_neighbor_face_areas()
         n_verts = len(self.vertices)
         neighbor_areas_encodings = []
@@ -234,7 +234,10 @@ class PolyFeaturizer:
             neighbor_angles = neighbor_areas_list[i]
             neighbor_encoding = None
             for neighbor_angle in neighbor_angles:
-                tmp_encoding = gaussian_continuous_bin_encoder(values= neighbor_angle, min_val=0, max_val=10, sigma=0.01)
+                tmp_encoding = gaussian_continuous_bin_encoder(values= neighbor_angle, 
+                                                               min_val=min_val, 
+                                                               max_val=max_val, 
+                                                               sigma=sigma)
                 if neighbor_encoding is None:
                     neighbor_encoding = tmp_encoding
                 else:
@@ -412,9 +415,12 @@ class PolyFeaturizer:
                 json.dump(data, outfile,indent=4)
 
         return data
-    
 
 if __name__ == "__main__":
+    
+    import os
+    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 
     verts_tetra = PlatonicFamily.get_shape("Tetrahedron").vertices
     verts_cube = PlatonicFamily.get_shape("Cube").vertices
@@ -422,17 +428,64 @@ if __name__ == "__main__":
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
 
     # verts_tetra_rot, verts_tetra
-    verts_tetra_scaled  = 2*verts_cube
+    verts_tetra_scaled  = 2*verts_tetra
 
-    verts = test_polys[-2]
-    print(test_names)
+    verts = test_polys[-3]
+    # verts = verts_tetra
+    # verts = verts_oct
+    # print(test_names)
     print(verts_tetra)
 
-    obj = PolyFeaturizer(vertices=verts, norm=True)
 
-    # print(obj.get_verts_areas_encodings())
-    for x in obj.get_verts_areas_encodings()[:1]:
-        print(x)
+    verts_list = [verts_tetra,verts_cube,verts_oct,verts_dod]
+    verts_labels = ['tetra','cube','oct','dod']
+
+    # sigma = 0.05
+    # min_val = 0
+    # max_val = 3
+    # x = np.arange(min_val, max_val, sigma)  
+    # x = np.append(x, max_val)
+
+    # import matplotlib.pyplot as plt
+    # for verts,label in zip(verts_list,verts_labels):
+    #     obj = PolyFeaturizer(vertices=verts, norm=True)
+    #     face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
+    #     # for histogram in face_hists[:]:
+    #     integral = face_hists[0,:] * x
+    #     integral = np.sum(integral)
+    #     # print(integral)
+    #     hist = face_hists[0,:] / integral
+    #     plt.plot(x, hist, label = label)
+
+
+    sigma = 0.1
+    min_val = 0
+    max_val = (3/2)*np.pi
+
+    
+    x = np.arange(min_val, max_val, sigma)  
+    x = np.append(x, max_val)
+    obj = PolyFeaturizer(vertices=verts, norm=True)
+    angle_hists = obj.get_verts_neighbor_angles_encodings(min_val=min_val, max_val=max_val, sigma=sigma)
+    face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
+    print(angle_hists.shape)
+    print(face_hists.shape)
+    node_features = np.concatenate([angle_hists,face_hists],axis=1)
+    print(node_features.shape)
+    # print(angle_hists.shape)
+    # import matplotlib.pyplot as plt
+    # for hist in angle_hists:
+    #     plt.plot(x, hist)
+    # plt.show()
+
+
+    # pos = obj.vertices
+    # adj_mat = obj.verts_adj_mat
+    
+    # target_variable = obj.get_energy_per_node(pos,adj_mat)
+
+    # print(target_variable)
+
     # print(obj.get_faces())
 
     # obj.get_verts_neighbor_angles()

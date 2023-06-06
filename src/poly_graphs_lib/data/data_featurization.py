@@ -75,9 +75,9 @@ class FeatureGenerator:
             if not os.path.exists(save_path):
                 with open(poly_file) as f:
                     poly_dict = json.load(f)
-                self._feature_set_0(poly_dict, save_path)
-                self._feature_set_1(poly_dict, save_path)
-                self._feature_set_2(poly_dict, save_path)
+                # self._feature_set_0(poly_dict, save_path)
+                # self._feature_set_1(poly_dict, save_path)
+                # self._feature_set_2(poly_dict, save_path)
                 self._feature_set_3(poly_dict, save_path)
         except Exception as e:
             print(poly_file)
@@ -219,13 +219,14 @@ class FeatureGenerator:
         poly_vert = poly_dict['vertices']
 
         # Initializing Polyehdron Featureizer
-        # poly_vert = np.array(poly_vert)
-        # poly_vert  = (poly_vert - poly_vert.mean(axis=0))/poly_vert.std(axis=0)
         obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
-        node_features = obj.get_verts_areas_encodings()
+        vert_area_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
         
+        vert_angle_hists = obj.get_verts_neighbor_angles_encodings(min_val=0, max_val=(3/2)*np.pi, sigma=0.1)
+        
+        node_features = np.concatenate([vert_area_hists,vert_angle_hists],axis=1)
         # Creating edge features
         neighbor_distances = obj.get_verts_neighbor_distance()
         # dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
