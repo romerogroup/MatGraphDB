@@ -22,7 +22,7 @@ class EarlyStopping():
         self.counter = 0
         self.status = 0
 
-    def __call__(self, model, val_loss:float, mape_val_loss:float):
+    def __call__(self, model, val_loss:float):
         """The class calling method
 
         Parameters
@@ -41,11 +41,10 @@ class EarlyStopping():
         """
         if self.best_loss == None:
             self.best_loss = val_loss
-            self.best_mape_loss = mape_val_loss
+
             self.best_model = copy.deepcopy(model)
         elif self.best_loss - val_loss > self.min_delta:
             self.best_loss = val_loss
-            self.best_mape_loss = mape_val_loss
             self.counter = 0
             self.best_model.load_state_dict(model.state_dict())
         elif self.best_loss - val_loss < self.min_delta:

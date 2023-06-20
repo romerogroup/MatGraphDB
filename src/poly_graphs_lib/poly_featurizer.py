@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 
 
-# from voronoi_statistics.similarity_measure_random import similarity_measure_random
+from voronoi_statistics.similarity_measure_random import similarity_measure_random
 # from utils import test_polys,test_names
 
 def gaussian_continuous_bin_encoder(values, min_val:float=0, max_val:float=40, sigma:float= 2):
@@ -140,8 +140,6 @@ class PolyFeaturizer:
         return adj_matrix
     
     def get_verts_neighbor_angles(self):
-
-        
         n_verts = len(self.vertices)
         neighbor_angles = []
         neighbor_angle_weights = []
@@ -242,9 +240,8 @@ class PolyFeaturizer:
                     neighbor_encoding = tmp_encoding
                 else:
                     neighbor_encoding += tmp_encoding
-
+            neighbor_encoding=neighbor_encoding/max(neighbor_encoding)
             neighbor_areas_encodings.append(neighbor_encoding)
-
         return np.array(neighbor_areas_encodings)
 
     def get_verts_neighbor_distance(self):
@@ -430,8 +427,8 @@ if __name__ == "__main__":
     # verts_tetra_rot, verts_tetra
     verts_tetra_scaled  = 2*verts_tetra
 
-    verts = test_polys[-3]
-    # verts = verts_tetra
+    # verts = test_polys[-3]1
+    verts = verts_tetra
     # verts = verts_oct
     # print(test_names)
     print(verts_tetra)
@@ -440,38 +437,41 @@ if __name__ == "__main__":
     verts_list = [verts_tetra,verts_cube,verts_oct,verts_dod]
     verts_labels = ['tetra','cube','oct','dod']
 
-    # sigma = 0.05
-    # min_val = 0
-    # max_val = 3
-    # x = np.arange(min_val, max_val, sigma)  
-    # x = np.append(x, max_val)
-
-    # import matplotlib.pyplot as plt
-    # for verts,label in zip(verts_list,verts_labels):
-    #     obj = PolyFeaturizer(vertices=verts, norm=True)
-    #     face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
-    #     # for histogram in face_hists[:]:
-    #     integral = face_hists[0,:] * x
-    #     integral = np.sum(integral)
-    #     # print(integral)
-    #     hist = face_hists[0,:] / integral
-    #     plt.plot(x, hist, label = label)
-
-
-    sigma = 0.1
+    sigma = 0.05
     min_val = 0
-    max_val = (3/2)*np.pi
-
-    
+    max_val = 3
     x = np.arange(min_val, max_val, sigma)  
     x = np.append(x, max_val)
-    obj = PolyFeaturizer(vertices=verts, norm=True)
-    angle_hists = obj.get_verts_neighbor_angles_encodings(min_val=min_val, max_val=max_val, sigma=sigma)
-    face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
-    print(angle_hists.shape)
-    print(face_hists.shape)
-    node_features = np.concatenate([angle_hists,face_hists],axis=1)
-    print(node_features.shape)
+
+    import matplotlib.pyplot as plt
+    for verts,label in zip(verts_list,verts_labels):
+        obj = PolyFeaturizer(vertices=verts, norm=True)
+        face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
+        # for histogram in face_hists[:]:
+        integral = face_hists[0,:] * x
+        integral = np.sum(integral)
+        # print(integral)
+        hist = face_hists[0,:] 
+        plt.plot(x, hist, label = label)
+    project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    save_dir = os.path.join(project_dir,'my_tests')
+    plt.savefig(os.path.join(save_dir,'tetra.png') )
+
+
+    # sigma = 0.1
+    # min_val = 0
+    # max_val = (3/2)*np.pi
+
+    
+    # x = np.arange(min_val, max_val, sigma)  
+    # x = np.append(x, max_val)
+    # obj = PolyFeaturizer(vertices=verts, norm=True)
+    # angle_hists = obj.get_verts_neighbor_angles_encodings(min_val=min_val, max_val=max_val, sigma=sigma)
+    # face_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
+    # print(angle_hists.shape)
+    # print(face_hists.shape)
+    # node_features = np.concatenate([angle_hists,face_hists],axis=1)
+    # print(node_features.shape)
     # print(angle_hists.shape)
     # import matplotlib.pyplot as plt
     # for hist in angle_hists:

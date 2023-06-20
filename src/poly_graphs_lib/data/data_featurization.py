@@ -35,7 +35,7 @@ class FeatureGeneratorConfig:
     interim_test_dir : str = f"{interim_dir}{os.sep}test"
 
 
-    n_cores : int = 4
+    n_cores : int = 40
     feature_set_index : int = 1
 
 class FeatureGenerator:
@@ -46,7 +46,7 @@ class FeatureGenerator:
     def initialize_generation(self):
         print("___Initializing Feature Generation___")
 
-        # self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
+        self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
         self._featurize_dir(dir=self.config.raw_test_dir,save_dir=self.config.interim_test_dir)
 
 

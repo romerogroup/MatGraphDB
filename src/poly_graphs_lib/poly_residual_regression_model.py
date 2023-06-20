@@ -121,7 +121,7 @@ class PolyhedronResidualModel(nn.Module):
             # self.ln_out = nn.LayerNorm(n_node_features)
 
 
-    def forward(self, data_batch, targets=None):
+    def forward(self, data_batch):
         """The forward pass of of the network
 
         Parameters
@@ -170,15 +170,15 @@ class PolyhedronResidualModel(nn.Module):
 
         out = self.out_layer(out)
         # Loss handling
-        if targets is None:
-            loss = None
-            mape_loss = None
-        else:
-            loss_fn = torch.nn.MSELoss()
-            mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
-            loss = loss_fn(torch.squeeze(out, dim=1), targets)
+        # if targets is None:
+        #     loss = None
+        #     mape_loss = None
+        # else:
+        #     loss_fn = torch.nn.MSELoss()
+        #     mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
+        #     loss = loss_fn(torch.squeeze(out, dim=1), targets)
 
-        return out,  loss, mape_loss
+        return out, 
     
     def encode(self, data_batch):
         x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr

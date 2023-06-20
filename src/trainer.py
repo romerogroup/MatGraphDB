@@ -1,11 +1,15 @@
 import os
 import copy
 from typing import List
+import json
+import yaml
+import pickle
+from datetime import datetime
+import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import json
-
 import torch
 import torch.nn as nn
 from torch.nn import BatchNorm1d
@@ -25,16 +29,8 @@ from poly_graphs_lib.poly_residual_regression_model import PolyhedronResidualMod
 large_width = 400
 np.set_printoptions(linewidth=large_width)
 
-def weight_init(m):
-    """
-    Initializes the weights of a module using Xavier initialization.
-    """
-    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        nn.init.xavier_uniform_(m.weight.data)
-
-
 ###################################################################
-# Parameters
+# Import configurations
 ###################################################################
 
 torch.manual_seed(0)
@@ -43,35 +39,9 @@ project_dir = os.path.dirname(os.path.dirname(__file__))
 print(project_dir)
 # hyperparameters
 
-# Training params
-n_epochs = 150
-early_stopping_patience = 10
-learning_rate = 1e-3
-batch_size = 64
-single_batch = False
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# model parameters
-n_gc_layers = 4
-layers_1 = [4*9]
-layers_2 = [4*9]
-dropout=None
-apply_layer_norms=True
-global_pooling_method = 'mean'
-
-
-# data parameters
-feature_set = 'face_feature_set_3'
-train_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}train"
-test_dir = f"{project_dir}{os.sep}datasets{os.sep}processed{os.sep}three_body_energy{os.sep}test"
-reports_dir = f"{project_dir}{os.sep}reports{os.sep}{feature_set}{os.sep}scaled_input_output_no_dropout_es_encoding_after_pooling"
-
-
-os.makedirs(reports_dir,exist_ok=True)
-
-###################################################################
-# Start of the the training run
-###################################################################
+input_file = os.path.join(project_dir,'sample.yml')
+with open( input_file, 'r' ) as input_stream:
+    SETTINGS = yaml.load(input_stream, Loader=yaml.Loader)
 
 
 ###################################################################
@@ -79,7 +49,7 @@ os.makedirs(reports_dir,exist_ok=True)
 ###################################################################
 
 
-train_dataset = PolyhedraDataset(database_dir=train_dir, device=device, feature_set=feature_set)
+train_dataset = PolyhedraDataset(database_dir=SETTINGS['train_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
 n_node_features = train_dataset[0].x.shape[1]
 print(train_dataset[0].edge_attr.shape)
 n_edge_features = train_dataset[0].edge_attr.shape[1]
@@ -110,7 +80,7 @@ n_edge_features = train_dataset[0].edge_attr.shape[1]
 #     edge_min = torch.vstack( [edge_min,current_edge_min] )
 #     edge_min = edge_min.min(axis=0)[0]
 
-del train_dataset
+# del train_dataset
 
 # def min_max_scaler(data):
 #     data.x = ( data.x - node_min ) / (node_min - node_max)
@@ -123,8 +93,8 @@ del train_dataset
 # train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 # test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 
-train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set)
-test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set)
+train_dataset = PolyhedraDataset(database_dir=SETTINGS['train_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
+test_dataset = PolyhedraDataset(database_dir=SETTINGS['test_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
 
 n_train = len(train_dataset)
 n_test = len(test_dataset)
@@ -132,10 +102,10 @@ n_test = len(test_dataset)
 y_train_vals = []
 n_graphs = len(train_dataset)
 for data in train_dataset:
-    data.to(device)
+    data.to(SETTINGS['device'])
     y_train_vals.append(data.y)
 
-y_train_vals = torch.tensor(y_train_vals).to(device)
+y_train_vals = torch.tensor(y_train_vals).to(SETTINGS['device'])
 avg_y_val_train = torch.mean(y_train_vals, axis=0)
 std_y_val = torch.std(y_train_vals, axis=0)
 print(f"Train average y_val: {avg_y_val_train}")
@@ -144,49 +114,49 @@ print(f"Train std y_val: {std_y_val}")
 y_test_vals = []
 n_graphs = len(test_dataset)
 for data in test_dataset:
-    data.to(device)
+    data.to(SETTINGS['device'])
     y_test_vals.append(data.y)
 
-y_test_vals = torch.tensor(y_test_vals).to(device)
+y_test_vals = torch.tensor(y_test_vals).to(SETTINGS['device'])
 avg_y_val = torch.mean(y_test_vals, axis=0)
 std_y_val = torch.std(y_test_vals, axis=0)
 print(f"Test average y_val: {avg_y_val}")
 print(f"Test std y_val: {std_y_val}")
 
 # Creating data loaders
-train_loader = DataLoader(train_dataset, batch_size=batch_size,shuffle=True, num_workers=0)
-test_loader = DataLoader(test_dataset, batch_size=11,shuffle=False, num_workers=0)
+train_loader = DataLoader(train_dataset, batch_size=SETTINGS['batch_size'],shuffle=True, num_workers=SETTINGS['num_workers'])
+test_loader = DataLoader(test_dataset, batch_size=SETTINGS['batch_size'],shuffle=False, num_workers=SETTINGS['num_workers'])
 
 ###################################################################
 # Initializing Model
 ###################################################################
 
 model = PolyhedronResidualModel(n_node_features=n_node_features, 
-                                n_edge_features=n_edge_features, 
-                                n_gc_layers=n_gc_layers,
-                                layers_1=layers_1,
-                                layers_2=layers_2,
-                                dropout=dropout,
-                                apply_layer_norms=apply_layer_norms,
-                                global_pooling_method=global_pooling_method,
-                                target_mean=avg_y_val_train)
-print(str(model))
+                                    n_edge_features=n_edge_features, 
+                                    n_gc_layers=SETTINGS['n_gc_layers'],
+                                    layers_1=SETTINGS['layers_1'],
+                                    layers_2=SETTINGS['layers_2'],
+                                    dropout=SETTINGS['dropout'],
+                                    apply_layer_norms=SETTINGS['apply_layer_norms'],
+                                    global_pooling_method=SETTINGS['global_pooling_method'],
+                                    target_mean=avg_y_val_train)
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 print("Number of trainable parameters: " + str(pytorch_total_params))
 print("Number of training samples: " + str(n_train) )
 print("Number of testing samples: " + str(n_test) )
-# model.apply(weight_init)
-m = model.to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-es = EarlyStopping(patience = early_stopping_patience)
-# es = None
+
+m = model.to(SETTINGS['device'])
+optimizer = torch.optim.AdamW(model.parameters(), lr=SETTINGS['learning_rate'])
+es = EarlyStopping(patience = SETTINGS['early_stopping_patience'])
+loss_fn = torch.nn.MSELoss()
+
+
 metrics_dict = {
+                "epochs":np.arange(SETTINGS['epochs']),
                 "train_mse":[],
                 "test_mse":[],
-                "train_mape":[],
-                "test_mape":[],
                 "trainable_params":pytorch_total_params,
-                "model":str(model)
                 }
 
 ###################################################################
@@ -195,87 +165,71 @@ metrics_dict = {
 
 def train(single_batch:bool=False):
     batch_train_loss = 0.0
-    batch_train_mape = 0.0
     for i,sample in enumerate(train_loader):
-
-        sample.to(device)
+        sample.to(SETTINGS['device'])
         if single_batch:
             if i == 0:
                 optimizer.zero_grad()
-                out, train_loss, mape_loss = model(sample , targets = sample.y)
+                targets = sample.y
+                out = model(sample)
+                train_loss = loss_fn(torch.squeeze(out, dim=1), targets)
                 train_loss.backward()
                 optimizer.step()
                 batch_train_loss += train_loss.item()
-                batch_train_mape += mape_loss.item()
 
         else:
             optimizer.zero_grad()
-            out, train_loss, mape_loss = model(sample , targets = sample.y)
+            targets = sample.y
+            out = model(sample)
+            train_loss = loss_fn(torch.squeeze(out, dim=1), targets)
             train_loss.backward()
             optimizer.step()
             batch_train_loss += train_loss.item()
-            batch_train_mape += mape_loss.item()
-            batch_train_loss = batch_train_loss / (i+1)
-            batch_train_mape = batch_train_mape / (i+1)
 
-
-    
-    return batch_train_loss, batch_train_mape
+    batch_train_loss = batch_train_loss / (i+1)
+    return batch_train_loss
 
 @torch.no_grad()
 def test():
     model.eval()
     batch_test_loss = 0.0
-    batch_test_mape = 0.0
     for i,sample in enumerate(test_loader):
-        sample.to(device)
-        out, test_loss, mape_test_loss = model(sample , targets = sample.y)
+        sample.to(SETTINGS['device'])
+        targets = sample.y
+        out = model(sample)
+        test_loss = loss_fn(torch.squeeze(out, dim=1), targets)
         batch_test_loss += test_loss.item()
-        batch_test_mape += mape_test_loss.item()
     batch_test_loss = batch_test_loss / (i+1)
-    batch_test_mape = batch_test_mape / (i+1)
     model.train()
-    return batch_test_loss, batch_test_mape
+    return batch_test_loss
 
 
 ###################################################################
 # Training Loop
 ###################################################################
+start_time= time.time()
 n_epoch_0 = 0
 model.train()
-for epoch in range(n_epochs):
+for epoch in range(SETTINGS['epochs']):
     n_epoch = n_epoch_0 + epoch
 
-    batch_train_loss, batch_train_mape = train(single_batch=single_batch)
-    batch_test_loss, batch_test_mape = test()
+    batch_train_loss = train(single_batch=SETTINGS['single_batch'])
+    batch_test_loss= test()
 
     metrics_dict['train_mse'].append(batch_train_loss)
     metrics_dict['test_mse'].append(batch_test_loss)
 
-    metrics_dict['train_mape'].append(batch_train_mape)
-    metrics_dict['test_mape'].append(batch_test_mape)
-
     if es is not None:
-        if es(model=model, val_loss=batch_test_loss,mape_val_loss=batch_test_mape):
+        if es(model=model, val_loss=batch_test_loss):
             print("Early stopping")
             print('_______________________')
             print(f'Stopping : {epoch - es.counter}')
             print(f'mae_val : {es.best_loss**0.5}')
-            print(f'mape_val : {es.best_mape_loss}')
             break
 
     if n_epoch % 1 == 0:
-        print(f"{n_epoch}, {batch_train_loss:.5f}, {batch_test_loss:.5f}, {100*batch_test_mape:.3f}")
+        print(f"{n_epoch}, {batch_train_loss:.5f}, {batch_test_loss:.5f}")
 
-with open(f'{reports_dir}{os.sep}metrics.json','w') as outfile:
-    json.dump(metrics_dict, outfile,indent=4)
-
-# batch = next(iter(train_loader))
-
-# Train average y_val: 102.41304016113281
-# Train std y_val: 34.732421875
-# Train average y_val: 85.29576873779297
-# Train std y_val: 105.39012145996094
 
 ###############################################################################################
 ################################################################################################
@@ -286,7 +240,7 @@ def distance_similarity(x,y):
     return np.linalg.norm(x/np.linalg.norm(x) - y/np.linalg.norm(y))
 
 
-def compare_polyhedra(loader, model):
+def compare_polyhedra(run_dir, loader, model):
     expected_values = []
     columns = {
         'expected_value':[],
@@ -299,7 +253,7 @@ def compare_polyhedra(loader, model):
     n_nodes = []
     model.eval()
     for sample in loader:
-        sample.to(device)
+        sample.to(SETTINGS['device'])
         predictions = model(sample)
         print(sample.label)
         # print(sample.x)
@@ -352,21 +306,76 @@ def compare_polyhedra(loader, model):
     encodings = [poly[0] for poly in polyhedra_encodings]
     df = pd.DataFrame(encodings, index = names)
     df['n_nodes']  = n_nodes
-    df.to_csv(f'{reports_dir}{os.sep}encodings.csv')
+    df.to_csv(f'{runs_dir}{os.sep}encodings.csv')
 
     df = pd.DataFrame(cosine_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
-    df.to_csv(f'{reports_dir}{os.sep}cosine_similarity.csv')
+    df.to_csv(f'{runs_dir}{os.sep}cosine_similarity.csv')
 
     df = pd.DataFrame(distance_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
-    df.to_csv(f'{reports_dir}{os.sep}distance_similarity.csv')
+    df.to_csv(f'{runs_dir}{os.sep}distance_similarity.csv')
 
     df = pd.DataFrame(columns)
     # df['n_nodes']  = n_nodes_before_sort
-    df.to_csv(f'{reports_dir}{os.sep}energy_test.csv')
+    df.to_csv(f'{runs_dir}{os.sep}energy_test.csv')
     return None
 
-compare_polyhedra(loader=test_loader, model=model)
+
+
+# Saving model metrics and parameters
+
+os.makedirs(SETTINGS['save_dir'], exist_ok=True)
+for n in range(1, 9999):
+    p = SETTINGS['save_dir'] + os.sep + f'train{n}'  # increment path
+    if not os.path.exists(p):  #
+        break
+
+run_dir = p
+weights_dir = run_dir + os.sep + 'weights'
+os.makedirs(weights_dir)
+
+
+with open(f'{run_dir}{os.sep}metrics.json','w') as outfile:
+    json.dump(metrics_dict, outfile,indent=4)
+compare_polyhedra(run_dir = run_dir,loader=test_loader, model=model)
+
+
+args_file = os.path.join(run_dir,'sample.yml')
+with open( args_file, 'w' ) as file:
+    yaml.dump(SETTINGS, file)
+
+txt_file = os.path.join(run_dir,'training.txt')
+training_time = time.time() - start_time
+with open(txt_file,'w') as file:
+    file.write(f"Training time : {training_time:.2f}s")
+
+metrics = pd.DataFrame(metrics_dict)
+
+metrics_file = os.path.join(run_dir,'results.csv')
+metrics.to_csv(metrics_file, index=False)
+
+
+
+ckpt_last = {
+            'epoch': SETTINGS['epochs'],
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'train_args': SETTINGS,  # save as dict
+            'date': datetime.now().isoformat()}
+
+torch.save(ckpt_last, weights_dir +os.sep+ f'last.pt', pickle_module=pickle)
+
+ckpt_last = {
+            'epoch': SETTINGS['epochs'],
+            'model': es.best_model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'train_args': SETTINGS,  # save as dict
+            'date': datetime.now().isoformat()}
+
+torch.save(ckpt_last, weights_dir +os.sep+ f'best.pt', pickle_module=pickle)
+
+
+    
