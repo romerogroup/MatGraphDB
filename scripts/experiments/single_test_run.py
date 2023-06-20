@@ -15,7 +15,7 @@ import torch_geometric.nn as pyg_nn
 
 from poly_graphs_lib.pyg_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.poly_regression_model import PolyhedronModel
+from poly_graphs_lib.models.poly_regression_model import PolyhedronModel
 
 
 def main():

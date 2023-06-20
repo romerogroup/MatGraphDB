@@ -16,7 +16,7 @@ from torchmetrics.functional import mean_absolute_percentage_error
 
 from poly_graphs_lib.pyg_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.poly_regression_model import PolyhedronModel
+from poly_graphs_lib.models.poly_regression_model import PolyhedronModel
 
 class PolyhedronModel(nn.Module):
     """This is the main Polyhedron Model. 

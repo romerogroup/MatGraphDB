@@ -1,55 +1,7 @@
 import numpy as np
 from coxeter.families import PlatonicFamily
 
-def rot_z(theta):
-    theta = np.deg2rad(theta)
-    c, s = np.cos(theta), np.sin(theta)
-    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
-
-def plot_points(plotter, points, color='green', size=15):
-    import pyvista as pv
-
-    plotter.add_mesh(points,color=color,point_size=size,render_points_as_spheres=True)
-
-def plot_adjacency(plotter, adj_matrix, points):
-    lines = []
-    for i in range(len(points)):
-        for j in range(i+1, len(points)):
-            if adj_matrix[i, j]:
-                plotter.add_lines(np.array([points[i], points[j]]))
-
-def generate_random_polyhedron_2(n_points):
-    points = []
-    i=0
-    while i < n_points:
-        # Sample spherical coordinates uniformly at random
-        z = 2 * np.random.random() - 1
-        t = 2 * np.pi * np.random.random()
-        r = np.sqrt(1 - z**2)
-        x = r * np.cos(t)
-        y = r * np.sin(t)
-
-        if i == 0 :
-            points.append((x, y, z))
-            i+=1
-        else:
-            distances = np.linalg.norm(points - np.array([x,y,z]), axis=1)
-
-            min_distance = np.min(distances)
-            if not min_distance <= 0.1:
-                
-                points.append((x, y, z))
-                i+=1
-    return np.array(points)
-
-def generate_random_polyhedron(num_points, bounds):
-    # Generate a set of random points within the bounds
-    points = np.random.uniform(bounds[0], bounds[1], (num_points, 3))
-    # Compute the convex hull of the points
-    
-    hull = ConvexHull(points)
-    # # Return the vertices of the convex hull
-    return points[hull.vertices]
+from .math import rot_z
 
 verts_mp567387_Ti = np.array([
                         [9.35032981971472,5.347268180285281,3.817163621730258],    

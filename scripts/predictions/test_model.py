@@ -15,7 +15,7 @@ from torchmetrics.functional import mean_absolute_percentage_error
 from torchmetrics import MeanAbsolutePercentageError
 
 from poly_graphs_lib.pyg_dataset import PolyhedraDataset
-from poly_graphs_lib.poly_regression_model import PolyhedronModel
+from poly_graphs_lib.models.poly_regression_model import PolyhedronModel
 
 np.set_printoptions(suppress=True)
 
