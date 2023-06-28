@@ -235,7 +235,7 @@ class FeatureGenerator:
         
         target_variable = obj.get_energy_per_node(pos,adj_mat)
 
-        obj.get_pyg_faces_input(x = node_features, edge_attr=edge_features,y = target_variable)
+        obj.get_pyg_verts_input(x = node_features, edge_attr=edge_features,y = target_variable)
         obj.set_label(label)
 
 

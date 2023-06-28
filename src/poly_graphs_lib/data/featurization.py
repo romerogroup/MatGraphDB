@@ -106,7 +106,7 @@ class PolyFeaturizer:
                     edge = (edge[1], edge[0]) 
                 edges.add(edge)
         edges = sorted(list(edges))
-        return edges
+        return np.array(edges)
     
     def get_vertices_adjacency(self):
         n = len(self.vertices)
