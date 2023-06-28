@@ -5,7 +5,7 @@ from poly_graphs_lib.data.regression_generation import RegressionGenerator
 
 def main():
     collect_raw_polys = False
-    generate_features = True
+    generate_features = False
     generate_pairs = False
     generate_regression= True
     

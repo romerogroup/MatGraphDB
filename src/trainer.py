@@ -22,8 +22,8 @@ from torch.nn import functional as F
 
 from poly_graphs_lib.models.poly.pyg_json_dataset import PolyhedraDataset
 from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.models.poly_regression_model import PolyhedronModel
-from poly_graphs_lib.models.poly_residual_regression_model import PolyhedronResidualModel
+from poly_graphs_lib.models.poly.poly_regression_model import PolyhedronModel
+from poly_graphs_lib.models.poly.poly_residual_regression_model import PolyhedronResidualModel
 
 
 large_width = 400
@@ -51,7 +51,7 @@ with open( input_file, 'r' ) as input_stream:
 
 train_dataset = PolyhedraDataset(database_dir=SETTINGS['train_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
 n_node_features = train_dataset[0].x.shape[1]
-print(train_dataset[0].edge_attr.shape)
+
 n_edge_features = train_dataset[0].edge_attr.shape[1]
 
 
@@ -93,40 +93,58 @@ n_edge_features = train_dataset[0].edge_attr.shape[1]
 # train_dataset = PolyhedraDataset(database_dir=train_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 # test_dataset = PolyhedraDataset(database_dir=test_dir,device=device, feature_set=feature_set, transform = min_max_scaler)
 
-train_dataset = PolyhedraDataset(database_dir=SETTINGS['train_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
-test_dataset = PolyhedraDataset(database_dir=SETTINGS['test_dir'],device=SETTINGS['device'], feature_set=SETTINGS['feature_set'])
-
+train_dataset = PolyhedraDataset(database_dir=SETTINGS['train_dir'],
+                                 device=SETTINGS['device'], 
+                                 n_max_entries=SETTINGS['n_train_max_entries'],
+                                 feature_set=SETTINGS['feature_set'])
+test_dataset = PolyhedraDataset(database_dir=SETTINGS['test_dir'],
+                                device=SETTINGS['device'], 
+                                n_max_entries=SETTINGS['n_test_max_entries'],
+                                feature_set=SETTINGS['feature_set'])
 n_train = len(train_dataset)
 n_test = len(test_dataset)
 
-y_train_vals = []
-n_graphs = len(train_dataset)
-for data in train_dataset:
-    data.to(SETTINGS['device'])
-    y_train_vals.append(data.y)
+print("Using cuda : ", torch.cuda.is_available())
+print("Number of gpus available : ", torch.cuda.device_count())
+print("Number of Training samples: " + str(n_train))
+print("Number of Test samples: " + str(n_test))
+print("Number of node features : ", n_node_features)
+print("Number of edge features : ", n_edge_features)
 
-y_train_vals = torch.tensor(y_train_vals).to(SETTINGS['device'])
-avg_y_val_train = torch.mean(y_train_vals, axis=0)
-std_y_val = torch.std(y_train_vals, axis=0)
-print(f"Train average y_val: {avg_y_val_train}")
-print(f"Train std y_val: {std_y_val}")
 
-y_test_vals = []
-n_graphs = len(test_dataset)
-for data in test_dataset:
-    data.to(SETTINGS['device'])
-    y_test_vals.append(data.y)
+# y_train_vals = []
+# n_graphs = len(train_dataset)
+# for data in train_dataset:
+#     data.to(SETTINGS['device'])
+#     y_train_vals.append(data.y)
 
-y_test_vals = torch.tensor(y_test_vals).to(SETTINGS['device'])
-avg_y_val = torch.mean(y_test_vals, axis=0)
-std_y_val = torch.std(y_test_vals, axis=0)
-print(f"Test average y_val: {avg_y_val}")
-print(f"Test std y_val: {std_y_val}")
+# y_train_vals = torch.tensor(y_train_vals).to(SETTINGS['device'])
+# avg_y_val_train = torch.mean(y_train_vals, axis=0)
+# std_y_val = torch.std(y_train_vals, axis=0)
+# print(f"Train average y_val: {avg_y_val_train}")
+# print(f"Train std y_val: {std_y_val}")
+
+# y_test_vals = []
+# n_graphs = len(test_dataset)
+# for data in test_dataset:
+#     data.to(SETTINGS['device'])
+#     y_test_vals.append(data.y)
+
+# y_test_vals = torch.tensor(y_test_vals).to(SETTINGS['device'])
+# avg_y_val = torch.mean(y_test_vals, axis=0)
+# std_y_val = torch.std(y_test_vals, axis=0)
+# print(f"Test average y_val: {avg_y_val}")
+# print(f"Test std y_val: {std_y_val}")
 
 # Creating data loaders
-train_loader = DataLoader(train_dataset, batch_size=SETTINGS['batch_size'],shuffle=True, num_workers=SETTINGS['num_workers'])
-test_loader = DataLoader(test_dataset, batch_size=SETTINGS['batch_size'],shuffle=False, num_workers=SETTINGS['num_workers'])
+train_loader = DataLoader(train_dataset, batch_size=SETTINGS['batch_size'],shuffle=True)#, num_workers=SETTINGS['num_workers'])
+test_loader = DataLoader(test_dataset, batch_size=SETTINGS['batch_size'],shuffle=False)#, num_workers=SETTINGS['num_workers'])
+print(next(iter(train_loader)))
+for batch in train_loader:
+    print(batch)
 
+for batch in test_loader:
+    print(batch)
 ###################################################################
 # Initializing Model
 ###################################################################
@@ -139,15 +157,14 @@ model = PolyhedronResidualModel(n_node_features=n_node_features,
                                     dropout=SETTINGS['dropout'],
                                     apply_layer_norms=SETTINGS['apply_layer_norms'],
                                     global_pooling_method=SETTINGS['global_pooling_method'],
-                                    target_mean=avg_y_val_train)
+                                    target_mean=None)
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 print("Number of trainable parameters: " + str(pytorch_total_params))
-print("Number of training samples: " + str(n_train) )
-print("Number of testing samples: " + str(n_test) )
+
 
 m = model.to(SETTINGS['device'])
-optimizer = torch.optim.AdamW(model.parameters(), lr=SETTINGS['learning_rate'])
+optimizer = torch.optim.AdamW(model.parameters(), lr=float(SETTINGS['learning_rate']))
 es = EarlyStopping(patience = SETTINGS['early_stopping_patience'])
 loss_fn = torch.nn.MSELoss()
 
@@ -172,6 +189,7 @@ def train(single_batch:bool=False):
                 optimizer.zero_grad()
                 targets = sample.y
                 out = model(sample)
+
                 train_loss = loss_fn(torch.squeeze(out, dim=1), targets)
                 train_loss.backward()
                 optimizer.step()
@@ -181,6 +199,7 @@ def train(single_batch:bool=False):
             optimizer.zero_grad()
             targets = sample.y
             out = model(sample)
+            
             train_loss = loss_fn(torch.squeeze(out, dim=1), targets)
             train_loss.backward()
             optimizer.step()

@@ -102,10 +102,10 @@ class PolyhedronResidualModel(nn.Module):
             self.mlp_2 = None
 
         self.out_layer= nn.Linear( n_node_features,  1)
+
         if target_mean is not None:
             self.out_layer.bias.data.fill_(target_mean)
 
-    
         if global_pooling_method == 'add':
             self.global_pooling_layer = global_add_pool
         elif global_pooling_method == 'mean':
@@ -143,6 +143,7 @@ class PolyhedronResidualModel(nn.Module):
         x_out = x
         edge_out = edge_attr
 
+
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
         # First mlp
@@ -169,16 +170,7 @@ class PolyhedronResidualModel(nn.Module):
         #     out = self.out_layer(out)
 
         out = self.out_layer(out)
-        # Loss handling
-        # if targets is None:
-        #     loss = None
-        #     mape_loss = None
-        # else:
-        #     loss_fn = torch.nn.MSELoss()
-        #     mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
-        #     loss = loss_fn(torch.squeeze(out, dim=1), targets)
-
-        return out, 
+        return out 
     
     def encode(self, data_batch):
         x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr

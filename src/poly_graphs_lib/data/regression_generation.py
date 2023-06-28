@@ -32,7 +32,7 @@ class RegressionGeneratorConfig:
     train_dir : str = f"{processed_dir}{os.sep}{dirname}{os.sep}train"
     test_dir : str = f"{processed_dir}{os.sep}{dirname}{os.sep}test"
     
-    n_cores : int = 40
+    n_cores : int = 20
     n_points : int = 20000
 
 class RegressionGenerator:
