@@ -92,7 +92,3 @@ class PolyCollector:
         filename = f'{save_dir}{os.sep}{poly_name}.json'
         with open(filename,'w') as outfile:
             json.dump(poly_data, outfile, indent=4)
-
-if __name__ == "__main__":
-    obj = PolyCollector()
-    obj.initialize_ingestion()

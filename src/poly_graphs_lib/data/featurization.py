@@ -15,7 +15,7 @@ from ..utils.math import gaussian_continuous_bin_encoder
 
 class PolyFeaturizer:
     
-    def __init__(self, vertices, norm:bool=False):
+    def __init__(self, vertices, norm:bool=True):
 
         self.poly = ConvexPolyhedron(vertices=vertices)
         self.poly.merge_faces(atol=1e-4, rtol=1e-5)
@@ -201,7 +201,7 @@ class PolyFeaturizer:
             neighbor_areas.append(tmp_areas)
         return neighbor_areas
     
-    def get_verts_areas_encodings(self,min_val=0, max_val=3, sigma=0.05):
+    def get_verts_areas_encodings(self,n_bins=50,min_val=0, max_val=3, sigma=0.05):
         neighbor_areas_list = self.get_verts_neighbor_face_areas()
         n_verts = len(self.vertices)
         neighbor_areas_encodings = []
@@ -210,6 +210,7 @@ class PolyFeaturizer:
             neighbor_encoding = None
             for neighbor_angle in neighbor_angles:
                 tmp_encoding = gaussian_continuous_bin_encoder(values= neighbor_angle, 
+                                                               n_bins=n_bins,
                                                                min_val=min_val, 
                                                                max_val=max_val, 
                                                                sigma=sigma)
@@ -217,7 +218,7 @@ class PolyFeaturizer:
                     neighbor_encoding = tmp_encoding
                 else:
                     neighbor_encoding += tmp_encoding
-            neighbor_encoding=neighbor_encoding/max(neighbor_encoding)
+            # neighbor_encoding=neighbor_encoding/max(neighbor_encoding)
             neighbor_areas_encodings.append(neighbor_encoding)
         return np.array(neighbor_areas_encodings)
 

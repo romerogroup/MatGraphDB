@@ -72,11 +72,3 @@ class RegressionGenerator:
             save_path = save_dir + os.sep + poly_filename
             with open(save_path,'w') as outfile:
                 json.dump(poly, outfile)
-
-
-    # def _calculate_three_body_energy(self,verts):
-
-    #     featurizer = PolyFeaturizer(vertices = verts)
-
-    #     three_body_energy = featurizer.get_three_body_energy(self, nodes=featurizer.face_centers, adj_mat=featurizer.faces_adj_mat)
-    #     return three_body_energy

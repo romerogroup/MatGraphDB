@@ -32,7 +32,7 @@ def face_sides_bin_encoder(node_values):
     return encoded_vec
 
 
-def gaussian_continuous_bin_encoder(values, min_val:float=0, max_val:float=40, sigma:float= 2):
+def gaussian_continuous_bin_encoder(values,n_bins:int=50, min_val:float=0, max_val:float=40, sigma:float= 2):
     """Creates bins graph continuous features by gaussian method
 
     Parameters
@@ -51,7 +51,8 @@ def gaussian_continuous_bin_encoder(values, min_val:float=0, max_val:float=40, s
     np.ndarray
         The binned feature
     """
-    filter = np.arange(min_val, max_val + sigma, step=sigma)
+
+    filter = np.linspace(min_val, max_val,n_bins)
     values = np.array(values)
     encoded_vec = np.exp(-(values - filter)**2 / sigma**2)
     return encoded_vec

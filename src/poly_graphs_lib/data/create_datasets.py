@@ -417,8 +417,3 @@ def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val,label
         except Exception as e:
             print(e)
             
-if __name__ == '__main__':
-    # parameters
-    feature_set_index = 5
-    
-    create_plutonic_dataset(feature_set_index=feature_set_index)

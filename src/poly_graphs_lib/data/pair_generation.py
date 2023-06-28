@@ -116,7 +116,6 @@ class PairGenerator:
         similarity = featurizer.compare_poly(vertices = verts_b, ncores=self.config.n_cores, n_points=self.config.n_points)
         return similarity
         
-    # def process_polythedra(polyhedra_verts, indices, save_dir, node_type,y_val,labels=None):
 
 
         
