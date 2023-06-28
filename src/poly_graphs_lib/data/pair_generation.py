@@ -9,8 +9,8 @@ import numpy as np
 from coxeter.families import PlatonicFamily
 from voronoi_statistics.voronoi_structure import VoronoiStructure
 
-from ..utils import test_polys,test_names
-from ..poly_featurizer import PolyFeaturizer
+from ..utils.shapes import test_polys,test_names
+from ..data.featurization import PolyFeaturizer
 
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))

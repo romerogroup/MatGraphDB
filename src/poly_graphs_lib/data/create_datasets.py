@@ -17,9 +17,8 @@ from torch_geometric.loader import DataLoader
 
 from voronoi_statistics.voronoi_structure import VoronoiStructure
 
-from ..poly_featurizer import PolyFeaturizer
-from .. import encoder, utils
-from ..create_face_edge_features import get_pyg_graph_components, rot_z, collect_data
+from ..data.featurization import PolyFeaturizer
+from ..utils import math
 
 
 def create_plutonic_dataset(data_dir:str, feature_set_index:int, val_size:float=0.20,graph_type:str='face_edge'):
@@ -60,7 +59,7 @@ def create_plutonic_dataset(data_dir:str, feature_set_index:int, val_size:float=
     verts_cube = PlatonicFamily.get_shape("Cube").vertices
     verts_oct = PlatonicFamily.get_shape("Octahedron").vertices
     verts_dod = PlatonicFamily.get_shape("Dodecahedron").vertices
-    verts_tetra_rot = verts_tetra.dot(rot_z(theta=25))*2 + 1
+    verts_tetra_rot = verts_tetra.dot(math.rot_z(theta=25))*2 + 1
 
 
     polyhedra_verts = [verts_tetra, verts_cube,verts_oct,verts_dod, verts_tetra_rot]

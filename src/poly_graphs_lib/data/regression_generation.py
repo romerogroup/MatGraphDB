@@ -9,14 +9,14 @@ import numpy as np
 from coxeter.families import PlatonicFamily
 from voronoi_statistics.voronoi_structure import VoronoiStructure
 
-from ..utils import test_polys,test_names
-from ..poly_featurizer import PolyFeaturizer
+from ..utils.shapes  import test_polys,test_names
+from ..data.featurization import PolyFeaturizer
 
-from ..config import PROJECT_DIR
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 class RegressionGeneratorConfig:
 
-    data_dir = f"{PROJECT_DIR}{os.sep}datasets"
+    data_dir = f"{PROJECT_DIR}{os.sep}data"
     
     raw_dir : str = f"{data_dir}{os.sep}raw"
     interim_dir : str = f"{data_dir}{os.sep}interim"

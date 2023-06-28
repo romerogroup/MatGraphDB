@@ -306,21 +306,21 @@ def compare_polyhedra(run_dir, loader, model):
     encodings = [poly[0] for poly in polyhedra_encodings]
     df = pd.DataFrame(encodings, index = names)
     df['n_nodes']  = n_nodes
-    df.to_csv(f'{runs_dir}{os.sep}encodings.csv')
+    df.to_csv(f'{run_dir}{os.sep}encodings.csv')
 
     df = pd.DataFrame(cosine_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
-    df.to_csv(f'{runs_dir}{os.sep}cosine_similarity.csv')
+    df.to_csv(f'{run_dir}{os.sep}cosine_similarity.csv')
 
     df = pd.DataFrame(distance_similarity_mat, columns = names, index = names)
     df['n_nodes']  = n_nodes
     df.loc['n_nodes'] = np.append(n_nodes, np.array([0]),axis=0)
-    df.to_csv(f'{runs_dir}{os.sep}distance_similarity.csv')
+    df.to_csv(f'{run_dir}{os.sep}distance_similarity.csv')
 
     df = pd.DataFrame(columns)
     # df['n_nodes']  = n_nodes_before_sort
-    df.to_csv(f'{runs_dir}{os.sep}energy_test.csv')
+    df.to_csv(f'{run_dir}{os.sep}energy_test.csv')
     return None
 
 
@@ -377,5 +377,3 @@ ckpt_last = {
 
 torch.save(ckpt_last, weights_dir +os.sep+ f'best.pt', pickle_module=pickle)
 
-
-    
