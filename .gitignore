@@ -152,7 +152,7 @@ _build/
 
 /data/
 
-models/
+/models/
 examples/
 docs/
 /reports/
