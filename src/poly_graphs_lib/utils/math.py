@@ -6,8 +6,6 @@ def rot_z(theta):
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
 
-
-
 def face_sides_bin_encoder(node_values):
     """Ceates bins for the number of sides on a face
 

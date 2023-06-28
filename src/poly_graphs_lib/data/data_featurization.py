@@ -9,18 +9,16 @@ import numpy as np
 from coxeter.families import PlatonicFamily
 from voronoi_statistics.voronoi_structure import VoronoiStructure
 
-from ..utils import test_polys,test_names
-from ..poly_featurizer import PolyFeaturizer
+from ..utils.shapes import test_polys,test_names
+from ..utils import math
+from ..data.featurization import PolyFeaturizer
 
-from .. import encoder, utils
-from ..create_face_edge_features import get_pyg_graph_components, rot_z, collect_data
-
-from ..config import PROJECT_DIR
-# PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+# from ..config import PROJECT_DIR
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 class FeatureGeneratorConfig:
 
-    data_dir = f"{PROJECT_DIR}{os.sep}datasets"
+    data_dir = f"{PROJECT_DIR}{os.sep}data"
     
     raw_dir : str = f"{data_dir}{os.sep}raw"
     interim_dir : str = f"{data_dir}{os.sep}interim"
@@ -46,7 +44,7 @@ class FeatureGenerator:
     def initialize_generation(self):
         print("___Initializing Feature Generation___")
 
-        self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
+        # self._featurize_dir(dir=self.config.raw_json_dir,save_dir=self.config.interim_json_dir)
         self._featurize_dir(dir=self.config.raw_test_dir,save_dir=self.config.interim_test_dir)
 
 
@@ -93,7 +91,7 @@ class FeatureGenerator:
         # Initializing Polyehdron Featureizer
         obj = PolyFeaturizer(vertices=poly_vert, norm = True)
 
-        face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+        face_sides_features = math.encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = obj.face_areas
         node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
         
@@ -131,13 +129,13 @@ class FeatureGenerator:
         obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
-        face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
+        face_sides_features = math.encoder.face_sides_bin_encoder(obj.face_sides)
         face_areas_features = obj.face_areas
         node_features = np.concatenate([face_areas_features,face_sides_features],axis=1)
         
         # Creating edge features
         dihedral_angles = obj.get_dihedral_angles()
-        dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, 
+        dihedral_angles_features = math.encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, 
                                                                            min_val=np.pi/8, 
                                                                            max_val=np.pi, 
                                                                            sigma= 0.2)
@@ -177,8 +175,8 @@ class FeatureGenerator:
         obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
-        face_sides_features = encoder.face_sides_bin_encoder(obj.face_sides)
-        face_areas_features = encoder.gaussian_continuous_bin_encoder(values = obj.face_areas, 
+        face_sides_features = math.encoder.face_sides_bin_encoder(obj.face_sides)
+        face_areas_features = math.encoder.gaussian_continuous_bin_encoder(values = obj.face_areas, 
                                                                            min_val=0, 
                                                                            max_val=20, 
                                                                            sigma= 1)
@@ -187,7 +185,7 @@ class FeatureGenerator:
         # Creating edge features
 
         dihedral_angles = obj.get_dihedral_angles()
-        dihedral_angles_features = encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
+        dihedral_angles_features = math.encoder.gaussian_continuous_bin_encoder(values = dihedral_angles, min_val=np.pi/8, max_val=np.pi, sigma= 0.2)
         edge_features = dihedral_angles_features
 
         pos = obj.face_centers
@@ -222,7 +220,7 @@ class FeatureGenerator:
         obj = PolyFeaturizer(vertices=poly_vert, norm = True)
         
         # Creating node features
-        vert_area_hists = obj.get_verts_areas_encodings(min_val=0, max_val=3, sigma=0.05)
+        vert_area_hists = obj.get_verts_areas_encodings(n_bins = 100, min_val=0, max_val=3.0, sigma=0.1)
         
         vert_angle_hists = obj.get_verts_neighbor_angles_encodings(min_val=0, max_val=(3/2)*np.pi, sigma=0.1)
         

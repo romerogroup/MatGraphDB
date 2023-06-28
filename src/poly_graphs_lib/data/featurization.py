@@ -157,7 +157,7 @@ class PolyFeaturizer:
             neighbor_angles.append(tmp_angles)
         return neighbor_angles, neighbor_angle_weights
 
-    def get_verts_neighbor_angles_encodings(self,min_val=np.pi/8, max_val=(3/2)*np.pi, sigma=0.2):
+    def get_verts_neighbor_angles_encodings(self,n_bins=50, min_val=np.pi/8, max_val=(3/2)*np.pi, sigma=0.2):
         neighbor_angles_list, neighbor_angle_weights = self.get_verts_neighbor_angles()
         n_verts = len(self.vertices)
         neighbor_angle_encodings = []
@@ -167,7 +167,11 @@ class PolyFeaturizer:
             neighbor_encoding = None
             for neighbor_angle,neighbor_angles_weight in zip(neighbor_angles,neighbor_angles_weights):
                 # tmp_encoding =  gaussian_continuous_bin_encoder(values=neighbor_angle, min_val=min_val, max_val=max_val, sigma=sigma)
-                tmp_encoding = gaussian_continuous_bin_encoder(values=neighbor_angles_weight * neighbor_angle, min_val=min_val, max_val=max_val, sigma=sigma)
+                tmp_encoding = gaussian_continuous_bin_encoder(values=neighbor_angles_weight * neighbor_angle,
+                                                               n_bins=n_bins, 
+                                                               min_val=min_val, 
+                                                               max_val=max_val, 
+                                                               sigma=sigma)
                 if neighbor_encoding is None:
                     neighbor_encoding = tmp_encoding
                 else:
