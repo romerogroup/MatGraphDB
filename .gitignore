@@ -156,6 +156,7 @@ _build/
 examples/
 docs/
 /reports/
+/runs/
 notebooks/data/
 __pycache__/
 my_tests/

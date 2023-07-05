@@ -54,3 +54,10 @@ def gaussian_continuous_bin_encoder(values,n_bins:int=50, min_val:float=0, max_v
     values = np.array(values)
     encoded_vec = np.exp(-(values - filter)**2 / sigma**2)
     return encoded_vec
+
+
+def cosine_similarity(x,y):
+    return x.dot(y) / (np.linalg.norm(x) * np.linalg.norm(y))
+
+def distance_similarity(x,y):
+    return np.linalg.norm(x/np.linalg.norm(x) - y/np.linalg.norm(y))

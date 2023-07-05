@@ -28,6 +28,7 @@ class MLP(nn.Module):
             self.dropout = nn.Dropout(dropout)
         else:
             self.dropout=None
+            
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)

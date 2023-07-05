@@ -29,7 +29,7 @@ class MLP(nn.Module):
         return x
 
 
-class PolyhedronModel(nn.Module):
+class PolyhedronRegressionModel(nn.Module):
     """This is the main Polyhedron Model. 
 
     Parameters
@@ -107,9 +107,6 @@ class PolyhedronModel(nn.Module):
         elif global_pooling_method == 'max':
             self.global_pooling_layer = global_max_pool
 
-
-
-
     def forward(self, data_batch, targets=None):
         """The forward pass of of the network
 
@@ -133,31 +130,23 @@ class PolyhedronModel(nn.Module):
         edge_out = edge_attr
 
         # Convolutional layers combine nodes and edge interactions
-        out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
+        out = self.cg_conv_layers(x_out, edge_index, edge_out )
+        
         # First mlp
         if self.mlp_1 is not None:
             out = self.mlp_1(out)
 
         # Batch global pooling
-        out = self.global_pooling_layer(out, batch = batch) # out -> (n_graphs, layers[-1])
+        out = self.global_pooling_layer(out, batch = batch)
 
         # Second mlp
         if self.mlp_2 is not None:
-            out = self.mlp_2(out) # out -> (n_graphs, layers_2[-1])
+            out = self.mlp_2(out)
 
         # Out layer
-        out = self.out_layer(out) # out -> (n_graphs,1)
+        out = self.out_layer(out)
 
-        # Loss handling
-        if targets is None:
-            loss = None
-            mape_loss = None
-        else:
-            loss_fn = torch.nn.MSELoss()
-            mape_loss = mean_absolute_percentage_error(torch.squeeze(out, dim=1), targets)
-            loss = loss_fn(torch.squeeze(out, dim=1), targets)
-
-        return out,  loss, mape_loss
+        return out
     
     def encode(self, data_batch):
         x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
@@ -179,4 +168,24 @@ class PolyhedronModel(nn.Module):
         if self.mlp_2 is not None:
             out = self.mlp_2(out) 
             
+        return out
+    
+    def encode_2(self, data_batch):
+        x, edge_index, edge_attr = data_batch.x, data_batch.edge_index, data_batch.edge_attr
+        batch = data_batch.batch
+
+        x_out = x
+        edge_out = edge_attr
+
+        # Convolutional layers combine nodes and edge interactions
+        out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
+
+        if self.mlp_1 is not None:
+            
+            out = self.mlp_1(out)
+ 
+
+        # Batch global pooling
+        out = self.global_pooling_layer(out, batch = batch)
+        
         return out

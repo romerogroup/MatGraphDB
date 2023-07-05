@@ -6,7 +6,7 @@ from typing import List,Tuple
 
 import torch
 import numpy as np
-from torch_geometric.data import Data, Dataset
+from torch_geometric.data import Data, Dataset, InMemoryDataset
 
 
 def get_polyhedra_graph(file_name: str, device:str=None, feature_set:str=None) -> Data:
@@ -133,22 +133,67 @@ class PolyhedraDataset(Dataset):
 
         return self.filenames[idx]
 
-def main():
-    parent_dir = os.path.dirname(__file__)
-    train_dir = f"{parent_dir}{os.sep}train"
-    test_dir = f"{parent_dir}{os.sep}test"
-
-
-    # filenames = train_dir + "/*.json"
-    # files = glob(filenames)
-    # get_polyhedra_graph(file_name=files[0])
-    
-
-    # print(dataset.get_file_name(idx = 0))
-
-    # print(dataset.get(idx = 0))
 
 
 
-if __name__=='__main__':
-    main()
+class PolyhedraInMemoryDataset(InMemoryDataset):
+
+    def __init__(
+        self,
+        database_dir: str,
+        feature_set:str = 'face_feature_set_1',
+        n_max_entries: int = None,
+        seed: int = 42,
+        transform: object = None,
+        pre_transform: object = None,
+        pre_filter: object = None,
+        device:str = None
+    ) -> None:
+        root = database_dir
+        self.device=device
+        self.feature_set = feature_set
+        self.database_dir = database_dir
+        
+        filenames = database_dir + "/*.json"
+        files = glob(filenames)
+
+        self.n_polyhedra = len(files)
+
+        if n_max_entries and n_max_entries < self.n_polyhedra:
+            self.n_polyhedra = n_max_entries
+            random.seed(seed)
+            self.filenames = random.sample(files, n_max_entries)
+        else:
+            self.n_polyhedra = len(files)
+            self.filenames = files
+
+        super().__init__(root, transform, pre_transform, pre_filter)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self) -> List[str]:
+        return self.filenames
+
+    @property
+    def processed_file_names(self):
+        return ['data.pt']
+
+    def download(self):
+        # This dataset is already given in a processed format, so no need to download anything.
+        pass
+
+    def process(self):
+        # Read data into huge `Data` list.
+        data_list = [get_polyhedra_graph(fn, device=self.device, feature_set=self.feature_set) for fn in self.raw_paths]
+
+        if self.pre_filter is not None:
+            data_list = [data for data in data_list if self.pre_filter(data)]
+
+        if self.pre_transform is not None:
+            data_list = [self.pre_transform(data) for data in data_list]
+
+        data, slices = self.collate(data_list)
+        torch.save((data, slices), self.processed_paths[0])
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, len(self))
