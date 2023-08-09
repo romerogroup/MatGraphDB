@@ -37,7 +37,7 @@ def plot_similarity_matrix( similarity_matrix, labels, add_values=True, filename
     else:
         plt.show()
 
-def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None,loss_label='MSE', filename=None):
+def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None,loss_label='MSE', filename=None, log_scale=False):
     fig,ax = plt.subplots(1)
 
     ax.plot(epochs,train_loss , label = 'train')
@@ -45,6 +45,9 @@ def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None,loss_
         ax.plot(epochs,val_loss , label = 'val')
     if test_loss:
         ax.plot(epochs,test_loss , label = 'test')
+
+    if log_scale:
+        ax.set_yscale('log')
 
     ax.set_xlabel('epochs')
     ax.set_ylabel(loss_label) 

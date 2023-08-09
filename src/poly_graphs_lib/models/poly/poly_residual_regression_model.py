@@ -143,8 +143,7 @@ class PolyhedronResidualModel(nn.Module):
 
         x_out = x
         edge_out = edge_attr
-
-
+  
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)
         # First mlp
@@ -179,6 +178,7 @@ class PolyhedronResidualModel(nn.Module):
 
         x_out = x
         edge_out = edge_attr
+
 
         # Convolutional layers combine nodes and edge interactions
         out = self.cg_conv_layers(x_out, edge_index, edge_out ) # out -> (n_total_node_in_batch, n_node_features)

@@ -58,14 +58,27 @@ class PolyFeaturizer:
         self.face_edges = self.get_face_edges()
         self.face_areas = self.get_face_areas()
 
+
         return None
+    
+
+    def verts_edge_index(self):
+        return self.edges
+    
+    def faces_edge_index(self):
+        return self.face_edges
+    
+    def verts_energy_per_node(self):
+        return self.get_energy_per_node(self.vertices,self.verts_adj_mat)
+    
+    def faces_energy_per_node(self):
+        return self.get_energy_per_node(self.face_centers,self.faces_adj_mat)
 
     def normalize(self,points , volume):
         points = (points - points.mean(axis=0))/volume**(1/3)
-
         # points = (points - points.mean(axis=0))/points.std(axis=0)
         return points
-    
+
     def get_face_centers(self):
         face_centers=[]
         for face in self.poly.faces:
@@ -157,7 +170,7 @@ class PolyFeaturizer:
             neighbor_angles.append(tmp_angles)
         return neighbor_angles, neighbor_angle_weights
 
-    def get_verts_neighbor_angles_encodings(self,n_bins=50, min_val=np.pi/8, max_val=(3/2)*np.pi, sigma=0.2):
+    def verts_neighbor_angles_encodings(self,n_bins=50, min_val=0, max_val=(3/2)*np.pi, sigma=0.2):
         neighbor_angles_list, neighbor_angle_weights = self.get_verts_neighbor_angles()
         n_verts = len(self.vertices)
         neighbor_angle_encodings = []
@@ -178,7 +191,6 @@ class PolyFeaturizer:
                     neighbor_encoding += tmp_encoding
 
             neighbor_angle_encodings.append(neighbor_encoding)
-
         return np.array(neighbor_angle_encodings)
     
     def get_verts_neighbor_face_areas(self):
@@ -203,9 +215,10 @@ class PolyFeaturizer:
                         face_area = self.face_areas[i_face]
                 tmp_areas.append(face_area)
             neighbor_areas.append(tmp_areas)
+
         return neighbor_areas
     
-    def get_verts_areas_encodings(self,n_bins=50,min_val=0, max_val=3, sigma=0.05):
+    def verts_neighbor_areas_encodings(self,n_bins=100,min_val=0, max_val=3, sigma=0.1):
         neighbor_areas_list = self.get_verts_neighbor_face_areas()
         n_verts = len(self.vertices)
         neighbor_areas_encodings = []
@@ -224,24 +237,29 @@ class PolyFeaturizer:
                     neighbor_encoding += tmp_encoding
             # neighbor_encoding=neighbor_encoding/max(neighbor_encoding)
             neighbor_areas_encodings.append(neighbor_encoding)
+
         return np.array(neighbor_areas_encodings)
 
-    def get_verts_neighbor_distance(self):
-        # n_verts = len(self.vertices)
-        # neighbor_distances = np.zeros((n_verts, n_verts), dtype=int)
-
-        # for i in range(n_verts):
-        #     for j in range(i+1,n_verts):
-        #         if self.verts_adj_mat[i,j] > 0:
-        #             distance = np.linalg.norm(self.vertices[i] - self.vertices[j])
-        #             neighbor_distances[i,j] = distance
-        neighbor_distances = np.zeros(len(self.edges))
+    def verts_neighbor_distance(self,do_encoding=False, n_bins=100,min_val=0, max_val=3, sigma=0.1 ):
+        
+        if do_encoding:
+            neighbor_distances = np.zeros(shape =(len(self.edges),n_bins))
+        else:
+            neighbor_distances = np.zeros(shape =(len(self.edges),1))
+        
         for index,edge in enumerate(self.edges):
             i = edge[0]
             j = edge[1]
-            distance = np.linalg.norm(self.vertices[i] - self.vertices[j])
-            neighbor_distances[index] = distance
 
+            distance = np.linalg.norm(self.vertices[i] - self.vertices[j])
+            if do_encoding:
+                distance=gaussian_continuous_bin_encoder(values=distance,
+                                                n_bins=n_bins, 
+                                                min_val=min_val, 
+                                                max_val=max_val, 
+                                                sigma=sigma)
+            
+            neighbor_distances[index] = distance
         return neighbor_distances
 
     def get_faces_adjacency(self):

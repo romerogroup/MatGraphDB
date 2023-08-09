@@ -20,9 +20,9 @@ import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 from torch.nn import functional as F
 
-from poly_graphs_lib.models.poly.pyg_json_dataset import PolyhedraDataset,PolyhedraInMemoryDataset
+from poly_graphs_lib.data.dataset import MPPolyDataset
 from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.models.poly.poly_regular_model import PolyhedronRegularModel
+from poly_graphs_lib.models.poly.poly_residual_regression_model import PolyhedronResidualModel
 from poly_graphs_lib.utils.plotting import plot_training_curves
 from poly_graphs_lib.utils.math_dataset import target_statistics
 from poly_graphs_lib.utils.timing import Timer
@@ -57,27 +57,14 @@ class Trainer:
         if self.settings is None:
             raise ("Call load_config first")
 
-        if self.settings['in_memory']:
-            self.train_dataset = PolyhedraInMemoryDataset(database_dir=self.settings['train_dir'],
-                                        device=self.settings['device'], 
-                                        n_max_entries=self.settings['n_train_max_entries'],
-                                        feature_set=self.settings['feature_set'])
-            self.test_dataset = PolyhedraInMemoryDataset(
-                                            database_dir=self.settings['test_dir'],
-                                            device=self.settings['device'], 
-                                            n_max_entries=self.settings['n_test_max_entries'],
-                                            feature_set=self.settings['feature_set'])
-            
-        else:
-            self.train_dataset = PolyhedraDataset(database_dir=self.settings['train_dir'],
-                                            device=self.settings['device'], 
-                                            n_max_entries=self.settings['n_train_max_entries'],
-                                            feature_set=self.settings['feature_set'])
-            self.test_dataset = PolyhedraDataset(database_dir=self.settings['test_dir'],
-                                            device=self.settings['device'], 
-                                            n_max_entries=self.settings['n_test_max_entries'],
-                                            feature_set=self.settings['feature_set'])
+
+        self.train_dataset = MPPolyDataset(save_root=self.settings['train_dir'])
+        self.test_dataset = MPPolyDataset(save_root=self.settings['test_dir'])
         
+        if self.settings['n_train_max_entries']:
+            print(self.settings['n_train_max_entries'])
+            self.train_dataset = self.train_dataset[:self.settings['n_train_max_entries']]
+
         self.n_node_features=self.train_dataset[0].x.shape[1]
         self.n_edge_features=self.train_dataset[0].edge_attr.shape[1]
 
@@ -121,15 +108,18 @@ class Trainer:
         if self.n_node_features is None:
             raise ("Call initialize datasets first")
         
-        self.model = PolyhedronRegularModel(n_node_features=self.n_node_features, 
+        self.model = PolyhedronResidualModel(n_node_features=self.n_node_features, 
                                     n_edge_features=self.n_edge_features, 
                                     n_gc_layers=self.settings['n_gc_layers'],
-                                    n_fc_layers=self.settings['n_fc_layers'],
-                                    n_neurons=self.settings['n_neurons'],
-                                    global_pooling_method=self.settings['global_pooling_method'],)
+                                    layers_1=self.settings['layers_1'],
+                                    layers_2=self.settings['layers_2'],
+                                    dropout=self.settings['dropout'],
+                                    apply_layer_norms=self.settings['apply_layer_norms'],
+                                    global_pooling_method=self.settings['global_pooling_method'],
+                                    target_mean=None)
         
 
-
+        # self.model=self.model.double()
         self.model.to(self.settings['device'])
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=float(self.settings['learning_rate']))
         self.es = EarlyStopping(patience = self.settings['early_stopping_patience'])
@@ -273,7 +263,8 @@ class Trainer:
                             val_loss=None, 
                             test_loss=self.metrics_dict['test_mse'],
                             loss_label='MSE', 
-                            filename=f'{self.run_dir}{os.sep}training_curve.png')
+                            filename=f'{self.run_dir}{os.sep}training_curve.png',
+                            log_scale=True)
 
         # plotting polyhedra comparison
         compare_polyhedra(run_dir = self.run_dir,dataset=self.test_dataset, model=self.model,device=self.settings['device'])
@@ -332,7 +323,9 @@ class Trainer:
 
 def main():
     print(PROJECT_DIR)
-    config_file = os.path.join(PROJECT_DIR,'src','poly_graphs_lib','cfg','sample_regular.yml') 
+    config_file = os.path.join(PROJECT_DIR,'src','trainers','new','residual_dataset_1.yml')
+
+    # config_file = os.path.join(PROJECT_DIR,'src','trainers','new','residual_dataset_2.yml') 
 
     
     timer = Timer()

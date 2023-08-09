@@ -321,10 +321,10 @@ class Trainer:
         # Saving target statistics
         if self.avg_y_train:
             with open(os.path.join(self.run_dir,'target_statistics.txt') , 'w') as f:
-                f.write(f"Train average y_val: {self.avg_y_train}")
-                f.write(f"Train std y_val: {self.std_y_train}")
-                f.write(f"Test average y_val: {self.avg_y_test}")
-                f.write(f"Test std y_val: {self.std_y_test}")
+                f.write(f"Train average y_val: {self.avg_y_train}\n")
+                f.write(f"Train std y_val: {self.std_y_train}\n")
+                f.write(f"Test average y_val: {self.avg_y_test}\n")
+                f.write(f"Test std y_val: {self.std_y_test}\n")
 
         print(f"Saving run to : {self.run_dir}")
 
