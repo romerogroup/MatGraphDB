@@ -17,7 +17,6 @@ from torch.nn import functional as F
 from torch_geometric.nn import CGConv, global_add_pool, global_mean_pool, global_max_pool, Sequential
 from torch_geometric.loader import DataLoader
 import torch_geometric.nn as pyg_nn
-from torchmetrics.functional import mean_absolute_percentage_error
 from torch.nn import functional as F
 
 from poly_graphs_lib.models.poly.pyg_json_dataset import PolyhedraDataset,PolyhedraInMemoryDataset

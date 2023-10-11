@@ -1,5 +1,18 @@
+# poly_graphs_lib requirements
+# Usage: pip install -r requirements.txt
+
+# Base ----------------------------------------
+
 coxeter
 crystals
 mendeleev
+pymatgen
 numpy
--e .
+scipy
+pyyaml
+matplotlib
+torch>=2.0.0
+torchvision
+torchaudio
+torch_geometric
+POT

@@ -1,0 +1,32 @@
+# Train settings -------------------------------------------------------------------------------
+train_dir: '/scratch/lllang/crystal_gen/Graph_Network_Project/data/processed/three_body_energy/train'
+val_dir: '/scratch/lllang/crystal_gen/Graph_Network_Project/data/processed/three_body_energy/valid'
+test_dir: '/scratch/lllang/crystal_gen/Graph_Network_Project/data/processed/three_body_energy/test'
+save_dir: '/scratch/lllang/crystal_gen/Graph_Network_Project/runs/regular_model/' # directory to save
+model:                              # path to model file, i.e. yolov8n.pt, yolov8n.yaml
+data:                               # path to data file, i.e. coco128.yaml
+epochs: 1000                          # number of epochs to train for
+learning_rate: 1e-3                 # learning rate for training
+single_batch: False
+in_memory: True
+batch_size: 50                    # number of images per batch (-1 for AutoBatch)
+num_workers: 0 #
+save: True                          # save train checkpoints and predict results
+device: 'cuda:0'                            # device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
+# device: 'cpu' 
+early_stopping_patience: 5
+seed: 42
+
+
+n_train_max_entries: 
+n_test_max_entries: 
+
+# the following parameters define the model characteristics
+n_gc_layers: 3
+n_fc_layers: 1
+n_neurons: 
+global_pooling_method: 'mean'
+
+calculate_target_stats: True
+
+feature_set : 'face_feature_set_3'
