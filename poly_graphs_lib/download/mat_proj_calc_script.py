@@ -12,7 +12,7 @@ from mp_api.client import MPRester
 # for file in database_files[:2]:
 def process_entry(file):
 
-    calcs_database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_calcs')
+    calcs_database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_calcs_no_restriction')
     material_id=file.split(os.sep)[-1].split('.')[0]
     calcs_dir=os.path.join(calcs_database_dir,material_id,'static')
     os.makedirs(calcs_dir,exist_ok=True)
@@ -53,10 +53,10 @@ def process_database(n_cores=1):
     # json_database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database')
     # database_files=glob(json_database_dir + '\*.json')
     
-    database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database')
+    database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_nsites_no_restriction')
     database_files=glob(database_dir + '\*.json')
     if n_cores==1:
-        for i,file in enumerate(database_files[:50]):
+        for i,file in enumerate(database_files[:]):
             if i%100==0:
                 print(i)
             print(file)
