@@ -11,8 +11,3 @@ numpy
 scipy
 pyyaml
 matplotlib
-torch>=2.0.0
-torchvision
-torchaudio
-torch_geometric
-POT

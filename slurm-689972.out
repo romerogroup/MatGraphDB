@@ -1,0 +1,98 @@
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 0 tolerance = 1.000000e-02 failed(line 800, /project/src/spacegroup.c).
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 1 tolerance = 9.500000e-03 failed(line 800, /project/src/spacegroup.c).
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 2 tolerance = 9.025000e-03 failed(line 800, /project/src/spacegroup.c).
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 0 tolerance = 1.000000e-02 failed(line 800, /project/src/spacegroup.c).
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 1 tolerance = 9.500000e-03 failed(line 800, /project/src/spacegroup.c).
+spglib: No point group was found (line 405, /project/src/pointgroup.c).
+spglib: Attempt 2 tolerance = 9.025000e-03 failed(line 800, /project/src/spacegroup.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.750000
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.512500
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.286875
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.072531
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 3.868905
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.750000
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.512500
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.286875
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.072531
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 3.868905
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.750000
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.512500
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.286875
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.072531
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 3.868905
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.750000
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.512500
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.286875
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 4.072531
+        (line 990, /project/src/symmetry.c).
+spglib: Too many lattice symmetries was found.
+        Reduce angle tolerance to 3.868905
+        (line 990, /project/src/symmetry.c).
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/utils/func_utils.py:334: RuntimeWarning: invalid value encountered in divide
+  return fractions / total
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/utils/func_utils.py:334: RuntimeWarning: invalid value encountered in divide
+  return fractions / total
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/utils/func_utils.py:334: RuntimeWarning: invalid value encountered in divide
+  return fractions / total
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/utils/func_utils.py:334: RuntimeWarning: invalid value encountered in divide
+  return fractions / total
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/coordination_environments/chemenv_strategies.py:2603: RuntimeWarning: invalid value encountered in scalar divide
+  nb_sets_fractions = {cn_map: w_nb_set / w_nb_sets_total for cn_map, w_nb_set in w_nb_sets.items()}
+/gpfs20/scratch/lllang/projects/Graph_Network_Project/venv/lib/python3.8/site-packages/pymatgen/analysis/chemenv/utils/func_utils.py:334: RuntimeWarning: invalid value encountered in divide
+  return fractions / total
