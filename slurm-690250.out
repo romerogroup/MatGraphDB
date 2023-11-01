@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "poly_graphs_lib/database/json/bonding_analysis.py", line 44, in <module>
+    print('Database Dir : ', DB_DIR)
+NameError: name 'DB_DIR' is not defined

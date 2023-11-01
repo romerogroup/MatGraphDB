@@ -1,5 +1,5 @@
 import re
-from setuptools import find_packages, setuptools
+from setuptools import find_packages
 from typing import List
 from distutils.core import setup
 from pathlib import Path
@@ -13,15 +13,16 @@ REQUIREMENTS = [f'{x.name}{x.specifier}' for x in pkg.parse_requirements((PARENT
 
 
 
-def get_version():
-    file = PARENT / 'poly_graphs_lib/__init__.py'
-    return re.search(r'^__version__ = [\'"]([^\'"]*)[\'"]', file.read_text(encoding='utf-8'), re.M)[1]
-
+# def get_version():
+#     file = PARENT / 'poly_graphs_lib/__init__.py'
+#     version= re.search(r'^__version__ = [\'"]([^\'"]*)[\'"]', file.read_text(encoding='utf-8'), re.M)[1]
+#     print(version)
+#     return version
 
 
 setup(
 name='poly_graphs_lib',
-version=get_version(),
+version="1.0.0",
 author='Logan Lang',
 author_email='lllang@mix.wvu.edu',
 packages=find_packages(),
