@@ -5,8 +5,8 @@ from pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies impo
 from pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder import LocalGeometryFinder
 from pymatgen.analysis.chemenv.coordination_environments.structure_environments import LightStructureEnvironments
 
-from poly_graphs_lib.database import DB_DIR
-from poly_graphs_lib.database.json import process_database
+from poly_graphs_lib.database.json import DB_DIR
+from poly_graphs_lib.database.json.process_database import process_database
 
 def chemenv_analysis(file, from_scratch=False):
 

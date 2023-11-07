@@ -1,4 +1,5 @@
 import copy
+
 class Node:
     def __init__(self, node_name,class_name):
         self.node_name=node_name

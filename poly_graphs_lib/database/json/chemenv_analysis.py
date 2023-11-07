@@ -3,7 +3,6 @@ import json
 from glob import glob 
 
 from multiprocessing import Pool
-import numpy as np
 import pymatgen.core as pmat
 from pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies import SimplestChemenvStrategy
 from pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder import LocalGeometryFinder

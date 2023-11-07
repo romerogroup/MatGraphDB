@@ -12,7 +12,7 @@ from matminer.featurizers.base import MultipleFeaturizer
 from matminer.featurizers.structure import XRDPowderPattern
 from matminer.featurizers.composition import ElementFraction
 
-from poly_graphs_lib.database import MP_DIR,DB_DIR
+from poly_graphs_lib.database.json import MP_DIR, DB_DIR
 from poly_graphs_lib.database.json.utils import chunk_list,cosine_similarity
 
 CHUNK_SIZE=1000

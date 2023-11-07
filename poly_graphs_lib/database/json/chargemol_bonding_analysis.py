@@ -6,8 +6,8 @@ from glob import glob
 import pymatgen.core as pmat
 
 from poly_graphs_lib.utils.periodic_table import covalent_cutoff_map
-from poly_graphs_lib.database.json import process_database
-from poly_graphs_lib.database import DB_DIR,DB_CALC_DIR
+from poly_graphs_lib.database.json.process_database import process_database
+from poly_graphs_lib.database.json import DB_DIR,DB_CALC_DIR
 
 BOND_ORDER_CUTOFF=0.20
 

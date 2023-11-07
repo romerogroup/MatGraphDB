@@ -2,17 +2,8 @@ import os
 import json
 from glob import glob 
 
-from multiprocessing import Pool
-import numpy as np
-import pymatgen.core as pmat
-from pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies import MultiWeightsChemenvStrategy
-from pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder import LocalGeometryFinder
-from pymatgen.analysis.chemenv.coordination_environments.structure_environments import LightStructureEnvironments
-
 from poly_graphs_lib.utils import PROJECT_DIR
 
-
-  
 def process_database(n_cores=1):
     
     database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database')
@@ -23,10 +14,7 @@ def process_database(n_cores=1):
     for i,file in enumerate(database_files):
         if i%100==0:
             print(i)
-        
-
-      
-
+    
         with open(file) as f:   
             db = json.load(f)
 

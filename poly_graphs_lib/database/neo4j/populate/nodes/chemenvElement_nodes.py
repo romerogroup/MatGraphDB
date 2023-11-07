@@ -1,17 +1,16 @@
-from neo4j import GraphDatabase
-import pymatgen.core as pmat
+from pymatgen.core.periodic_table import Element
 
-from poly_graphs_lib.database import PASSWORD,DBMS_NAME,LOCATION,DB_NAME,CIF_DIR
-from poly_graphs_lib.cfg.coordination_geometries_files import mp_coord_encoding
-from poly_graphs_lib.database.populate.nodes import Node
+from poly_graphs_lib.database.neo4j.utils import execute_statements
+from poly_graphs_lib.database.neo4j.populate.nodes import Node
+from poly_graphs_lib.database.neo4j.populate.nodes.node_types import CHEMENV_ELEMENT_NAMES
 
-def populate_chemenvElement_nodes(class_names):
+def populate_chemenvElement_nodes(class_names=CHEMENV_ELEMENT_NAMES):
     class_name='chemenvElement'
     create_statements = []
     for node_name in class_names:
         node_name=node_name.replace(':','_')
         element_name=node_name.split('_')[0]
-        pmat_element = pmat.periodic_table.Element(element_name)
+        pmat_element = Element(element_name)
         node=Node(node_name=node_name,class_name=class_name)
 
 
@@ -44,24 +43,8 @@ def populate_chemenvElement_nodes(class_names):
     return create_statements
 
 def main():
-    # This statement Connects to the database server
-    connection = GraphDatabase.driver(LOCATION, auth=(DBMS_NAME, PASSWORD))
-    # To read and write to the data base you must open a session
-    session = connection.session(database=DB_NAME)
-
-    chemenv_names=mp_coord_encoding.keys()
-    element_names=dir(pmat.periodic_table.Element)[:-4]
-    class_names=[]
-    for element_name in element_names:
-        for chemenv_name in chemenv_names:
-            class_name= element_name + '_' + chemenv_name
-            class_names.append(class_name)
-    create_statements=populate_chemenvElement_nodes(class_names=class_names)
-    for execute_statment in create_statements:
-        session.run(execute_statment)
-
-    session.close()
-    connection.close()
+    create_statements=populate_chemenvElement_nodes(class_names=CHEMENV_ELEMENT_NAMES)
+    execute_statements(create_statements)
 
 if __name__ == '__main__':
     main()

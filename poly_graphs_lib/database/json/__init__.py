@@ -1,8 +1,8 @@
 import os
-from glob import glob 
-
 from poly_graphs_lib.utils import PROJECT_DIR
-from .process_database import process_database
 
-material_file_path = os.path.join(PROJECT_DIR,'data','raw','mp_database','*.json')
-material_files =  glob(material_file_path)
+
+MP_DIR=os.path.join(PROJECT_DIR,'data','raw','materials_project_ternary')
+DB_DIR=os.path.join(MP_DIR,'json_database')
+DB_CALC_DIR=os.path.join(MP_DIR,'calculations','database')
+N_CORES=6

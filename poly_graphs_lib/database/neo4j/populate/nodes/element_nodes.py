@@ -1,10 +1,10 @@
-from neo4j import GraphDatabase
 import pymatgen.core as pmat
 
-from poly_graphs_lib.database import PASSWORD,DBMS_NAME,LOCATION,DB_NAME,CIF_DIR
-from poly_graphs_lib.database.populate.nodes import Node
+from poly_graphs_lib.database.neo4j.populate.nodes import Node
+from poly_graphs_lib.database.neo4j.populate.nodes.node_types import ELEMENTS
+from poly_graphs_lib.database.neo4j.utils import execute_statements
 
-def populate_element_nodes(elements):
+def populate_element_nodes(elements=ELEMENTS):
     elements = dir(pmat.periodic_table.Element)[:-4]
     create_statements = []
     for element in elements[:]:
@@ -42,18 +42,9 @@ def populate_element_nodes(elements):
 
 
 def main():
-    # This statement Connects to the database server
-    connection = GraphDatabase.driver(LOCATION, auth=(DBMS_NAME, PASSWORD))
-    # To read and write to the data base you must open a session
-    session = connection.session(database=DB_NAME)
-
-    elements = dir(pmat.periodic_table.Element)[:-4]
-    create_statements=populate_element_nodes(elements=elements)
-    for execute_statment in create_statements:
-        session.run(execute_statment)
-
-    session.close()
-    connection.close()
+    create_statements=populate_element_nodes(elements=ELEMENTS)
+    execute_statements(create_statements)
+    
 
 if __name__ == '__main__':
     main()
