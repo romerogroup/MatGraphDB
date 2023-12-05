@@ -23,6 +23,8 @@ ROOT = str(FILE.parents[1])  # poly_graph_lib
 
 LOGGING_NAME = 'poly_graphs'
 
+LOG_DIR=os.path.join(PROJECT_DIR,'logs')
+
 VERBOSE = str(os.getenv('poly_graphs_VERBOSE', True)).lower() == 'true'  # global verbose mode
 
 

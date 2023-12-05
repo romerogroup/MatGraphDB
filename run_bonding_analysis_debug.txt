@@ -1,2 +1,2 @@
 Running Bonding Cutoff analysis
-Database Dir :  /gpfs20/scratch/lllang/projects/Graph_Network_Project/data/raw/materials_project/json_database
+Database Dir :  /gpfs20/scratch/lllang/projects/Graph_Network_Project/data/raw/materials_project_ternary/json_database
