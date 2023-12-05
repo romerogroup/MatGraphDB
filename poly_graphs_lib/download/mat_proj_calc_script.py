@@ -8,11 +8,10 @@ from poly_graphs_lib.utils import PROJECT_DIR
 from poly_graphs_lib.cfg import apikey
 from mp_api.client import MPRester
 
-
+from functools import partial
 # for file in database_files[:2]:
-def process_entry(file):
-
-    calcs_database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_calcs_no_restriction')
+def process_entry(file,save_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_nelements_7_calcs')):
+    calcs_database_dir=save_dir
     material_id=file.split(os.sep)[-1].split('.')[0]
     calcs_dir=os.path.join(calcs_database_dir,material_id,'static')
     os.makedirs(calcs_dir,exist_ok=True)
@@ -52,8 +51,9 @@ def process_entry(file):
 def process_database(n_cores=1):
     # json_database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database')
     # database_files=glob(json_database_dir + '\*.json')
-    
-    database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_nsites_no_restriction')
+
+
+    database_dir=os.path.join(PROJECT_DIR,'data','raw','mp_database_nelements_7')
     database_files=glob(database_dir + '\*.json')
     if n_cores==1:
         for i,file in enumerate(database_files[:]):
@@ -64,6 +64,8 @@ def process_database(n_cores=1):
     else:
         with Pool(n_cores) as p:
             p.map(process_entry, database_files)
+
+
 
 
 if __name__=='__main__':
