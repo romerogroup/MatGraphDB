@@ -1,1 +1,1 @@
-N_CORES=20
+N_CORES=1

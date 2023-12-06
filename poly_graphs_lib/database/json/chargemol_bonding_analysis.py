@@ -9,9 +9,9 @@ from poly_graphs_lib.utils.periodic_table import covalent_cutoff_map
 from poly_graphs_lib.database.json.process_database import process_database
 from poly_graphs_lib.database.json import DB_DIR,DB_CALC_DIR
 
-BOND_ORDER_CUTOFF=0.20
+BOND_ORDER_CUTOFF=0.0
 
-def bonding_analysis(file, from_scratch=False):
+def bonding_analysis(file, from_scratch=True):
 
     try:
         with open(file) as f:
@@ -30,6 +30,7 @@ def bonding_analysis(file, from_scratch=False):
             bond_blocks=re.findall('(?<=Printing BOs for ATOM).*\n([\s\S]*?)(?=The sum of bond orders for this atom is SBO)',text)
 
             bonding_connections=[]
+            bonding_orders=[]
             for bond_block in bond_blocks:
 
                 bonds=bond_block.strip().split('\n')
@@ -46,15 +47,18 @@ def bonding_analysis(file, from_scratch=False):
                         atom_indices.append(atom_index)
 
                 bonding_connections.append(atom_indices)
+                bonding_orders.append(bond_orders)
 
             
-                db['chargemol_bonding_connections']=bonding_connections
+            db['chargemol_bonding_connections']=bonding_connections
+            db['chargemol_bonding_orders']=bonding_orders
 
 
     except Exception as e:
         print(e)
         print(file)
         db['chargemol_bonding_connections']=None
+        db['chargemol_bonding_orders']=None
 
     with open(file,'w') as f:
         json.dump(db, f, indent=4)

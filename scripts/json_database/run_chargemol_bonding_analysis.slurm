@@ -2,7 +2,7 @@
 
 #SBATCH -J mp_database
 #SBATCH --nodes=1
-#SBATCH -c 20
+#SBATCH -c 1
 #SBATCH -p standby
 #SBATCH -t 4:00:00
 

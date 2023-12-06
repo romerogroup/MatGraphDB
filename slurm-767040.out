@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "poly_graphs_lib/database/json/chargemol_bonding_analysis.py", line 9, in <module>
+    from poly_graphs_lib.database.json.process_database import process_database
+  File "/gpfs20/scratch/lllang/projects/Graph_Network_Project/poly_graphs_lib/database/json/process_database.py", line 5, in <module>
+    from poly_graphs_lib.database.json import DB_DIR, N_CORES
+ImportError: cannot import name 'N_CORES' from 'poly_graphs_lib.database.json' (/gpfs20/scratch/lllang/projects/Graph_Network_Project/poly_graphs_lib/database/json/__init__.py)
