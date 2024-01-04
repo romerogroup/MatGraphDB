@@ -1,1 +1,1 @@
-N_CORES=1
+N_CORES=8

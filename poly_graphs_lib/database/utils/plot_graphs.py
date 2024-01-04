@@ -123,21 +123,21 @@ def main():
 
 
 
-    center_class='Element'
+    center_class='chemenv'
     save_dir=os.path.join(reports_dir,center_class)
     os.makedirs(save_dir,exist_ok=True)
-    # plot_node_and_connections(session,center_name='C',
-    #                           center_class=center_class,
-    #                           edge_name='CONNECTS', 
-    #                           edge_type=f'chemenv-{center_class}',
-    #                           node_spacing=2,
-    #                           filename=os.path.join(save_dir,'C'))
-    plot_node_and_connections(session,center_name='O',
+    plot_node_and_connections(session,center_name='O_6',
                               center_class=center_class,
                               edge_name='CONNECTS', 
                               edge_type=f'chemenv-{center_class}',
-                              node_spacing=5,
-                              filename=os.path.join(save_dir,'O'))
+                              node_spacing=2,
+                              filename=os.path.join(save_dir,'C'))
+    # plot_node_and_connections(session,center_name='O',
+    #                           center_class=center_class,
+    #                           edge_name='CONNECTS', 
+    #                           edge_type=f'chemenv-{center_class}',
+    #                           node_spacing=5,
+    #                           filename=os.path.join(save_dir,'O'))
     # plot_node_and_connections(session,center_name='Ti',
     #                           center_class=center_class,
     #                           edge_name='CONNECTS', 
