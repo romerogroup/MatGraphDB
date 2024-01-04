@@ -1,2 +1,0 @@
-Running wyckoffs position analysis
-Database Dir :  /gpfs20/scratch/lllang/projects/Graph_Network_Project/data/raw/materials_project/json_database
