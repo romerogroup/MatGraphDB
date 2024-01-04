@@ -4,10 +4,11 @@ from glob import glob
 import numpy as np
 from pymatgen.core.periodic_table import Element
 
+from poly_graphs_lib.utils.periodic_table import atomic_symbols
 from poly_graphs_lib.cfg.coordination_geometries_files import mp_coord_encoding
 from poly_graphs_lib.database.json import DB_DIR
 
-ELEMENTS = dir(Element)[:-4]
+ELEMENTS = atomic_symbols[1:]
 
 MAGNETIC_STATES=['NM', 'FM', 'FiM', 'AFM', 'Unknown']
 

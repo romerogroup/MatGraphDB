@@ -1,0 +1,2 @@
+NCORES :  20
+Database Dir :  /gpfs20/scratch/lllang/projects/Graph_Network_Project/data/raw/materials_project_nelements_4
