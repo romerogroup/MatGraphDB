@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Parent directory path
-PARENT_DIR="/users/lllang/SCRATCH/projects/crystal_graph/data/raw/materials_project/calculations/database"
+PARENT_DIR="/users/lllang/SCRATCH/projects/crystal_graph/data/raw/materials_project/calculations/MaterialsData"
 
 # Loop through all directories in the parent directory
 for dir in "$PARENT_DIR"/*; do
     if [ -d "$dir" ]; then
         # Change to the directory
-        echo "$dir/static"
-        cd "$dir/static"
+        echo "$dir/chargemol"
+        cd "$dir/chargemol"
 
         
         
