@@ -5,7 +5,6 @@ from poly_graphs_lib.database.neo4j.populate.nodes.node_types import ELEMENTS
 from poly_graphs_lib.database.neo4j.utils import execute_statements
 
 def populate_element_nodes(elements=ELEMENTS):
-    elements = dir(pmat.periodic_table.Element)[:-4]
     create_statements = []
     for element in elements[:]:
         # pymatgen object. Given element string, will have useful properties 

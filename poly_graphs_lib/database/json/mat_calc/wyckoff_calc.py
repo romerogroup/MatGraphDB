@@ -3,8 +3,8 @@ import json
 import pymatgen.core as pmat
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from poly_graphs_lib.database.json.utils import process_database
-from poly_graphs_lib.database.json import DB_DIR
+from poly_graphs_lib.database.utils.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR
 
 def wyckoff_calc_task(file, from_scratch=False):
 

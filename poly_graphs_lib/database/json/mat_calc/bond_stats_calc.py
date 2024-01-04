@@ -7,8 +7,8 @@ from pymatgen.core.periodic_table import Element
 
 from poly_graphs_lib.utils import LOGGER
 from poly_graphs_lib.utils.periodic_table import atomic_symbols
-from poly_graphs_lib.database.json.utils import process_database
-from poly_graphs_lib.database.json import DB_DIR,GLOBAL_PROP_FILE
+from poly_graphs_lib.database.utils.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR,GLOBAL_PROP_FILE
 
 # List of element names from pymatgen's Element
 ELEMENTS = atomic_symbols[1:]

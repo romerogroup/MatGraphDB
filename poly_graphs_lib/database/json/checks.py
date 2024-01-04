@@ -4,9 +4,8 @@ import json
 from multiprocessing import Pool
 
 
-from poly_graphs_lib.database import N_CORES
-from poly_graphs_lib.database.json import DB_DIR
-from poly_graphs_lib.database.json.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR,N_CORES
+from poly_graphs_lib.database.utils.process_database import process_database
 
 
 def check_chemenv_task(file):

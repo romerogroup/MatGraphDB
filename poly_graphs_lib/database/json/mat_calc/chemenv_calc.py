@@ -10,7 +10,7 @@ from pymatgen.analysis.chemenv.coordination_environments.structure_environments 
 
 from poly_graphs_lib.utils import LOGGER
 from poly_graphs_lib.database.json import DB_DIR
-from poly_graphs_lib.database.json.utils import process_database
+from poly_graphs_lib.database.utils.process_database import process_database
 
 def chemenv_calc_task(file, from_scratch=True):
     """

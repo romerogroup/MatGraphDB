@@ -1,8 +1,6 @@
-import os
-
 from neo4j import GraphDatabase
 
-from poly_graphs_lib.database.neo4j import PASSWORD,USER,LOCATION,DB_NAME
+from poly_graphs_lib.database.utils import PASSWORD,USER,LOCATION,DB_NAME
 
 def create_database():
 

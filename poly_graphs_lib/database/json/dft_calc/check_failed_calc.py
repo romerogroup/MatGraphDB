@@ -1,11 +1,9 @@
 import os 
-import json
 import shutil
 
 from glob import glob
 
-from poly_graphs_lib.database.json import MP_DIR,DB_CALC_DIR
-
+from poly_graphs_lib.database.utils import MP_DIR,DB_CALC_DIR
 from poly_graphs_lib.utils import LOG_DIR
 
 

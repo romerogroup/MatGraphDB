@@ -4,44 +4,36 @@ from multiprocessing import Pool
 from neo4j import GraphDatabase
 from neo4j.exceptions import TransientError
 
-from poly_graphs_lib.database.neo4j import PASSWORD,USER,LOCATION,DB_NAME
-from poly_graphs_lib.database import N_CORES
+from poly_graphs_lib.database.utils import N_CORES, PASSWORD,USER,LOCATION,DB_NAME
 
-
-CONNECTION = GraphDatabase.driver(LOCATION, auth=(USER, PASSWORD))
-
-def mp_execute_statements(statment):
-
-    session = CONNECTION.session(database=DB_NAME)
+def execute_statements_task(statement):
+    connection = GraphDatabase.driver(LOCATION, auth=(USER, PASSWORD))
+    session = connection.session(database=DB_NAME)
 
     for _ in range(20):  # Retry up to 3 times
         try:
             # Execute the statement
             # This is just a placeholder, replace with your actual code
-            session.run(statment)
+            session.run(statement)
             break
         except TransientError as e:
             print(f"Transient error occurred: {e}, retrying...")
 
     session.close()
-    
+    connection.close()
 
-    return None
+def execute_statements(statements: List[str], n_cores=N_CORES):
 
-def execute_statements(statements:List[str], n_cores=N_CORES):
-    if n_cores==1:
-        # To read and write to the data base you must open a session
-        session = CONNECTION.session(database=DB_NAME)
+    if n_cores == 1:
+        connection = GraphDatabase.driver(LOCATION, auth=(USER, PASSWORD))
+        session = connection.session(database=DB_NAME)
 
-        for execute_statment in statements:
-            session.run(execute_statment)
-
+        for execute_statement in statements:
+            session.run(execute_statement)
+        connection.close()
     else:
-
         with Pool(n_cores) as p:
-            p.map(mp_execute_statements, statements)
-
-CONNECTION.close()
+            p.map(execute_statements_task, statements)
 
 
 # def execute_statements(statements:List[str], n_cores=N_CORES):

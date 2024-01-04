@@ -12,7 +12,7 @@ DEFAULT_POPULATE_FUNCTIONS=[populate_chemenvElement_relationships,
                             populate_element_relationships
                             ]
 
-def populate_all_relationships(default_populate_functions=DEFAULT_POPULATE_FUNCTIONS, execute_statments=False):
+def populate_all_relationships(default_populate_functions=DEFAULT_POPULATE_FUNCTIONS):
     for default_populate_function in default_populate_functions:
         create_statments=default_populate_function()
         execute_statements(create_statments)

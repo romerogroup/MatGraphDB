@@ -3,15 +3,12 @@
 import os
 from glob import glob
 import json
-from multiprocessing import Pool
 
 from pymatgen.core import Structure
 from pymatgen.io.vasp import Poscar
 
-
-from poly_graphs_lib.database import N_CORES
-from poly_graphs_lib.database.json import DB_DIR, DB_CALC_DIR
-from poly_graphs_lib.database.json.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR, DB_CALC_DIR
+from poly_graphs_lib.database.utils.process_database import process_database
 
 def generate_calc_dir_task(file):
     with open(file, 'r') as f:

@@ -1,18 +1,13 @@
 import os
 import re
 import json
-from glob import glob
-
-
-
 from multiprocessing import Lock
-
 
 import pymatgen.core as pmat
 
 from poly_graphs_lib.utils.periodic_table import covalent_cutoff_map
-from poly_graphs_lib.database.json.utils import process_database
-from poly_graphs_lib.database.json import DB_DIR,DB_CALC_DIR
+from poly_graphs_lib.database.utils.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR,DB_CALC_DIR
 from poly_graphs_lib.utils import LOG_DIR
 
 

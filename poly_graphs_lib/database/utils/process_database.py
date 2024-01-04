@@ -2,8 +2,8 @@ import os
 from glob import glob
 from multiprocessing import Pool
 
-from poly_graphs_lib.database.json import DB_DIR
-from poly_graphs_lib.database import N_CORES
+from poly_graphs_lib.database.utils import DB_DIR, N_CORES
+
 
 def process_database(func, n_cores=N_CORES):
     """

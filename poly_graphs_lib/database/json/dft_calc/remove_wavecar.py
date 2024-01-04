@@ -4,6 +4,7 @@ import json
 import re
 import shutil
 from glob import glob
+
 scratch_dir='/users/lllang/SCRATCH'
 root_dir=os.path.join(scratch_dir,'projects','crystal_graph') 
 database_dir=os.path.join(root_dir,'data','raw','mp_database_calcs_no_restriction')

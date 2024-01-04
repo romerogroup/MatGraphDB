@@ -4,8 +4,8 @@ import pymatgen.core as pmat
 from pymatgen.analysis.local_env import CutOffDictNN
 
 from poly_graphs_lib.utils.periodic_table import covalent_cutoff_map
-from poly_graphs_lib.database.json.utils import process_database
-from poly_graphs_lib.database.json import DB_DIR
+from poly_graphs_lib.database.utils.process_database import process_database
+from poly_graphs_lib.database.utils import DB_DIR
 
 CUTOFF_DICT=covalent_cutoff_map(tol=0.1)
 
