@@ -15,8 +15,8 @@ import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 from torch.nn import functional as F
 
-from poly_graphs_lib.pyg_dataset import PolyhedraDataset
-from poly_graphs_lib.callbacks import EarlyStopping
+from matgraphdb.pyg_dataset import PolyhedraDataset
+from trash.callbacks import EarlyStopping
 
 large_width = 400
 np.set_printoptions(linewidth=large_width)

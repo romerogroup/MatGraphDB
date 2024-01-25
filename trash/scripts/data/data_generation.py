@@ -1,6 +1,6 @@
 import os
 
-from poly_graphs_lib.data.create_datasets import create_material_polyhedra_dataset_2,create_material_polyhedra_dataset_3
+from matgraphdb.data.create_datasets import create_material_polyhedra_dataset_2,create_material_polyhedra_dataset_3
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 

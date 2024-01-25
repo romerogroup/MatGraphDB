@@ -14,8 +14,8 @@ import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 
 
-from poly_graphs_lib.pyg_dataset import PolyhedraDataset
-from poly_graphs_lib.callbacks import EarlyStopping
+from matgraphdb.pyg_dataset import PolyhedraDataset
+from trash.callbacks import EarlyStopping
 # from poly_graphs_lib.poly_graph_model import PolyhedronModel
 
 class PolyhedronModel(nn.Module):

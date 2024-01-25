@@ -14,9 +14,9 @@ import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 from torchmetrics import MeanAbsolutePercentageError
 
-from poly_graphs_lib.pyg_dataset import PolyhedraDataset
-from poly_graphs_lib.callbacks import EarlyStopping
-from poly_graphs_lib.models.poly_regression_model import PolyhedronModel
+from matgraphdb.pyg_dataset import PolyhedraDataset
+from trash.callbacks import EarlyStopping
+from matgraphdb.models.poly_regression_model import PolyhedronModel
 
 def main():
     experiment_dir = os.path.dirname(os.path.abspath(__file__))

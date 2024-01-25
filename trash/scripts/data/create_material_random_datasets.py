@@ -1,6 +1,6 @@
 import os
 
-from poly_graphs_lib.data.create_datasets import create_material_random_polyhedra_dataset
+from matgraphdb.data.create_datasets import create_material_random_polyhedra_dataset
 
 
 def main():

@@ -5,6 +5,7 @@ from distutils.core import setup
 from pathlib import Path
 
 import pkg_resources as pkg
+
 # Settings
 FILE = Path(__file__).resolve()
 PARENT = FILE.parent  # root directory
@@ -21,7 +22,7 @@ REQUIREMENTS = [f'{x.name}{x.specifier}' for x in pkg.parse_requirements((PARENT
 
 
 setup(
-name='poly_graphs_lib',
+name='matgraphdb',
 version="1.0.0",
 author='Logan Lang',
 author_email='lllang@mix.wvu.edu',

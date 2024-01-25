@@ -9,7 +9,7 @@ from pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_f
 from pymatgen.analysis.chemenv.coordination_environments.structure_environments import LightStructureEnvironments
 from pymatgen.analysis.chemenv.coordination_environments.coordination_geometries import AllCoordinationGeometries
 from pymatgen.analysis.local_env import NearNeighbors,VoronoiNN
-from poly_graphs_lib.utils import PROJECT_DIR
+from matgraphdb.utils import PROJECT_DIR
 
 
 def chemenv_analysis(file):

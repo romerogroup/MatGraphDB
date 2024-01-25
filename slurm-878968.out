@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "poly_graphs_lib/database/json/mat_calc/chemenv_calc.py", line 12, in <module>
-    from poly_graphs_lib.database.json import DB_DIR
-ImportError: cannot import name 'DB_DIR' from 'poly_graphs_lib.database.json' (/gpfs20/scratch/lllang/projects/Graph_Network_Project/poly_graphs_lib/database/json/__init__.py)

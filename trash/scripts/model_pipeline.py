@@ -1,6 +1,6 @@
-from poly_graphs_lib.data.data_collection import PolyCollector
-from poly_graphs_lib.data.pair_generation import PairGenerator
-from poly_graphs_lib.data.data_featurization import FeatureGenerator
+from matgraphdb.data.data_collection import PolyCollector
+from matgraphdb.data.pair_generation import PairGenerator
+from matgraphdb.data.data_featurization import FeatureGenerator
 
 def main():
     collect_raw_polys = False

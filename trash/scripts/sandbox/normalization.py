@@ -13,8 +13,8 @@ from torch_geometric.loader import DataLoader
 import torch_geometric.nn as pyg_nn
 from torchmetrics.functional import mean_absolute_percentage_error
 
-from poly_graphs_lib.pyg_dataset import PolyhedraDataset
-from poly_graphs_lib.callbacks import EarlyStopping
+from matgraphdb.pyg_dataset import PolyhedraDataset
+from trash.callbacks import EarlyStopping
 
 
 
