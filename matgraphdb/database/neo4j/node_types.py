@@ -17,6 +17,8 @@ CRYSTAL_SYSTEMS = ['triclinic','monoclinic','orthorhombic','tetragonal','trigona
 
 MATERIAL_FILES =  glob(DB_DIR + os.sep + '*.json')
 
+
+
 CHEMENV_NAMES=mp_coord_encoding.keys()
 CHEMENV_NAMES_MAP={name:i for i,name in enumerate(CHEMENV_NAMES)}
 

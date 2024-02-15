@@ -1,4 +1,4 @@
-
+import functools
 import time
 
 class Timer:
@@ -59,8 +59,7 @@ class Timer:
                 # file.write(f"{event_str}\n")
                 file.write("{:<30}{:<30}{:<30}\n".format(*event_str))
             
-import functools
-import time
+
 
 def timeit(func):
     """A decorator that times a function's execution."""

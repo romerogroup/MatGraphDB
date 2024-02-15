@@ -1,5 +1,6 @@
 import os
 import json
+from glob import glob
 
 import pandas as pd
 import pymatgen.core as pmat
@@ -7,7 +8,7 @@ import pymatgen.core as pmat
 from matgraphdb.database.neo4j.node_types import (ELEMENTS, MAGNETIC_STATES, CRYSTAL_SYSTEMS, CHEMENV_NAMES,
                                                   MATERIAL_FILES, CHEMENV_ELEMENT_NAMES, SPG_NAMES)
 from matgraphdb.database.json.utils import PROPERTY_NAMES
-from matgraphdb.utils import  GLOBAL_PROP_FILE, NODE_DIR, LOGGER
+from matgraphdb.utils import  GLOBAL_PROP_FILE, NODE_DIR, LOGGER, ENCODING_DIR
 
 
 
@@ -170,13 +171,37 @@ def create_materials_nodes(node_names=MATERIAL_FILES,filepath=None):
             node_dict[property_name].append(value)
 
 
-        
+    # Check if encodings are present
+    if os.path.exists(ENCODING_DIR):
+        encoding_files=glob(os.path.join(ENCODING_DIR,'*.csv'))
+        for encoding_file in encoding_files:
+            encoding_name=encoding_file.split(os.sep)[-1].split('.')[0]
+
+            df=pd.read_csv(encoding_file,index_col=0)
+
+            # Convert the dataframe values to a list of strings where the strings are the rows of the dataframe separated by a semicolon
+            df = df.apply(lambda x: ';'.join(map(str, x)), axis=1)
+
+            node_dict.update({f'{encoding_name}:float[]': df.tolist()})
+        del df
 
     df=pd.DataFrame(node_dict)
+
+    # Remove rows with nan values. Might need to change this in the futrue
+    for encoding_name in encoding_files:
+        encoding_name=encoding_name.split(os.sep)[-1].split('.')[0]
+
+        # Where the encoding contains nan value replace with None:
+        df[f'{encoding_name}:float[]']=df[f'{encoding_name}:float[]'].apply(lambda x: None if 'nan' in x else x)
+
+        # Remove rows with that contain None values
+        df=df.dropna(subset=[f'{encoding_name}:float[]'])
+
     if filepath is not None:
-        df=pd.DataFrame(node_dict)
         df.to_csv(filepath,index=False)
     return df
+
+
 
 def main():
     
@@ -184,12 +209,12 @@ def main():
     print('Save_path : ', save_path)
     os.makedirs(save_path,exist_ok=True)
     print('Creating nodes...')
-    df=create_element_nodes(node_names=ELEMENTS,filepath=os.path.join(save_path,'elements.csv'))
-    df=create_crystal_system_nodes(node_names=CRYSTAL_SYSTEMS,filepath=os.path.join(save_path,'crystal_systems.csv'))
-    df=create_chemenv_nodes(node_names=CHEMENV_NAMES,filepath=os.path.join(save_path,'chemenv_names.csv'))
-    df=create_chemenvElement_nodes(node_names=CHEMENV_ELEMENT_NAMES,filepath=os.path.join(save_path,'chemenv_element_names.csv'))
-    df=create_mag_state_nodes(node_names=MAGNETIC_STATES,filepath=os.path.join(save_path,'magnetic_states.csv'))
-    df=create_materials_nodes(node_names=MATERIAL_FILES,filepath=os.path.join(save_path,'materials.csv'))
+    # df=create_element_nodes(node_names=ELEMENTS,filepath=os.path.join(save_path,'elements.csv'))
+    # df=create_crystal_system_nodes(node_names=CRYSTAL_SYSTEMS,filepath=os.path.join(save_path,'crystal_systems.csv'))
+    # df=create_chemenv_nodes(node_names=CHEMENV_NAMES,filepath=os.path.join(save_path,'chemenv_names.csv'))
+    # df=create_chemenvElement_nodes(node_names=CHEMENV_ELEMENT_NAMES,filepath=os.path.join(save_path,'chemenv_element_names.csv'))
+    # df=create_mag_state_nodes(node_names=MAGNETIC_STATES,filepath=os.path.join(save_path,'magnetic_states.csv'))
+    df=create_materials_nodes(node_names=MATERIAL_FILES,filepath=os.path.join(save_path,'materials_5.csv'))
     print('Finished creating nodes')
 
 

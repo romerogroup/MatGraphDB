@@ -23,10 +23,12 @@ with open(CONFIG_FILE, 'r') as f:
 
 N_CORES=CONFIG['N_CORES']
 MP_API_KEY=CONFIG['MP_API_KEY']
+OPENAI_API_KEY=CONFIG['OPENAI_API_KEY']
 
 MP_DIR=os.path.join(ROOT,'data','processed',CONFIG['DB_NAME'])
 DB_DIR=os.path.join(MP_DIR,'json_database')
 GRAPH_DIR=os.path.join(MP_DIR,'graph_database')
+ENCODING_DIR=os.path.join(MP_DIR,'encodings')
 NODE_DIR=os.path.join(GRAPH_DIR,'nodes')
 RELATIONSHIP_DIR=os.path.join(GRAPH_DIR,'relationships')
 DB_CALC_DIR=os.path.join(MP_DIR,'calculations','MaterialsData')
@@ -37,4 +39,5 @@ GLOBAL_PROP_FILE=os.path.join(MP_DIR,'global_properties.json')
 USER="neo4j"
 PASSWORD="password"
 LOCATION="bolt://localhost:7687"
-DB_NAME='chemenvdb'
+DB_NAME='test2'
+

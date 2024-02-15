@@ -15,7 +15,7 @@ from matminer.featurizers.composition import ElementFraction
 from matgraphdb.utils import MP_DIR, DB_DIR
 from matgraphdb.database.json.utils import chunk_list,cosine_similarity
 
-CHUNK_SIZE=1000
+
 N_CORES=4
 SIMILARITY_DIR= os.path.join(MP_DIR,'similarity')
 CHUNK_DIR=os.path.join(SIMILARITY_DIR,'chunks')
