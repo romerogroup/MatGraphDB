@@ -48,7 +48,7 @@ def similarity_query(prompt, n_results=5):
     execute_statement="""
     CALL db.index.vector.queryNodes('material-text-embedding-3-small-embeddings', $nresults, $embedding)
     YIELD node as sm, score
-    RETURN sm.composition_reduced,sm.formula_pretty,sm.symmetry, score
+    RETURN sm.material_id, sm.composition_reduced,sm.formula_pretty,sm.symmetry,sm.is_stable,sm.is_metal,sm.band_gap, score
     """
 
     connection = GraphDatabase.driver(LOCATION, auth=(USER, PASSWORD))
@@ -62,15 +62,26 @@ def similarity_query(prompt, n_results=5):
         formula_pretty = record["sm.formula_pretty"]
         symmetry = record["sm.symmetry"]
         score = record["score"]
+        is_stable = record["sm.is_stable"]
+        is_metal = record["sm.is_metal"]
+        band_gap = record["sm.band_gap"]
+        material_id = record["sm.material_id"]
         
+        print(f"Material ID: {material_id}")
         print(f"Composition Reduced: {composition_reduced}")
         print(f"Formula Pretty: {formula_pretty}")
         print(f"Symmetry: {symmetry}")
+        print(f"Is Stable: {is_stable}")
+        print(f"Is Metal: {is_metal}")
+        print(f"Band Gap: {band_gap}")
         print(f"Score: {score}")
         print('_'*200)
     session.close()
     connection.close()
 
 if __name__ == "__main__":
-    prompt = "What are materials similar to the composition TiAu"
+    # prompt = "What are materials similar to the composition TiAu"
+    # prompt = "What are some materials with a large band gap?"
+    prompt = "band_gap greater than 1.0?"
+    # prompt = "What are some materials with a with hexagonal crystal system?"
     similarity_query(prompt,n_results=20)
