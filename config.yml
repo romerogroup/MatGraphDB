@@ -7,3 +7,11 @@ USER: "neo4j"
 PASSWORD: "password"
 LOCATION: "bolt://localhost:7687"
 GRAPH_DB_NAME: 'test2'
+
+
+
+
+USER: "neo4j"
+PASSWORD: "password"
+LOCATION: "bolt://localhost:7687"
+GRAPH_DB_NAME: 'test2'

@@ -17,6 +17,8 @@ DATA_DIR=os.path.join(ROOT,'data')
 CONFIG_FILE=os.path.join(ROOT,'config.yml')
 PRIVATE_CONFIG_FILE=os.path.join(ROOT,'private_config.yml')
 
+
+
 # Load config from yaml file
 with open(CONFIG_FILE, 'r') as f:
     CONFIG = yaml.safe_load(f)
@@ -37,7 +39,8 @@ with open(PRIVATE_CONFIG_FILE, 'r') as f:
 MP_API_KEY=PRIVATE_CONFIG['MP_API_KEY']
 OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
 
-MP_DIR=os.path.join(ROOT,'data','processed',CONFIG['DB_NAME'])
+MP_DIR=os.path.join(ROOT,'data','raw',CONFIG['DB_NAME'])
+TMP_DIR=os.path.join(MP_DIR,"tmp")
 DB_DIR=os.path.join(MP_DIR,'json_database')
 GRAPH_DIR=os.path.join(MP_DIR,'graph_database')
 ENCODING_DIR=os.path.join(MP_DIR,'encodings')
