@@ -8,19 +8,20 @@ from matgraphdb.utils.periodic_table import atomic_symbols
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import DB_DIR
 
-ELEMENTS = atomic_symbols[1:]
-ELEMENTS_MAP = {element:i for i,element in enumerate(ELEMENTS)}
-
-MAGNETIC_STATES=['NM', 'FM', 'FiM', 'AFM', 'Unknown']
-
-CRYSTAL_SYSTEMS = ['triclinic','monoclinic','orthorhombic','tetragonal','trigonal','hexagonal','cubic']
-
 MATERIAL_FILES =  glob(DB_DIR + os.sep + '*.json')
 
 
+ELEMENTS = atomic_symbols[1:]
+ELEMENTS_ID_MAP = {element:i for i,element in enumerate(ELEMENTS)}
+
+MAGNETIC_STATES=['NM', 'FM', 'FiM', 'AFM', 'Unknown']
+MAGNETIC_STATES_ID_MAP={name:i for i,name in enumerate(MAGNETIC_STATES)}
+
+CRYSTAL_SYSTEMS = ['triclinic','monoclinic','orthorhombic','tetragonal','trigonal','hexagonal','cubic']
+CRYSTAL_SYSTEMS_ID_MAP={name:i for i,name in enumerate(CRYSTAL_SYSTEMS)}
 
 CHEMENV_NAMES=mp_coord_encoding.keys()
-CHEMENV_NAMES_MAP={name:i for i,name in enumerate(CHEMENV_NAMES)}
+CHEMENV_NAMES_ID_MAP={name:i for i,name in enumerate(CHEMENV_NAMES)}
 
 tmp=[]
 for element_name in ELEMENTS:
@@ -29,10 +30,14 @@ for element_name in ELEMENTS:
         tmp.append(class_name)
 
 CHEMENV_ELEMENT_NAMES=tmp
-CHEMENV_ELEMENT_NAMES_MAP={name:i for i,name in enumerate(CHEMENV_ELEMENT_NAMES)}
+CHEMENV_ELEMENT_NAMES_ID_MAP={name:i for i,name in enumerate(CHEMENV_ELEMENT_NAMES)}
 
 SPG_NAMES=[f'spg_{i}' for i in np.arange(1,231)]
+SPG_MAP={name:i for i,name in enumerate(SPG_NAMES)}
 
+
+OXIDATION_STATES = np.arange(-9,10)
+OXIDATION_STATES_ID_MAP={name:i for i,name in enumerate(OXIDATION_STATES)}
 
 # wyckoff_letters=['a', 'b', 'c', 'd', 'e', 'f']
 # spg_wyckoffs=[]
