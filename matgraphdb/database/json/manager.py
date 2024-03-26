@@ -68,7 +68,6 @@ class DatabaseManager:
 
         file_path = os.path.join(dir,'chargemol','DDEC6_even_tempered_bond_orders.xyz')
         
-
         if os.path.exists(file_path):
             check=True
         else:
@@ -119,6 +118,7 @@ class DatabaseManager:
                     file.write('export NUM_CORES=$((SLURM_JOB_NUM_NODES * SLURM_CPUS_ON_NODE))\n')
                     file.write(f'cd {chargemol_dir}\n')
                     file.write(f'echo "CALC_DIR: {chargemol_dir}"\n')
+                    file.write(f'echo "NCORES: $((NUM_CORES))"\n')
                     file.write('\n')
                     file.write(f'mpirun -np $NUM_CORES vasp_std\n')
                     file.write('\n')
@@ -142,7 +142,9 @@ if __name__=='__main__':
     # success,failed=db.check_property(property_name=properties[0])
 
 
-    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
+    db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
+
+    # db.add_chargemol_slurm_script(partition_info=('comm_cpu_day','24:00:00','20', '1') )
     success,failed=db.check_chargemol()
     # print(success[:10])
     # print(failed[:10])
