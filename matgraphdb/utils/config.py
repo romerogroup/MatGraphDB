@@ -25,6 +25,11 @@ with open(CONFIG_FILE, 'r') as f:
 
 N_CORES=CONFIG['N_CORES']
 
+# Neo4j variables
+USER=CONFIG['USER']
+PASSWORD=CONFIG['PASSWORD']
+LOCATION=CONFIG['LOCATION']
+GRAPH_DB_NAME=CONFIG['DB_NAME']
 
 # Load config from yaml file
 with open(PRIVATE_CONFIG_FILE, 'r') as f:
@@ -45,9 +50,4 @@ DB_CALC_DIR=os.path.join(MP_DIR,'calculations','MaterialsData')
 GLOBAL_PROP_FILE=os.path.join(MP_DIR,'global_properties.json')
 
 
-# Neo4j variables
-USER="neo4j"
-PASSWORD="password"
-LOCATION="bolt://localhost:7687"
-DB_NAME='test2'
 
