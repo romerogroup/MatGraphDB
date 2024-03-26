@@ -15,7 +15,7 @@ def cosine_similarity(a,b):
     return similarity
 
 
-PROPERTY_NAMES=[
+PROPERTIES=[
     ("material_id","string"),
     ("nsites","int"),
     ("elements","string[]"),

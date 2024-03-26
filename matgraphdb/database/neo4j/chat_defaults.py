@@ -13,6 +13,6 @@ You are an expert Neo4j Cypher translator who understands the question in englis
 7. Always use aliases to refer the node in the query
 8. Cypher is NOT SQL. So, do not mix and match the syntaxes
 Schema:
-{self.db_schema}
+{db_schema}
 \n
 """

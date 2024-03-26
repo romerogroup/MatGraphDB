@@ -39,7 +39,7 @@ with open(PRIVATE_CONFIG_FILE, 'r') as f:
 MP_API_KEY=PRIVATE_CONFIG['MP_API_KEY']
 OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
 
-MP_DIR=os.path.join(ROOT,'data','raw',CONFIG['DB_NAME'])
+MP_DIR=os.path.join(ROOT,'data','processed',CONFIG['DB_NAME'])
 TMP_DIR=os.path.join(MP_DIR,"tmp")
 DB_DIR=os.path.join(MP_DIR,'json_database')
 GRAPH_DIR=os.path.join(MP_DIR,'graph_database')
