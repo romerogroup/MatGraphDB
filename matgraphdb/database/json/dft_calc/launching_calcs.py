@@ -17,7 +17,7 @@ def launch_failed_chargemol_calcs():
 
     print(f"About to launch {len(failed)} calculations")
     for path in failed[:]:
-        print(path)
+        # print(path)
         slurm_script=os.path.join(path,'run.slurm')
         slurm_scripts.append(slurm_script)
         
