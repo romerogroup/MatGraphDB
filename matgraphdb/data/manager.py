@@ -15,6 +15,9 @@ class DatabaseManager:
         self.calculation_path = calc_path
         self.n_cores = N_CORES
 
+    @property
+    def database_files(self):
+        return glob(self.directory_path + os.sep + '*.json')
 
     def process_task(self, func, list,**kwargs):
         with Pool(self.n_cores) as p:
@@ -94,7 +97,7 @@ class DatabaseManager:
 
         return success, failed
 
-    def add_chargemol_slurm_script(self, partition_info=('comm_small_day','24:00:00','16', '1') ):
+    def add_chargemol_slurm_script(self, partition_info=('comm_small_day','24:00:00','16', '1'), exclude=[]):
         calc_dirs = glob(self.calculation_path + os.sep + 'mp-*')
         print("Processing files from : ",self.calculation_path + os.sep + 'mp-*')
         results=self.process_task(self.check_chargemol_task, calc_dirs)
@@ -110,8 +113,11 @@ class DatabaseManager:
                     file.write(f'#SBATCH -c {partition_info[2]}\n')
                     file.write(f'#SBATCH -p {partition_info[0]}\n')
                     file.write(f'#SBATCH -t {partition_info[1]}\n')
-                    file.write(f'#SBATCH --output={chargemol_dir}/jobOutput_%j.out\n')
-                    file.write(f'#SBATCH --error={chargemol_dir}/jobError_%j.err\n')
+                    if exclude:
+                        node_list_string= ','.join(exclude)
+                        file.write(f'#SBATCH --exclude={node_list_string}\n')
+                    file.write(f'#SBATCH --output={chargemol_dir}/jobOutput.out\n')
+                    file.write(f'#SBATCH --error={chargemol_dir}/jobError.err\n')
                     file.write('\n')
                     file.write('source ~/.bashrc\n')
                     file.write('module load atomistic/vasp/6.2.1_intel22_impi22\n')
@@ -142,12 +148,12 @@ if __name__=='__main__':
     # success,failed=db.check_property(property_name=properties[0])
 
 
-    db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
+    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
 
-    # db.add_chargemol_slurm_script(partition_info=('comm_cpu_day','24:00:00','20', '1') )
+    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1'),exclude=[] )
     success,failed=db.check_chargemol()
     # print(success[:10])
-    # print(failed[:10])
+    print(failed[:20])
 
     print("Number of failed files: ", len(failed))
     print("Number of success files: ", len(success))

@@ -16,6 +16,8 @@ cd $SLURM_SUBMIT_DIR
 echo $SLURM_SUBMIT_DIR > run_analysis_debug.txt
 source venv/bin/activate
 
-python poly_graphs_lib/database/json/chemenv_analysis_multi.py > run_analysis_debug.txt
+mpirun -np $NUM_CORES pw.x <scf.in> scf.out
+mpirun -np $NUM_CORES pw.x <nscf.in> nscf.out
+mpirun -np $NUM_CORES projwfc.x <kpdos.in> kpdos.out
 
 
