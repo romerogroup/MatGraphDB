@@ -1,2 +1,0 @@
-At line 26 of file module_read_job_control.f08
-Fortran runtime error: File 'job_control.txt' does not exist
