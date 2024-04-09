@@ -1,6 +1,6 @@
 from neo4j import GraphDatabase
 
-from matgraphdb.utils import PASSWORD,USER,LOCATION,DB_NAME
+from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME
 from matgraphdb.graph.similarity_chat import get_similarity_query
 
 class MatGraphDB:
@@ -95,21 +95,24 @@ class MatGraphDB:
 
                 # Get the relationship properties
                 query_relationship=f'MATCH ({start_node_name})-[r:`{relationship_type}`]-({end_node_name}) RETURN r LIMIT 1'
-                relationship = self.execute_query(query_relationship)[0][0]
+                try:
+                    relationship = self.execute_query(query_relationship)[0][0]
+                
+                    relationship_properties = {}
+                    for key, value in relationship._properties.items():
+                        relationship_properties[key] = type(value).__name__
 
-                relationship_properties = {}
-                for key, value in relationship._properties.items():
-                    relationship_properties[key] = type(value).__name__
-
-                # Create the final schema
-                query_relationship=f'({start_node_name} {node_and_properties[node_1_name]} )-[r:`{relationship_type}` {relationship_properties}]-({end_node_name} {node_and_properties[node_2_name]}) '
-                schema_list.append(query_relationship)
+                    # Create the final schema
+                    query_relationship=f'({start_node_name} {node_and_properties[node_1_name]} )-[r:`{relationship_type}` {relationship_properties}]-({end_node_name} {node_and_properties[node_2_name]}) '
+                    schema_list.append(query_relationship)
+                except:
+                    continue
         
         return schema_list
     
     def execute_query(self, query, parameters=None):
 
-        with self.driver.session(database=DB_NAME) as session:
+        with self.driver.session(database=GRAPH_DB_NAME) as session:
             results = session.run(query, parameters)
             return [record for record in results]
 
@@ -118,7 +121,7 @@ class MatGraphDB:
         embedding, execute_statement = get_similarity_query(prompt)
         parameters =  {"embedding": embedding,"nresults":n_results}
 
-        with self.driver.session(database=DB_NAME) as session:
+        with self.driver.session(database=GRAPH_DB_NAME) as session:
             results = session.run(execute_statement, parameters)
 
             return [record for record in results]
@@ -128,25 +131,25 @@ if __name__ == "__main__":
 
     with MatGraphDB() as session:
         # result = matgraphdb.execute_query(query, parameters)
-        # schema_list=session.list_schema()
+        schema_list=session.list_schema()
 
+        print(schema_list)
+#         prompt = "What are materials similar to the composition TiAu"
+#         # prompt = "What are materials with TiAu"
+#         # prompt = "What are materials with TiAu"
 
-        prompt = "What are materials similar to the composition TiAu"
-        # prompt = "What are materials with TiAu"
-        # prompt = "What are materials with TiAu"
+#         # prompt = "What are some cubic materials"
+# #     # prompt = "What are some materials with a large band gap?"
+#         prompt = "What are materials with a band_gap greater than 1.0?"
+#         results=session.execute_llm_query(prompt,n_results=10)
 
-        # prompt = "What are some cubic materials"
-#     # prompt = "What are some materials with a large band gap?"
-        prompt = "What are materials with a band_gap greater than 1.0?"
-        results=session.execute_llm_query(prompt,n_results=10)
-
-        for result in results:
-            print(result['sm']["name"])
-            print(result['sm']["formula_pretty"])
-            print(result['sm']["symmetry"])
-            print(result['score'])
-            # print(results['sm']["band_gap"])
-            print("_"*200)
+#         for result in results:
+#             print(result['sm']["name"])
+#             print(result['sm']["formula_pretty"])
+#             print(result['sm']["symmetry"])
+#             print(result['score'])
+#             # print(results['sm']["band_gap"])
+#             print("_"*200)
 
 
 
