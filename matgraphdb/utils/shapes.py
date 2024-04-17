@@ -1,7 +1,7 @@
 import numpy as np
 from coxeter.families import PlatonicFamily
 
-from .math import rot_z
+from matgraphdb.utils.math_utils import rot_z
 
 verts_mp567387_Ti = np.array([
                         [9.35032981971472,5.347268180285281,3.817163621730258],    

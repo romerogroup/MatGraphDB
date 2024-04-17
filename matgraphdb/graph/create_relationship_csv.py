@@ -14,13 +14,22 @@ from matminer.featurizers.composition import ElementFraction
 from matgraphdb.graph.node_types import *
 from matgraphdb.utils import  GLOBAL_PROP_FILE, RELATIONSHIP_DIR,NODE_DIR, N_CORES, LOGGER, ENCODING_DIR, timeit
 from matgraphdb.utils.periodic_table import atomic_symbols_map
-from matgraphdb.utils.math import cosine_similarity
+from matgraphdb.utils.math_utils import cosine_similarity
 from matgraphdb.utils.general import chunk_list
 ############################################################
 # Below is for is for creating relationships between nodes
 ############################################################
 
 def extract_id_column_headers(df):
+    """
+    Extracts the ID column headers from a DataFrame.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame from which to extract the ID column headers.
+
+    Returns:
+        str: The first ID column header found in the DataFrame.
+    """
     id_columns = []
     for column in df.columns:
         if re.search(r':ID\(.+?\)', column):
@@ -29,6 +38,21 @@ def extract_id_column_headers(df):
     return id_columns[0]
 
 def create_bonding_task(material_file, node_type, bonding_method='geometric_electric'):
+    """
+    Create bonding task based on the given material file, node type, and bonding method.
+
+    Args:
+        material_file (str): The path to the material file.
+        node_type (str): The type of node to create for each site.
+        bonding_method (str, optional): The method used for bonding. Defaults to 'geometric_electric'.
+
+    Returns:
+        list: A list of tuples representing the material connections.
+
+    Raises:
+        Exception: If there is an error processing the file.
+
+    """
     material_connections=[]
     # Load material data from file
     with open(material_file) as f:
@@ -89,6 +113,20 @@ def create_bonding_task(material_file, node_type, bonding_method='geometric_elec
     return material_connections
 
 def create_chemenv_element_task(material_file):
+    """
+    Create chemical environment element task.
+
+    This function takes a material file as input and extracts the coordination environments,
+    connections, and site element names from the material data. It then iterates over each site
+    and its coordination environment, and creates a list of tuples containing the chemical
+    environment ID and element ID for each site.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples containing the chemical environment ID and element ID for each site.
+    """
     
     material_connections=[]
 
@@ -126,7 +164,20 @@ def create_chemenv_element_task(material_file):
     return material_connections
 
 def create_material_element_task(material_file):
-    
+    """
+    Create material-element relationships based on the given material file.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples representing the material-element relationships.
+              Each tuple contains the material project ID and the element ID.
+
+    Raises:
+        Exception: If there is an error processing the material file.
+    """
+
     material_connections=[]
 
     # Load material data from file
@@ -155,7 +206,21 @@ def create_material_element_task(material_file):
     return material_connections
 
 def create_material_chemenv_task(material_file):
-    
+    """
+    Create material-chemenv task.
+
+    This function takes a material file as input and extracts coordination environments,
+    connections, and site element names from the material data. It then iterates over each
+    site and its coordination environment to create a list of material connections.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of material connections, where each connection is represented as a tuple
+        containing the material project ID and the coordination environment ID.
+
+    """
     material_connections=[]
 
     # Load material data from file
@@ -186,7 +251,24 @@ def create_material_chemenv_task(material_file):
     return material_connections
 
 def create_material_chemenvElement_task(material_file):
-    
+    """
+    Create material-chemenvElement relationship task.
+
+    This function takes a material file as input and extracts the coordination environments,
+    connections, and site element names from the material data. It then iterates over each site
+    and its coordination environment, and creates a relationship between the material and the
+    chemenvElement.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples representing the material-chemenvElement relationships.
+
+    Raises:
+        Exception: If there is an error processing the material file.
+
+    """
     material_connections=[]
 
     # Load material data from file
@@ -221,6 +303,15 @@ def create_material_chemenvElement_task(material_file):
     return material_connections
 
 def create_oxi_state_element_task(material_file):
+    """
+    Creates a list of tuples representing the connections between site elements and their oxidation states.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples representing the connections between site elements and their oxidation states.
+    """
 
     material_connections=[]
     # Load material data from file
@@ -252,7 +343,24 @@ def create_oxi_state_element_task(material_file):
 
     return material_connections
 
+def create_relationships(node_a_csv, node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
+    """
+    Create relationships between nodes based on the provided CSV files.
+
+    Args:
+        node_a_csv (str): Path to the CSV file containing the first set of nodes.
+        node_b_csv (str): Path to the CSV file containing the second set of nodes.
+        mp_task (function): A function that defines the task to be performed on each material.
+        connection_name (str, optional): The name of the relationship between the nodes. Defaults to 'CONNECTS'.
+        filepath (str, optional): Path to save the resulting CSV file. Defaults to None.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing the relationships between the nodes.
+
+    """
+    # Rest of the code...
 def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
+
     df_a=pd.read_csv(node_a_csv)
     df_b=pd.read_csv(node_b_csv)
     node_a_id_space = extract_id_column_headers(df_a)
@@ -326,42 +434,70 @@ def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNEC
 # Below is for similarity between materials
 ############################################################
 def similarity_task(material_combs, features):
+    """
+    Calculate the similarity between pairs of materials based on their features.
 
-    n_materials_combs=len(material_combs)
-    material_combs_values = [None]*n_materials_combs
+    Args:
+        material_combs (list): A list of tuples representing pairs of material IDs.
+        features (pandas.DataFrame): A DataFrame containing the features of the materials.
+
+    Returns:
+        list: A list of tuples containing the material IDs, relationship type, and similarity score for each pair of materials.
+    """
+
+    n_materials_combs = len(material_combs)
+    material_combs_values = [None] * n_materials_combs
 
     for i, material_comb in enumerate(material_combs):
-        mat_id_1,mat_id_2=material_comb
+        mat_id_1, mat_id_2 = material_comb
 
         row_1 = features.iloc[mat_id_1].values
         row_2 = features.iloc[mat_id_2].values
-        similarity=cosine_similarity(a=row_1,b=row_2)
+        similarity = cosine_similarity(a=row_1, b=row_2)
 
-
-        material_comb_values=(mat_id_1,mat_id_2,'RELATIONSHP',similarity)
+        material_comb_values = (mat_id_1, mat_id_2, 'RELATIONSHP', similarity)
         material_combs_values[i] = material_comb_values
 
     return material_combs_values
 
 def megnet_lookup_task(material_combs, features):
-    n_materials_combs=len(material_combs)
-    material_combs_values = [None]*n_materials_combs
+    """
+    Perform a lookup task using the MEGNet model to calculate the similarity between pairs of materials.
+
+    Args:
+        material_combs (list): A list of tuples representing pairs of material IDs.
+        features (pandas.DataFrame): A DataFrame containing the features of the materials.
+
+    Returns:
+        list: A list of tuples containing the material IDs, relationship type, and similarity score for each pair of materials.
+    """
+
+    n_materials_combs = len(material_combs)
+    material_combs_values = [None] * n_materials_combs
 
     for i, material_comb in enumerate(material_combs):
-        mat_id_1,mat_id_2=material_comb
+        mat_id_1, mat_id_2 = material_comb
 
         row_1 = features.iloc[mat_id_1].values
         row_2 = features.iloc[mat_id_2].values
 
-        similarity=cosine_similarity(a=row_1,b=row_2)
+        similarity = cosine_similarity(a=row_1, b=row_2)
 
-        material_comb_values=(mat_id_1,mat_id_2,'RELATIONSHP',similarity)
+        material_comb_values = (mat_id_1, mat_id_2, 'RELATIONSHP', similarity)
         material_combs_values[i] = material_comb_values
 
     return material_combs_values
 
 def get_structure_composition_task(material_file):
-    # Load material data from file and get their pymatgen Structure and Compositions objects
+    """
+    Load material data from a file and extract the pymatgen Structure and Composition objects.
+
+    Args:
+        material_file (str): The path to the material data file.
+
+    Returns:
+        tuple: A tuple containing the Structure and Composition objects extracted from the file.
+    """
     with open(material_file) as f:
         db = json.load(f)
         struct = pmat.Structure.from_dict(db['structure'])
@@ -369,51 +505,51 @@ def get_structure_composition_task(material_file):
     return struct, composition
 
 @timeit
-def create_material_material_relationship(material_file_csv, mp_task, similarity_task,features,chunk_size=1000,filepath=None):
-    df=pd.read_csv(material_file_csv)[['materialsId:ID(materialsId-ID)','name']]
-    material_ids=df['materialsId:ID(materialsId-ID)'].values[:]
+def create_material_material_relationship(material_file_csv, mp_task, similarity_task, features, chunk_size=1000, filepath=None):
+    """
+    Create relationships between materials based on similarity.
+
+    Args:
+        material_file_csv (str): Path to the CSV file containing material information.
+        mp_task (function): Function to retrieve structure and composition information for a material.
+        similarity_task (function): Function to calculate similarity between two materials.
+        features (pandas.DataFrame): DataFrame containing features for each material.
+        chunk_size (int, optional): Number of material combinations to process in each chunk. Defaults to 1000.
+        filepath (str, optional): Path to save the resulting CSV file. Defaults to None.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing the material relationships and their similarity scores.
+    """
+    
+    df = pd.read_csv(material_file_csv)[['materialsId:ID(materialsId-ID)', 'name']]
+    material_ids = df['materialsId:ID(materialsId-ID)'].values[:]
     node_id_space = 'materialsId-ID'
 
-    material_id_combs=tuple(itertools.combinations_with_replacement(material_ids, r=2 ))
+    material_id_combs = tuple(itertools.combinations_with_replacement(material_ids, r=2))
     material_id_combs_chunks = chunk_list(material_id_combs, chunk_size)
 
     # Get the structures and compositions for each material
     with Pool(N_CORES) as p:
-        structure_composition_tuples=p.map(mp_task,MATERIAL_FILES[:])
+        structure_composition_tuples = p.map(mp_task, MATERIAL_FILES[:])
 
-    structures=[]
-    compositions=[]
+    structures = []
+    compositions = []
     for structure_composition_tuple in structure_composition_tuples:
-        structure,composition=structure_composition_tuple
+        structure, composition = structure_composition_tuple
         structures.append(structure)
         compositions.append(composition)
 
-    
-    # # Convert the structures and compositions to pandas dataframe. This is required to use Matminer featurizers
-    # # structure_data = pd.DataFrame({'structure': structures}, index=material_ids)
-    # composition_data = pd.DataFrame({'composition': compositions}, index=material_ids)
-    
-    # # structure_featurizer = MultipleFeaturizer([XRDPowderPattern()])
-    # composition_featurizer = MultipleFeaturizer([ElementFraction()])
-
-    # # structure_features = structure_featurizer.featurize_dataframe(structure_data,"structure")
-    # composition_features = composition_featurizer.featurize_dataframe(composition_data,"composition")
-
-    # # structure_features=structure_features.drop(columns=['structure'])
-    # composition_features=composition_features.drop(columns=['composition'])
-
-    # features=composition_features
-    features=features
+    features = features
     with Pool(N_CORES) as p:
-        material_combs_chunks_values=p.map(partial(similarity_task,features=features), material_id_combs_chunks)
+        material_combs_chunks_values = p.map(partial(similarity_task, features=features), material_id_combs_chunks)
 
-    material_combs_values=[]
+    material_combs_values = []
     for material_combs_chunk_values in material_combs_chunks_values:
         material_combs_values.extend(material_combs_chunk_values)
 
-    df =pd.DataFrame(material_combs_values,
-                     columns=[f':START_ID({node_id_space})',f':END_ID({node_id_space})',f':TYPE','similarity'])
- 
+    df = pd.DataFrame(material_combs_values,
+                      columns=[f':START_ID({node_id_space})', f':END_ID({node_id_space})', f':TYPE', 'similarity'])
+
     if filepath is not None:
         df.to_csv(filepath, index=False)
 
@@ -421,6 +557,18 @@ def create_material_material_relationship(material_file_csv, mp_task, similarity
 
 
 
+def main():
+    """
+    This function is the entry point of the script and is responsible for creating relationships between different nodes.
+    It calls the `create_relationships` function multiple times with different parameters to create various types of relationships.
+    """
+
+    save_path=os.path.join(RELATIONSHIP_DIR,'new')
+    print('Save_path : ', save_path)
+    os.makedirs(save_path,exist_ok=True)
+    print('Creating Relationship...')
+
+    # Rest of the code...
 def main():
     
     save_path=os.path.join(RELATIONSHIP_DIR,'new')

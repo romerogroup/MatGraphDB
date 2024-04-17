@@ -6,7 +6,14 @@ from matgraphdb.utils import DB_DIR, N_CORES
 
 def process_database(func, n_cores=N_CORES):
     """
-    func: A function that takes in a json file to process
+    Process the database files using the provided function.
+
+    Args:
+        func (function): The function to be applied to each database file.
+        n_cores (int): The number of CPU cores to use for parallel processing. Default is N_CORES.
+
+    Returns:
+        list: A list of results from applying the function to each database file.
     """
 
     database_files = glob(DB_DIR + os.sep + '*.json')

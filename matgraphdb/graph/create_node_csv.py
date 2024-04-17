@@ -1,5 +1,6 @@
 import os
 import json
+from typing import List,Dict
 from glob import glob
 
 import pandas as pd
@@ -48,6 +49,8 @@ def create_nodes(node_names, node_type, node_prefix, node_properties=None, filep
         # Add the extra attributes to the node_dict
         if node_properties:
             for property_name, property_value in node_properties[i].items():
+                if isinstance(property_value, List ):
+                    property_value=";".join(property_value)
                 node_dict[property_name].append(property_value)
 
     df = pd.DataFrame(node_dict)
@@ -67,11 +70,11 @@ def main():
     print('Creating nodes...')
     
     # # Elements
-    create_nodes(node_names=ELEMENTS, 
-                node_type='Element', 
-                node_prefix='element', 
-                node_properties=ELEMENT_PROPERTIES,
-                filepath=os.path.join(save_path, 'elements.csv'))
+    # create_nodes(node_names=ELEMENTS, 
+    #             node_type='Element', 
+    #             node_prefix='element', 
+    #             node_properties=ELEMENT_PROPERTIES,
+    #             filepath=os.path.join(save_path, 'elements.csv'))
     
     # # Crystal Systems
     # create_nodes(node_names=CRYSTAL_SYSTEMS, 
@@ -110,9 +113,14 @@ def main():
     #             filepath=os.path.join(save_path, 'oxidation_states.csv'))
     
     # Materials
+    # create_nodes(node_names=MATERIAL_IDS,
+    #             node_type='Material',
+    #             node_prefix='material',
+    #             node_properties=MATERIAL_PROPERTIES,
+    #             filepath=os.path.join(save_path, 'materials.csv'))
     create_nodes(node_names=MATERIAL_IDS,
                 node_type='Material',
-                node_prefix='materials',
+                node_prefix='material',
                 node_properties=MATERIAL_PROPERTIES,
                 filepath=os.path.join(save_path, 'materials.csv'))
     

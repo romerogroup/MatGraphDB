@@ -20,6 +20,30 @@ from matgraphdb.utils.general import chunk_list
 CHUNK_DIR=os.path.join(SIMILARITY_DIR,'chunks')
 
 def similarity_calc(material_combs_chunk):
+    """
+    Calculate the similarity between pairs of materials.
+
+    Parameters:
+    - material_combs_chunk (tuple): A tuple containing the chunk index and a list of material combinations.
+
+    Returns:
+    - None
+
+    This function takes a chunk of material combinations and calculates the similarity between each pair of materials.
+    The similarity is calculated based on the structure features of the materials using cosine similarity.
+
+    The calculated similarity values are stored in a dictionary and saved to a JSON file.
+
+    Note: This function assumes that the necessary directories and files are already set up.
+
+    Example usage:
+    similarity_calc((0, [('mat1', 'mat2'), ('mat3', 'mat4')]))
+    """
+    
+    # Function code goes here
+    # ...
+def similarity_calc(material_combs_chunk):
+
     i_chunk,material_combs=material_combs_chunk
     
     chunk_file=os.path.join(CHUNK_DIR,f'chunk_{i_chunk}.json')
