@@ -12,6 +12,21 @@ from matgraphdb.utils.periodic_table import atomic_symbols
 ELEMENTS = atomic_symbols[1:]
 
 def bond_orders_sum_calc(file):
+    """
+    Calculates the sum and count of bond orders for a given file.
+
+    Args:
+        file (str): The path to the JSON file containing the database.
+
+    Returns:
+        tuple: A tuple containing two numpy arrays. The first array represents the sum of bond orders
+               between different elements, and the second array represents the count of bond orders.
+
+    Raises:
+        Exception: If there is an error processing the file.
+
+    """
+
     # Load database from JSON file
     with open(file) as f:
         db = json.load(f)
@@ -51,6 +66,17 @@ def bond_orders_sum_calc(file):
     return bond_orders_sum, n_bond_orders
 
 def bond_orders_std_calc(file):
+    """
+    Calculate the standard deviation of bond orders for a given material.
+
+    Parameters:
+    file (str): The path to the JSON file containing the material information.
+
+    Returns:
+    bond_orders_std (numpy.ndarray): The standard deviation of bond orders between different elements.
+    1 (int): A placeholder value indicating the function has completed successfully.
+    """
+
     # Load database from JSON file
     with open(file) as f:
         db = json.load(f)
@@ -94,7 +120,16 @@ def bond_orders_std_calc(file):
 
 
 def bond_stats_calc():
+    """
+    Calculate bond statistics.
 
+    This function calculates the average and standard deviation of bond orders
+    for different elements in a crystal structure. The results are stored in a
+    JSON file.
+
+    Returns:
+        None
+    """
     LOGGER.info('#' * 100)
     LOGGER.info('Running Bonding Stats Calculation')
     LOGGER.info('#' * 100)
@@ -111,37 +146,32 @@ def bond_stats_calc():
     results = process_database(bond_orders_sum_calc)
 
     for result in results:
-        bond_orders_avg+=result[0] 
-        n_bond_orders+=result[1]
+        bond_orders_avg += result[0] 
+        n_bond_orders += result[1]
 
-
-    bond_orders_avg = np.divide(bond_orders_avg, n_bond_orders, out=np.zeros_like(bond_orders_avg), where=n_bond_orders!=0)
-
+    bond_orders_avg = np.divide(bond_orders_avg, n_bond_orders, out=np.zeros_like(bond_orders_avg), where=n_bond_orders != 0)
 
     with open(GLOBAL_PROP_FILE) as f:
         data = json.load(f)
-        data['bond_orders_avg']=bond_orders_avg.tolist()
-        data['n_bond_orders']=n_bond_orders.tolist()
-
+        data['bond_orders_avg'] = bond_orders_avg.tolist()
+        data['n_bond_orders'] = n_bond_orders.tolist()
 
     with open(GLOBAL_PROP_FILE, 'w') as f:
         json.dump(data, f, indent=4)
-
 
     LOGGER.info('#' * 100)
     LOGGER.info('Getting bond order std')
     LOGGER.info('#' * 100)
     results = process_database(bond_orders_std_calc)
     for result in results:
-        bond_orders_std+=result[0] 
+        bond_orders_std += result[0] 
 
-    bond_orders_std = np.divide(bond_orders_std, n_bond_orders, out=np.zeros_like(bond_orders_std), where=n_bond_orders!=0)
+    bond_orders_std = np.divide(bond_orders_std, n_bond_orders, out=np.zeros_like(bond_orders_std), where=n_bond_orders != 0)
     bond_orders_std = bond_orders_std ** 0.5
-
 
     with open(GLOBAL_PROP_FILE) as f:
         data = json.load(f)
-        data['bond_orders_std']=bond_orders_std.tolist()
+        data['bond_orders_std'] = bond_orders_std.tolist()
 
     with open(GLOBAL_PROP_FILE, 'w') as f:
         json.dump(data, f, indent=4)

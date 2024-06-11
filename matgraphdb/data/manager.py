@@ -1,22 +1,44 @@
 import os
 import json
 from glob import glob
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
 
-from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER
-from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 
+import numpy as np
+from pymatgen.core import Structure, Composition,Lattice
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER
+from matgraphdb.calculations.mat_calcs.wyckoff_calc import wyckoff_calc_task
+from matgraphdb.calculations.mat_calcs.bonding_calc import calculate_cutoff_bonds
+from matgraphdb.calculations.mat_calcs.chemenv_calc import calculate_chemenv_connections
+from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 
 
 class DBManager:
     def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, n_cores=N_CORES):
+        """
+        Initializes the Manager object.
+
+        Args:
+            directory_path (str): The path to the directory where the database is stored.
+            calc_path (str): The path to the directory where calculations are stored.
+            n_cores (int): The number of CPU cores to be used for parallel processing.
+
+        """
         self.directory_path = directory_path
         self.calculation_path = calc_path
         self.n_cores = N_CORES
 
     def database_files(self):
+        """
+        Returns a list of JSON file paths in the specified directory.
+
+        Returns:
+            list: A list of JSON file paths.
+        """
         return glob(self.directory_path + os.sep + '*.json')
     
     def calculation_dirs(self):
@@ -38,10 +60,18 @@ class DBManager:
             return {}
     
     def check_property_task(self, file, property_name=''):
-        """Check if a given property exists in the data."""
+        """
+        Check if a given property exists in the data loaded from a JSON file.
 
-        data=self.load_json(file)
+        Args:
+            file (str): The path to the JSON file.
+            property_name (str, optional): The name of the property to check. Defaults to ''.
 
+        Returns:
+            bool: True if the property exists and is not None, False otherwise.
+        """
+        data = self.load_json(file)
+        
         check=True
         if property_name not in data:
             check=False
@@ -61,8 +91,8 @@ class DBManager:
 
         success = []
         failed = []
-        for file,result in zip(database_files,results):
-            if result==True:
+        for file, result in zip(database_files, results):
+            if result == True:
                 success.append(file)
             else:
                 failed.append(file)
@@ -70,15 +100,23 @@ class DBManager:
         return success, failed
 
     def check_chargemol_task(self, dir):
-        """Check if a given property exists in the data."""
-        check=True
+        """
+        Check if the chargemol task has been completed.
 
-        file_path = os.path.join(dir,'chargemol','DDEC6_even_tempered_bond_orders.xyz')
-        
+        Args:
+            dir (str): The directory path where the chargemol task output is expected.
+
+        Returns:
+            bool: True if the chargemol task has been completed and the output file exists, False otherwise.
+        """
+        check = True
+
+        file_path = os.path.join(dir, 'chargemol', 'DDEC6_even_tempered_bond_orders.xyz')
+
         if os.path.exists(file_path):
-            check=True
+            check = True
         else:
-            check=False
+            check = False
 
         return check
     
@@ -92,7 +130,6 @@ class DBManager:
         success = []
         failed = []
         for path, result in zip(calc_dirs,results):
-
             chargemol_dir=os.path.join(path,'chargemol')
             if result==True:
                 success.append(chargemol_dir)
@@ -102,6 +139,17 @@ class DBManager:
         return success, failed
 
     def add_chargemol_slurm_script(self, partition_info=('comm_small_day','24:00:00','16', '1'), exclude=[]):
+        """
+        Adds a SLURM script for running Chargemol calculations to each calculation directory.
+
+        Args:
+            partition_info (tuple): A tuple containing information about the SLURM partition.
+                Default is ('comm_small_day','24:00:00','16', '1').
+            exclude (list): A list of nodes to exclude from the SLURM job. Default is an empty list.
+
+        Returns:
+            None
+        """
         calc_dirs = glob(self.calculation_path + os.sep + 'mp-*')
         print("Processing files from : ",self.calculation_path + os.sep + 'mp-*')
         results=self.process_task(self.check_chargemol_task, calc_dirs)
@@ -184,6 +232,7 @@ class DBManager:
                     file.write('\n')
                     file.write(f'echo "run complete on `hostname`: `date`" 1>&2\n')
 
+        
 
     def chargemol_task(self, dir):
         """Check if a given property exists in the data."""
@@ -238,6 +287,30 @@ if __name__=='__main__':
     print("Number of failed files: ", len(failed))
     print("Number of success files: ", len(success))
 
+
+    # db.create_material(composition='Li2O')
+    # Define the structure
+
+    # file=db.database_files[0]
+    # structure = Structure.from_dict(db.load_json(file)['structure'])
+    # print(structure)
+    # # structure = Structure(
+    # #     Lattice.cubic(3.0),
+    # #     ["C", "C"],  # Elements
+    # #     [
+    # #         [0, 0, 0],          # Coordinates for the first Si atom
+    # #         [0.25, 0.25, 0.25],  # Coordinates for the second Si atom (basis of the diamond structure)
+    # #     ]
+    # # )
+    # db.create_material(structure=structure)
+
+
+    
+    #Create a test structure
+
+    # success,failed=db.check_property(property_name=properties[0])
+
+
     # db.chargemol_task(dir=db.calculation_dirs()[0])
     # print(N_CORES)
     # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
@@ -246,5 +319,10 @@ if __name__=='__main__':
     # success,failed=db.check_chargemol()
     # # print(success[:10])
     # print(failed[:20])
+    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1'),exclude=[] )
+    # success,failed=db.check_chargemol()
+    # # print(success[:10])
+    # print(failed[:20])
+
     # print("Number of failed files: ", len(failed))
     # print("Number of success files: ", len(success))

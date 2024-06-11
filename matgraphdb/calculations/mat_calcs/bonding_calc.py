@@ -126,40 +126,70 @@ def calculate_geometric_consistent_bonds(geo_coord_connections,elec_coord_connec
         final_bond_orders.append(final_site_bond_orders)
     return geo_coord_connections, final_bond_orders
 
+def calculate_cutoff_bonds(structure):
+    """
+    Calculates the cutoff bonds for a given crystal structure.
 
+    Args:
+        structure (Structure): The crystal structure for which to calculate the cutoff bonds.
+
+    Returns:
+        list: A list of lists, where each inner list contains the indices of the nearest neighbors for each site in the structure.
+    """
+    CUTOFF_DICT = covalent_cutoff_map(tol=0.1)
+    cutoff_nn = CutOffDictNN(cut_off_dict=CUTOFF_DICT)
+    all_nn = cutoff_nn.get_all_nn_info(structure=structure)
+    nearest_neighbors = []
+    for site_nn in all_nn:
+        neighbor_index = []
+        for nn in site_nn:
+            index = nn['site_index']
+            neighbor_index.append(index)
+        nearest_neighbors.append(neighbor_index)
+    return nearest_neighbors
 
 def bonding_calc_task(file, from_scratch=False):
-    CUTOFF_DICT=covalent_cutoff_map(tol=0.1)
+    """
+    Perform bonding calculation task.
+
+    Args:
+        file (str): The path to the file.
+        from_scratch (bool, optional): Flag indicating whether to calculate bonding from scratch. 
+            Defaults to False.
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If there is an error processing the file.
+
+    """
+    CUTOFF_DICT = covalent_cutoff_map(tol=0.1)
     try:
         with open(file) as f:
             db = json.load(f)
             struct = pmat.Structure.from_dict(db['structure'])
-        mpid=file.split('/')[-1].split('.')[0]
+        mpid = file.split('/')[-1].split('.')[0]
         if 'bonding_cutoff_connections' not in db or from_scratch:
-            cutoff_nn=CutOffDictNN(cut_off_dict=CUTOFF_DICT)
-            all_nn=cutoff_nn.get_all_nn_info(structure=struct)
-            nearest_neighbors=[]
-            for site_nn in all_nn:
-                neighbor_index=[]
-                for nn in site_nn:
-
-                    index=nn['site_index']
-                    neighbor_index.append(index)
-                nearest_neighbors.append(neighbor_index)
-
-            db['bonding_cutoff_connections']=nearest_neighbors
-
+            db['bonding_cutoff_connections'] = calculate_cutoff_bonds(structure=struct)
 
     except Exception as e:
         LOGGER.error(f"Error processing file {mpid}: {e}")
+        db['bonding_cutoff_connections'] = None
 
-
-        db['bonding_cutoff_connections']=None
-
-    with open(file,'w') as f:
+    with open(file, 'w') as f:
         json.dump(db, f, indent=4)
 
 def bonding_calc():
+    """
+    Perform the bonding cutoff calculation.
+
+    This function runs the bonding cutoff calculation by calling the `process_database` function
+    with the `bonding_calc_task` parameter.
+
+    Returns:
+        None
+    """
     LOGGER.info('#' * 100)
     LOGGER.info('Running Bonding Cutoff Calculation')
     LOGGER.info('#' * 100)
@@ -167,7 +197,21 @@ def bonding_calc():
 
 
 def geometric_consistent_bonding_task(file, from_scratch=True):
+    """
+    Perform geometric consistent bonding calculations and update the database.
 
+    Args:
+        file (str): The path to the file containing the database.
+        from_scratch (bool, optional): If True, perform the calculations from scratch. 
+            If False, use the existing data in the database. Default is True.
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If there is an error processing the file.
+
+    """
     try:
         with open(file) as f:
             db = json.load(f)
@@ -194,6 +238,13 @@ def geometric_consistent_bonding_task(file, from_scratch=True):
         json.dump(db, f, indent=4)
 
 def geometric_consistent_bonding():
+    """
+    Performs a Geometric Consistent Bonding Calculation.
+    
+    This function runs a calculation to determine the geometrically consistent bonding of a material.
+    It logs the start and end of the calculation using the LOGGER object.
+    The calculation is performed by calling the process_database function with the geometric_consistent_bonding_task.
+    """
     LOGGER.info('#' * 100)
     LOGGER.info('Running Geometric Consistent Bonding Calculation')
     LOGGER.info('#' * 100)
@@ -202,6 +253,17 @@ def geometric_consistent_bonding():
 
 
 def geometric_electric_consistent_bonding_task(file, from_scratch=True):
+    """
+    Perform geometric-electric consistent bonding task.
+
+    Args:
+        file (str): The path to the file.
+        from_scratch (bool, optional): If True, perform the task from scratch. 
+            Defaults to True.
+
+    Returns:
+        None
+    """
 
     try:
         with open(file) as f:
@@ -229,6 +291,13 @@ def geometric_electric_consistent_bonding_task(file, from_scratch=True):
         json.dump(db, f, indent=4)
 
 def geometric_electric_consistent_bonding():
+    """
+    Performs a Geometric Electric Consistent Bonding Calculation.
+    
+    This function runs a calculation that involves geometric and electric properties to determine consistent bonding in a material.
+    It logs the start and end of the calculation using the LOGGER object.
+    The calculation is performed by calling the `process_database` function with the `geometric_electric_consistent_bonding_task` parameter.
+    """
     LOGGER.info('#' * 100)
     LOGGER.info('Running Geometric Electric Consistent Bonding Calculation')
     LOGGER.info('#' * 100)
@@ -237,6 +306,17 @@ def geometric_electric_consistent_bonding():
 
 
 def electric_consistent_bonding_task(file, from_scratch=True):
+    """
+    Perform electric consistent bonding task on a given file.
+
+    Args:
+        file (str): The path to the file to be processed.
+        from_scratch (bool, optional): Flag indicating whether to perform the task from scratch or use existing data. 
+                                       Defaults to True.
+
+    Returns:
+        None
+    """
 
     try:
         with open(file) as f:
@@ -263,6 +343,17 @@ def electric_consistent_bonding_task(file, from_scratch=True):
         json.dump(db, f, indent=4)
 
 def electric_consistent_bonding():
+    """
+    Perform Electric Consistent Bonding Calculation.
+
+    This function runs the Electric Consistent Bonding Calculation and logs the progress.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
     LOGGER.info('#' * 100)
     LOGGER.info('Running Electric Consistent Bonding Calculation')
     LOGGER.info('#' * 100)

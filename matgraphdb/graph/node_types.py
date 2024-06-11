@@ -66,7 +66,7 @@ SITES_IDS = []
 SITES_PROPERTIES = []
 SITE_IDS = []
 SITE_PROPERTIES = []
-for i, material_file in enumerate(MATERIAL_FILES):
+for i, material_file in enumerate(MATERIAL_FILES[:]):
 
     with open(material_file) as f:
         db = json.load(f)
