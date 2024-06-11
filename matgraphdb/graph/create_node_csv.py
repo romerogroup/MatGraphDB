@@ -41,7 +41,7 @@ def create_nodes(node_names, node_type, node_prefix, node_properties=None, filep
             node_dict[property_name] = []
 
 
-    for i, node_name in enumerate(node_names):
+    for i, node_name in enumerate(node_names[:]):
         node_dict[f'{node_prefix}Id:ID({node_prefix}-ID)'].append(i)
         node_dict['type:LABEL'].append(node_type)
         node_dict['name:string'].append(node_name.replace(':', '_'))
@@ -62,7 +62,7 @@ def create_nodes(node_names, node_type, node_prefix, node_properties=None, filep
 
 
 def main():
-    save_path = os.path.join(NODE_DIR,'new')
+    save_path = os.path.join(NODE_DIR)
 
     print('Save_path:', save_path)
     os.makedirs(save_path, exist_ok=True)
@@ -82,42 +82,37 @@ def main():
     #             node_prefix='crystalSystem', 
     #             filepath=os.path.join(save_path, 'crystal_systems.csv'))
     
-    # # Chemenv
-    # create_nodes(node_names=CHEMENV_NAMES, 
-    #             node_type='Chemenv', 
-    #             node_prefix='chemenv', 
-    #             filepath=os.path.join(save_path, 'chemenv_names.csv'))
+    # Chemenv
+    create_nodes(node_names=CHEMENV_NAMES, 
+                node_type='Chemenv', 
+                node_prefix='chemenv', 
+                filepath=os.path.join(save_path, 'chemenv_names.csv'))
     
-    # # Chemenv Element
-    # create_nodes(node_names=CHEMENV_ELEMENT_NAMES, 
-    #             node_type='ChemenvElement', 
-    #             node_prefix='chemenvElement', 
-    #             filepath=os.path.join(save_path, 'chemenv_element_names.csv'))
+    # Chemenv Element
+    create_nodes(node_names=CHEMENV_ELEMENT_NAMES, 
+                node_type='ChemenvElement', 
+                node_prefix='chemenvElement', 
+                filepath=os.path.join(save_path, 'chemenv_element_names.csv'))
     
-    # # Magnetic States
-    # create_nodes(node_names=MAGNETIC_STATES, 
-    #             node_type='MagneticState', 
-    #             node_prefix='magState', 
-    #             filepath=os.path.join(save_path, 'magnetic_states.csv'))
+    # Magnetic States
+    create_nodes(node_names=MAGNETIC_STATES, 
+                node_type='MagneticState', 
+                node_prefix='magState', 
+                filepath=os.path.join(save_path, 'magnetic_states.csv'))
     
-    # # Space Groups
-    # create_nodes(node_names=SPG_NAMES, 
-    #             node_type='SpaceGroup', 
-    #             node_prefix='spg', 
-    #             filepath=os.path.join(save_path, 'spg.csv'))
+    # Space Groups
+    create_nodes(node_names=SPG_NAMES, 
+                node_type='SpaceGroup', 
+                node_prefix='spg', 
+                filepath=os.path.join(save_path, 'spg.csv'))
     
-    # # Oxidation States
-    # create_nodes(node_names=OXIDATION_STATES_NAMES, 
-    #             node_type='OxidationState', 
-    #             node_prefix='oxiState', 
-    #             filepath=os.path.join(save_path, 'oxidation_states.csv'))
+    # Oxidation States
+    create_nodes(node_names=OXIDATION_STATES_NAMES, 
+                node_type='OxidationState', 
+                node_prefix='oxiState', 
+                filepath=os.path.join(save_path, 'oxidation_states.csv'))
     
     # Materials
-    # create_nodes(node_names=MATERIAL_IDS,
-    #             node_type='Material',
-    #             node_prefix='material',
-    #             node_properties=MATERIAL_PROPERTIES,
-    #             filepath=os.path.join(save_path, 'materials.csv'))
     create_nodes(node_names=MATERIAL_IDS,
                 node_type='Material',
                 node_prefix='material',
@@ -125,10 +120,10 @@ def main():
                 filepath=os.path.join(save_path, 'materials.csv'))
     
     # SPG_WYCKOFFS
-    # create_nodes(node_names=SPG_WYCKOFFS,
-    #             node_type='SPGWyckoff',
-    #             node_prefix='spgWyckoff',
-    #             filepath=os.path.join(save_path, 'spg_wyckoff.csv'))
+    create_nodes(node_names=SPG_WYCKOFFS,
+                node_type='SPGWyckoff',
+                node_prefix='spgWyckoff',
+                filepath=os.path.join(save_path, 'spg_wyckoff.csv'))
 
     ##################################################################################################
     # # Lattice

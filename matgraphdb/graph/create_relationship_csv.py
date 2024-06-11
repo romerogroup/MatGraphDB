@@ -14,7 +14,7 @@ from matminer.featurizers.composition import ElementFraction
 from matgraphdb.graph.node_types import *
 from matgraphdb.utils import  GLOBAL_PROP_FILE, RELATIONSHIP_DIR,NODE_DIR, N_CORES, LOGGER, ENCODING_DIR, timeit
 from matgraphdb.utils.periodic_table import atomic_symbols_map
-from matgraphdb.utils.math_utils import cosine_similarity
+# from matgraphdb.utils.math_utils import cosine_similarity
 from matgraphdb.utils.general import chunk_list
 ############################################################
 # Below is for is for creating relationships between nodes
@@ -302,6 +302,79 @@ def create_material_chemenvElement_task(material_file):
 
     return material_connections
 
+def create_material_spg_task(material_file):
+    """
+    Create material-spg relationships based on the given material file.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples representing the material-spg relationships.
+              Each tuple contains the material project ID and the spg ID.
+
+    Raises:
+        Exception: If there is an error processing the material file.
+    """
+
+    material_connections=[]
+
+    # Load material data from file
+    with open(material_file) as f:
+        db = json.load(f)
+    
+    # Extract material project ID from file name
+    mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
+
+    try:
+        spg_name = db['symmetry']['number']
+        spg_name = 'spg_' + str(spg_name)
+        spg_id=SPG_MAP[spg_name]
+
+        data = (mpid,spg_id)
+        material_connections.append(data)
+
+    except Exception as e:
+        LOGGER.error(f"Error processing file {mpid}: {e}")
+
+    return material_connections
+
+def create_material_crystal_system_task(material_file):
+    """
+    Create material-crystal_system relationships based on the given material file.
+
+    Args:
+        material_file (str): The path to the material file.
+
+    Returns:
+        list: A list of tuples representing the material-crystal_system relationships.
+              Each tuple contains the material project ID and the crystal_system ID.
+
+    Raises:
+        Exception: If there is an error processing the material file.
+    """
+
+    material_connections=[]
+
+    # Load material data from file
+    with open(material_file) as f:
+        db = json.load(f)
+    
+    # Extract material project ID from file name
+    mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
+
+    try:
+        crystal_system_name = db['symmetry']['crystal_system'].lower()
+        crystal_system_id=CRYSTAL_SYSTEMS_ID_MAP[crystal_system_name]
+
+        data = (mpid,crystal_system_id)
+        material_connections.append(data)
+
+    except Exception as e:
+        LOGGER.error(f"Error processing file {mpid}: {e}")
+
+    return material_connections
+
 def create_oxi_state_element_task(material_file):
     """
     Creates a list of tuples representing the connections between site elements and their oxidation states.
@@ -343,7 +416,7 @@ def create_oxi_state_element_task(material_file):
 
     return material_connections
 
-def create_relationships(node_a_csv, node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
+def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
     """
     Create relationships between nodes based on the provided CSV files.
 
@@ -358,9 +431,6 @@ def create_relationships(node_a_csv, node_b_csv, mp_task, connection_name='CONNE
         pandas.DataFrame: DataFrame containing the relationships between the nodes.
 
     """
-    # Rest of the code...
-def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
-
     df_a=pd.read_csv(node_a_csv)
     df_b=pd.read_csv(node_b_csv)
     node_a_id_space = extract_id_column_headers(df_a)
@@ -391,10 +461,10 @@ def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNEC
         # Iterate over the connections in the material
         for i,connection in enumerate(material):
             
-            if node_a_id_space == 'materials-ID':
+            if node_a_id_space == 'material-ID':
                 node_dict[f':START_ID({node_a_id_space})'].append(imat)
                 node_dict[f':END_ID({node_b_id_space})'].append(connection[1])
-            elif node_b_id_space == 'materials-ID':
+            elif node_b_id_space == 'material-ID':
                 node_dict[f':START_ID({node_a_id_space})'].append(connection[0])
                 node_dict[f':END_ID({node_b_id_space})'].append(imat)
             else:
@@ -562,22 +632,13 @@ def main():
     This function is the entry point of the script and is responsible for creating relationships between different nodes.
     It calls the `create_relationships` function multiple times with different parameters to create various types of relationships.
     """
-
-    save_path=os.path.join(RELATIONSHIP_DIR,'new')
+    save_path=os.path.join(RELATIONSHIP_DIR)
     print('Save_path : ', save_path)
     os.makedirs(save_path,exist_ok=True)
     print('Creating Relationship...')
 
-    # Rest of the code...
-def main():
-    
-    save_path=os.path.join(RELATIONSHIP_DIR,'new')
-    print('Save_path : ', save_path)
-    os.makedirs(save_path,exist_ok=True)
-    print('Creating Relationship...')
-
-    # # ##########################################################################################################################
-    # # # Element - Element Connections
+    # # # ##########################################################################################################################
+    # # # # Element - Element Connections
     # create_relationships(node_a_csv=os.path.join(NODE_DIR,'elements.csv'),
     #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
     #                      mp_task=partial(create_bonding_task,node_type='element', bonding_method='geometric_electric'), 
@@ -596,29 +657,29 @@ def main():
     #                      connection_name='ELECTRIC_CONNECTS',
     #                      filepath=os.path.join(save_path,f'element_element_electric.csv'))
     
-    # ##########################################################################################################################
-    # # # Chemenv - Chemenv Connections
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-                         mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric_electric'), 
-                         connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
-                         filepath=os.path.join(save_path,f'chemenv_chemenv_geometric-electric.csv'))
+    # # ##########################################################################################################################
+    # # # # Chemenv - Chemenv Connections
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
+    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric_electric'), 
+    #                      connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
+    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_geometric-electric.csv'))
     
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-                         mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric'), 
-                         connection_name='GEOMETRIC_CONNECTS',
-                         filepath=os.path.join(save_path,f'chemenv_chemenv_geometric.csv'))
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
+    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric'), 
+    #                      connection_name='GEOMETRIC_CONNECTS',
+    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_geometric.csv'))
     
 
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-                         mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='electric'), 
-                         connection_name='ELECTRIC_CONNECTS',
-                         filepath=os.path.join(save_path,f'chemenv_chemenv_electric.csv'))
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
+    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='electric'), 
+    #                      connection_name='ELECTRIC_CONNECTS',
+    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_electric.csv'))
 
-    # ##########################################################################################################################
-    # # # ChemenvElement - ChemenvElement Connections
+    # # ##########################################################################################################################
+    # # # # ChemenvElement - ChemenvElement Connections
     # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'),
     #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
     #                      mp_task=partial(create_bonding_task,node_type='chemenvElement',bonding_method='geometric_electric'),
@@ -637,44 +698,59 @@ def main():
     #                      connection_name='ELECTRIC_CONNECTS',
     #                      filepath=os.path.join(save_path,'chemenvElement_chemenvElement_electric.csv'))
 
-    # ##########################################################################################################################
-    # # # Chemenv - Element Connections
+    # # # ##########################################################################################################################
+    # # # # # Chemenv - Element Connections
 
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-                         mp_task=create_chemenv_element_task,
-                         connection_name='CAN_OCCUR',
-                         filepath=os.path.join(save_path,f'chemenv_elements.csv'))
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
+    #                      mp_task=create_chemenv_element_task,
+    #                      connection_name='CAN_OCCUR',
+    #                      filepath=os.path.join(save_path,f'chemenv_elements.csv'))
     
-
-    ##########################################################################################################################
+    ###################################################################################################
+    # Material Relationships
+    #######################################################################################
+    
     # # Material - Element Connections
 
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-                         mp_task=create_material_element_task,
-                         connection_name='COMPOSED_OF',
-                         filepath=os.path.join(save_path,f'materials_elements.csv'))
-    
-    # ##########################################################################################################################
-    # # # Material - Chemenv Connections
-
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-                         mp_task=create_material_chemenv_task,
-                         connection_name='COMPOSED_OF',
-                         filepath=os.path.join(save_path,f'materials_chemenv.csv'))
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
+    #                      mp_task=create_material_element_task,
+    #                      connection_name='COMPOSED_OF',
+    #                      filepath=os.path.join(save_path,f'materials_elements.csv'))
     
 
-    # # ##########################################################################################################################
-    # # # # Material - ChemenvElement Connections
+    # # # # Material - Chemenv Connections
+
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
+    #                      mp_task=create_material_chemenv_task,
+    #                      connection_name='COMPOSED_OF',
+    #                      filepath=os.path.join(save_path,f'materials_chemenv.csv'))
+    
+    # # # # # Material - ChemenvElement Connections
+
+    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
+    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
+    #                      mp_task=create_material_chemenvElement_task,
+    #                      connection_name='COMPOSED_OF',
+    #                      filepath=os.path.join(save_path,f'materials_chemenvElement.csv'))
+    
+    # # # # Material - spg Connections
 
     create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-                         mp_task=create_material_chemenvElement_task,
-                         connection_name='COMPOSED_OF',
-                         filepath=os.path.join(save_path,f'materials_chemenvElement.csv'))
+                         node_b_csv=os.path.join(NODE_DIR,'spg.csv'), 
+                         mp_task=create_material_spg_task,
+                         connection_name='HAS_SPACE_GROUP_SYMMETRY',
+                         filepath=os.path.join(save_path,f'materials_spg.csv'))
 
+    # # # # Material - crystal_system Connections
+
+    create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
+                         node_b_csv=os.path.join(NODE_DIR,'crystal_systems.csv'), 
+                         mp_task=create_material_crystal_system_task,
+                         connection_name='HAS_CRYSTAL_SYSTEM',
+                         filepath=os.path.join(save_path,f'materials_crystal_system.csv'))
 
 
 

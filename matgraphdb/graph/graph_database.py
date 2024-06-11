@@ -4,25 +4,24 @@ import numpy as np
 from neo4j import GraphDatabase
 from pymatgen.core import Structure, Composition
 
-from matgraphdb.graph.node_types import PROPERTIES
 from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME
 from matgraphdb.graph.similarity_chat import get_similarity_query
 
 class MatGraphDB:
-    class GraphDatabase:
-        def __init__(self, uri=LOCATION, user=USER, password=PASSWORD):
-            """
-            Initializes a GraphDatabase object.
 
-            Args:
-                uri (str): The URI of the graph database.
-                user (str): The username for authentication.
-                password (str): The password for authentication.
-            """
-            self.uri = uri
-            self.user = user
-            self.password = password
-            self.driver = None
+    def __init__(self, uri=LOCATION, user=USER, password=PASSWORD):
+        """
+        Initializes a GraphDatabase object.
+
+        Args:
+            uri (str): The URI of the graph database.
+            user (str): The username for authentication.
+            password (str): The password for authentication.
+        """
+        self.uri = uri
+        self.user = user
+        self.password = password
+        self.driver = None
 
     def __enter__(self):
             """
@@ -172,7 +171,21 @@ class MatGraphDB:
             with self.driver.session(database=GRAPH_DB_NAME) as session:
                 results = session.run(query, parameters)
                 return [record for record in results]
+            
+    def query(self, query, parameters=None):
+            """
+            Executes a query on the graph database.
 
+            Args:
+                query (str): The Cypher query to execute.
+                parameters (dict, optional): Parameters to pass to the query. Defaults to None.
+
+            Returns:
+                list: A list of records returned by the query.
+            """
+            with self.driver.session(database=GRAPH_DB_NAME) as session:
+                results = session.run(query, parameters)
+            return list(results)
     def execute_llm_query(self, prompt, n_results=5):
         """
         Executes a query in the graph database using the LLM (Language-Modeling) approach.
@@ -295,9 +308,9 @@ class MatGraphDB:
 
 if __name__ == "__main__":
 
-    with MatGraphDB() as session:
+    with GraphDatabase() as session:
         # result = matgraphdb.execute_query(query, parameters)
-        # schema_list=session.list_schema()
+        schema_list=session.list_schema()
 
         # results=session.read_material(material_ids=['mp-1000','mp-1001'],
         #                        elements=['Te','Ba'])
@@ -314,9 +327,9 @@ if __name__ == "__main__":
         #                        elements=['Te','Ba'],
         #                        band_gap=[(1.0,'>')])
         
-        results=session.create_material(composition="BaTe")
+        # results=session.create_material(composition="BaTe")
 
-        print(results)
+        # print(results)
     #     print(schema_list)
 #         prompt = "What are materials similar to the composition TiAu"
 #         # prompt = "What are materials with TiAu"

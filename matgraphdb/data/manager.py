@@ -380,14 +380,14 @@ if __name__=='__main__':
     file=db.database_files[0]
     structure = Structure.from_dict(db.load_json(file)['structure'])
     print(structure)
-    # structure = Structure(
-    #     Lattice.cubic(3.0),
-    #     ["C", "C"],  # Elements
-    #     [
-    #         [0, 0, 0],          # Coordinates for the first Si atom
-    #         [0.25, 0.25, 0.25],  # Coordinates for the second Si atom (basis of the diamond structure)
-    #     ]
-    # )
+    structure = Structure(
+        Lattice.cubic(3.0),
+        ["C", "C"],  # Elements
+        [
+            [0, 0, 0],          # Coordinates for the first Si atom
+            [0.25, 0.25, 0.25],  # Coordinates for the second Si atom (basis of the diamond structure)
+        ]
+    )
     db.create_material(structure=structure)
 
 

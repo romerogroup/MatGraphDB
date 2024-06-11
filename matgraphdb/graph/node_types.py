@@ -141,24 +141,19 @@ for i, material_file in enumerate(MATERIAL_FILES[:]):
             material_property_dict.update({node_key: property_value})
 
     # # Check if encodings are present
-    # if os.path.exists(ENCODING_DIR):
-    #     encoding_files=glob(os.path.join(ENCODING_DIR,'*.csv'))
-    #     for encoding_file in encoding_files:
-    #         encoding_name=encoding_file.split(os.sep)[-1].split('.')[0]
+    if os.path.exists(ENCODING_DIR):
+        encoding_file=os.path.join(ENCODING_DIR,mpid_name.replace('_', '-')+'.json')
+        with open(encoding_file) as f:
+            encoding_dict = json.load(f)
 
-    #         df=pd.read_csv(encoding_file,index_col=0)
+        for encoding_name,encoding in encoding_dict.items():
+            tmp_encoding_list=[str(i) for i in encoding]
+            encoding=';'.join(tmp_encoding_list)
 
-    #         # Convert the dataframe values to a list of strings where the strings are the rows of the dataframe separated by a semicolon
-    #         df = df.apply(lambda x: ';'.join(map(str, x)), axis=1)
-    #         print(df.head())
-    #         # Where the encoding contains nan value replace with None:
-    #         df[f'{encoding_name}:float[]']=df[f'{encoding_name}:float[]'].apply(lambda x: None if 'nan' in x else x)
+            material_property_dict.update({f'{encoding_name}:float[]':encoding})
 
-    #         # Remove rows with that contain None values
-    #         df=df.dropna(subset=[f'{encoding_name}:float[]'])
+        mpid=encoding_file.split(os.sep)[-1].split('.')[0]
 
-    #         material_property_dict.update({f'{encoding_name}:float[]': df.tolist()})
-    #     del df
 
     MATERIAL_PROPERTIES.append(material_property_dict)
 
@@ -211,7 +206,7 @@ CRYSTAL_SYSTEMS = ['triclinic', 'monoclinic', 'orthorhombic',
                    'tetragonal', 'trigonal', 'hexagonal', 'cubic']
 CRYSTAL_SYSTEMS_ID_MAP = {name: i for i, name in enumerate(CRYSTAL_SYSTEMS)}
 
-CHEMENV_NAMES = mp_coord_encoding.keys()
+CHEMENV_NAMES = list(mp_coord_encoding.keys())
 CHEMENV_NAMES_ID_MAP = {name: i for i, name in enumerate(CHEMENV_NAMES)}
 
 tmp = []
