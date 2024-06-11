@@ -786,12 +786,12 @@ class DBManager:
 
 if __name__=='__main__':
 
-    # properties=['chargemol_bonding_orders','coordination_environments_multi_weight']
+    properties=['chargemol_bonding_orders','coordination_environments_multi_weight']
 
     db=DBManager()
-    # success,failed=db.check_property(property_name=properties[0])
-    # print("Number of failed files: ", len(failed))
-    # print("Number of success files: ", len(success))
+    success,failed=db.check_property(property_name=properties[0])
+    print("Number of failed files: ", len(failed))
+    print("Number of success files: ", len(success))
 
 
     # db.create_material(composition='Li2O')

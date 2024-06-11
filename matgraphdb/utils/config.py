@@ -40,7 +40,7 @@ MP_API_KEY=PRIVATE_CONFIG['MP_API_KEY']
 OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
 
 # MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
-MP_DIR=os.path.join(ROOT,'data','processed',CONFIG['DB_NAME'])
+MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
 TMP_DIR=os.path.join(MP_DIR,"tmp")
 DB_DIR=os.path.join(MP_DIR,'json_database')
 DATASETS_DIR=os.path.join(MP_DIR,'datasets')
