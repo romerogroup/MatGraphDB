@@ -13,7 +13,7 @@ from matminer.featurizers.structure import XRDPowderPattern
 from matminer.featurizers.composition import ElementFraction
 
 from matgraphdb.utils import MP_DIR, DB_DIR, SIMILARITY_DIR,N_CORES
-from matgraphdb.utils.math import cosine_similarity
+from matgraphdb.utils.math_utils import cosine_similarity
 from matgraphdb.utils.general import chunk_list
 
 

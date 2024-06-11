@@ -5,13 +5,15 @@ import openai
 import tiktoken
 import pandas as pd
 import numpy as np
+from matminer.datasets import load_dataset
+from matminer.featurizers.base import MultipleFeaturizer
+from matminer.featurizers.structure import XRDPowderPattern
+from matminer.featurizers.composition import ElementFraction
+from pymatgen.core import Structure
 
-from matgraphdb.utils import OPENAI_API_KEY, DB_DIR, ENCODING_DIR
-from matgraphdb.data.utils import process_database
+from matgraphdb.utils import OPENAI_API_KEY, LOGGER
 from matgraphdb.graph.node_types import PROPERTIES
 
-
-PROPERTY_NAMES = [prop[0] for prop in PROPERTIES]
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """
@@ -55,7 +57,7 @@ def extract_text_from_json(json_file):
         str: A compact JSON string containing the extracted text data.
     """
     import json
-
+    PROPERTY_NAMES = [prop[0] for prop in PROPERTIES]
     # Extract text from json file
     with open(json_file, 'r') as f:
         data = json.load(f)
@@ -70,10 +72,15 @@ def extract_text_from_json(json_file):
     compact_json_text = json.dumps(emd_dict, separators=(',', ':'))
     return compact_json_text
 
-def main():
+def generate_openai_embeddings(
+                            materials_text, 
+                            material_ids,
+                            model="text-embedding-3-small",
+                            embedding_encoding = "cl100k_base"
+                            ):
     """
     Main function for processing database and generating embeddings using OpenAI models.
-    
+
     This function performs the following steps:
     1. Sets up the parameters for the models and cost per token.
     2. Initializes the OpenAI client using the API key.
@@ -83,77 +90,65 @@ def main():
     6. Creates a dataframe of the results and adds the ada_embedding column.
     7. Creates a dataframe of the embeddings.
     8. Saves the embeddings to a CSV file.
+
+    Args:
+        materials_text (list): A list of materials represented as text.
+        material_ids (list): A list of material IDs.
+        model (str): The name of the OpenAI model to use for embedding. Default is "text-embedding-3-small". 
+                        Possible values are "text-embedding-3-small", "text-embedding-3-large", and "ada v2".
+        embedding_encoding (str): The name of the encoding to use for embedding. Default is "cl100k_base".
+
+    Returns:
+        None
     """
 
-    ####################
-    # Parameters
-    ####################
-    models=["text-embedding-3-small","text-embedding-3-large","ada v2"]
-    cost_per_token=[0.00000002,0.00000013,0.00000010]
-    model_index=0
-    
-    embedding_encoding = "cl100k_base"
-    
+    models_cost_per_token={
+        "text-embedding-3-small":0.00000002,
+        "text-embedding-3-large":0.00000013,
+        "ada v2":0.00000010
+    }
 
-    ####################
-    # Code runs below
-    ####################
+    cost_per_token=models_cost_per_token[model]
 
-    MODEL=models[model_index]
-    filename=MODEL + ".csv"
-    
+
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
-    print("Processing database...")
-    # Extracting raw json text from the database
-    results=process_database(extract_text_from_json)
-    print("Finished processing database")
 
     # Calculate the total number of tokens and the cost
     token_count=0
-    for result in results:
-        token_count+=num_tokens_from_string(result,encoding_name=embedding_encoding)
-
-    print("Total number of tokens: ",token_count)
-    print("Total cost: ",token_count*cost_per_token[model_index], "$")
-
-    # Get the mp_ids
-    mp_ids=[ file.split('.')[0] for file in os.listdir(DB_DIR) if file.endswith('.json')]
+    for material_text in materials_text:
+        token_count+=num_tokens_from_string(material_text,encoding_name=embedding_encoding)
+    LOGGER.info(f"Total number of tokens: {token_count}")
+    LOGGER.info(f"Cost per token: {cost_per_token}")
 
     # put reselts into a dataframe under the column 'combined'
-    df = pd.DataFrame(results, columns=['combined'], index=mp_ids)
-
-
-    df['ada_embedding'] = df.combined.apply(lambda x: get_embedding(x,client, model=MODEL))
+    df = pd.DataFrame(materials_text, columns=['combined'], index=material_ids)
+    df['embedding'] = df.combined.apply(lambda x: get_embedding(x,client, model=model))
 
     # Create a dataframe of the embeddings. emb dim span columns size 1535
-    df_embeddings = pd.DataFrame(np.array(df['ada_embedding'].tolist()), index=mp_ids)
+    tmp_dict={
+        "ada_embedding":df['embedding'].tolist(),
+    }
+    df_embeddings = pd.DataFrame(tmp_dict, index=material_ids)
+    # df_embeddings = pd.DataFrame(np.array(df['ada_embedding'].tolist()), index=material_ids)
 
-    # Save the embeddings to a csv file
-    df_embeddings.to_csv(os.path.join(ENCODING_DIR,filename), index=True)
-
-
-if __name__=='__main__':
-    main()
-
-
-    # # Testing openai and tiktoken
-    # embedding_encoding = "cl100k_base"
-    # client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    # prompt="What is Quantum Mechanics?"
-    # num_tokens=num_tokens_from_string(string=prompt,encoding_name=embedding_encoding)
-    # print(num_tokens)
-    # MODEL="text-embedding-3-small"
-    # response=get_embedding(prompt,client, model=MODEL)
-    # print(response)
-
-    # Testing extract_text_from_json
-    # data=extract_text_from_json(os.path.join(DB_DIR,'mp-1000.json'))
-    # embedding_encoding = "cl100k_base"
-    # num_tokens=num_tokens_from_string(string=data,encoding_name=embedding_encoding)
-    # print(data)
-    # print("Number of tokens: ",num_tokens)
-
-
+    return df_embeddings
+ 
     
+
+def generate_composition_embeddings(compositions,material_ids):
+    """Generate composition embeddings using Matminer and OpenAI.
+
+    Args:
+        compositions (list): A list of compositions.
+        material_ids (list): A list of material IDs.
+
+    Returns:
+        None
+    """
+    composition_data = pd.DataFrame({'composition': compositions}, index=material_ids)
+    composition_featurizer = MultipleFeaturizer([ElementFraction()])
+    composition_features = composition_featurizer.featurize_dataframe(composition_data,"composition")
+    composition_features=composition_features.drop(columns=['composition'])
+    features=composition_features
+    return features
 
