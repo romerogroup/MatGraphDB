@@ -52,7 +52,7 @@ def parse_chargemol_bond_orders(file, bond_order_cutoff=0.0):
         bonding_orders=None
         bonding_connections=None
 
-    return bonding_orders, bonding_connections
+    return bonding_connections,bonding_orders
 
 def parse_chargemol_atomic_moments(file):
     """
