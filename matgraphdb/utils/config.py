@@ -46,6 +46,7 @@ DB_DIR=os.path.join(MP_DIR,'json_database')
 DATASETS_DIR=os.path.join(MP_DIR,'datasets')
 
 GRAPH_DIR=os.path.join(MP_DIR,'graph_database')
+MAIN_GRAPH_DIR=os.path.join(GRAPH_DIR,'main')
 ENCODING_DIR=os.path.join(MP_DIR,'encodings')
 SIMILARITY_DIR=os.path.join(MP_DIR,'similarities')
 NODE_DIR=os.path.join(GRAPH_DIR,'nodes')
