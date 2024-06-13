@@ -1,4 +1,4 @@
-# import numpy as np
+import numpy as np
 # from scipy.spatial.distance import cdist
 
 # def rot_z(theta):
@@ -67,24 +67,24 @@
 #     return encoded_vec
 
 
-# def cosine_similarity(a, b):
-#     """
-#     Compute the cosine similarity between two vectors.
+def cosine_similarity(a, b):
+    """
+    Compute the cosine similarity between two vectors.
 
-#     Parameters:
-#     a (array-like): The first vector.
-#     b (array-like): The second vector.
+    Parameters:
+    a (array-like): The first vector.
+    b (array-like): The second vector.
 
-#     Returns:
-#     float: The cosine similarity between the two vectors.
-#     """
-#     dot_product = np.dot(a, b)
-#     norm_A = np.linalg.norm(a)
-#     norm_B = np.linalg.norm(b)
+    Returns:
+    float: The cosine similarity between the two vectors.
+    """
+    dot_product = np.dot(a, b)
+    norm_A = np.linalg.norm(a)
+    norm_B = np.linalg.norm(b)
 
-#     # Compute the cosine similarity
-#     similarity = dot_product / (norm_A * norm_B)
-#     return similarity
+    # Compute the cosine similarity
+    similarity = dot_product / (norm_A * norm_B)
+    return similarity
 
 
 # def distance_similarity(x, y):
