@@ -169,3 +169,4 @@ poly_graphs_lib/cfg/mp_api.yml
 /config.yml
 /private_config.yml
 tmp
+/logs/
