@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import itertools
 from functools import partial
@@ -6,19 +7,32 @@ from multiprocessing import Pool
 
 import pandas as pd
 import pymatgen.core as pmat
-from matminer.datasets import load_dataset
-from matminer.featurizers.base import MultipleFeaturizer
-from matminer.featurizers.structure import XRDPowderPattern
-from matminer.featurizers.composition import ElementFraction
 
-from matgraphdb.graph.node_types import *
-from matgraphdb.utils import  GLOBAL_PROP_FILE, RELATIONSHIP_DIR,NODE_DIR, N_CORES, LOGGER, ENCODING_DIR, timeit
-from matgraphdb.utils.periodic_table import atomic_symbols_map
-# from matgraphdb.utils.math_utils import cosine_similarity
+from matgraphdb.utils import  GLOBAL_PROP_FILE, N_CORES, LOGGER, timeit
+
+from matgraphdb.utils.math_utils import cosine_similarity
 from matgraphdb.utils.general import chunk_list
+from matgraphdb.data.manager import DBManager
+
 ############################################################
 # Below is for is for creating relationships between nodes
 ############################################################
+def get_name_id_map(df):
+    """
+    Get a dictionary mapping material names to their IDs.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the material names and IDs.
+
+    Returns:
+        dict: A dictionary mapping material names to their IDs.
+    """
+    name_id_map = {}
+    column_names = df.columns
+    id_column_name=column_names[0]
+    for index, row in df.iterrows():
+        name_id_map[row['name:string']] = row[id_column_name]
+    return name_id_map
 
 def extract_id_column_headers(df):
     """
@@ -37,13 +51,16 @@ def extract_id_column_headers(df):
             id_columns.append(match.group(1))
     return id_columns[0]
 
-def create_bonding_task(material_file, node_type, bonding_method='geometric_electric'):
+def create_bonding_task(material_file, node_a_name, node_b_name, node_a_id_map, node_b_id_map, bonding_method='geometric_electric'):
     """
     Create bonding task based on the given material file, node type, and bonding method.
 
     Args:
         material_file (str): The path to the material file.
-        node_type (str): The type of node to create for each site.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
         bonding_method (str, optional): The method used for bonding. Defaults to 'geometric_electric'.
 
     Returns:
@@ -53,7 +70,7 @@ def create_bonding_task(material_file, node_type, bonding_method='geometric_elec
         Exception: If there is an error processing the file.
 
     """
-    material_connections=[]
+    
     # Load material data from file
     with open(material_file) as f:
         db = json.load(f)
@@ -63,56 +80,52 @@ def create_bonding_task(material_file, node_type, bonding_method='geometric_elec
     
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0]
-
+    node_type=node_a_name
+    id_maps = {'elements': node_a_id_map if node_a_name == 'elements' else node_b_id_map,
+               'chemenv': node_a_id_map if node_a_name == 'chemenv' else node_b_id_map,
+               'chemenv_element': node_a_id_map if node_a_name == 'chemenv_element' else node_b_id_map}
+    id_map=id_maps[node_type]
+    method_map = {
+        'geometric_electric': 'geometric_electric_consistent_bond_connections',
+        'geometric': 'geometric_consistent_bond_connections',
+        'electric': 'electric_consistent_bond_connections'
+    }
+    material_connections=[]
     try:
-        
-        if bonding_method == 'geometric_electric':
-            coord_connections = db['geometric_electric_consistent_bond_connections']
-        elif bonding_method == 'geometric':
-            coord_connections = db['geometric_consistent_bond_connections']
-        elif bonding_method == 'electric':
-            coord_connections = db['electric_consistent_bond_connections']
-
-        if node_type == 'chemenv' or node_type == 'chemenvElement':
-            coord_env_names= [coord_env[0]['ce_symbol'] for coord_env in db['coordination_environments_multi_weight']]
         element_names = [x['label'] for x in db['structure']['sites']]
+        coord_env_names=None
+        if node_a_name=='chemenv' or node_a_name=='chemenv_element' or node_b_name=='chemenv' or node_b_name=='chemenv_element':
+            coord_env_names = [coord_env[0]['ce_symbol'].replace(':','_') for coord_env in db['coordination_environments_multi_weight']]
         
-        # Iterate over each site and its coordination environment
+        names_map = {'elements': element_names,'chemenv': coord_env_names}
+
+        
+        coord_connections = db[method_map[bonding_method]]
         for i_site, site_connections in enumerate(coord_connections):
-            
-            site_element_name = element_names[i_site]
+            if node_type=='chemenv_element':
+                element_name = names_map['elements'][i_site]
+                chemenv_name = names_map['chemenv'][i_site]
+                site_name = element_name+'_'+chemenv_name
+            else:
+                site_name = names_map[node_type][i_site]
+            site_node_id = id_map[site_name]
 
-            if node_type == 'chemenv':
-                site_coord_env_name=coord_env_names[i_site]
-                site_node_id=CHEMENV_NAMES_ID_MAP[site_coord_env_name]
-            elif node_type=='element':
-                site_node_id=ELEMENTS_ID_MAP[site_element_name]
-            elif node_type=='chemenvElement':
-                site_coord_env_name=coord_env_names[i_site]
-                site_node_id=CHEMENV_ELEMENT_NAMES_ID_MAP[site_element_name+'_'+site_coord_env_name]
-
-            # Iterate over each neighbor of the site
             for i_neighbor in site_connections:
+                if node_type=='chemenv_element':
+                    element_name = names_map['elements'][i_neighbor]
+                    chemenv_name = names_map['chemenv'][i_neighbor]
+                    neighbor_name = element_name+'_'+chemenv_name
+                else:
+                    neighbor_name = names_map[node_type][i_neighbor]
+                neighbor_node_id = id_map[neighbor_name]
 
-                neighbor_element_name = element_names[i_neighbor]
+                material_connections.append((site_node_id, neighbor_node_id))
 
-                if node_type == 'chemenv':
-                    neighbor_coord_env_name=coord_env_names[i_neighbor]
-                    neighbor_node_id=CHEMENV_NAMES_ID_MAP[neighbor_coord_env_name]
-                elif node_type=='element':
-                    neighbor_node_id=ELEMENTS_ID_MAP[neighbor_element_name]
-                elif node_type=='chemenvElement':
-                    neighbor_coord_env_name=coord_env_names[i_neighbor]
-                    neighbor_node_id=CHEMENV_ELEMENT_NAMES_ID_MAP[neighbor_element_name+'_'+neighbor_coord_env_name]
-
-                data = (site_node_id,neighbor_node_id)
-
-                material_connections.append(data)
     except Exception as e:
         LOGGER.error(f"Error processing file {mpid}: {e}")
     return material_connections
 
-def create_chemenv_element_task(material_file):
+def create_chemenv_element_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create chemical environment element task.
 
@@ -123,6 +136,10 @@ def create_chemenv_element_task(material_file):
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples containing the chemical environment ID and element ID for each site.
@@ -139,10 +156,14 @@ def create_chemenv_element_task(material_file):
     
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0]
+    
+    # Map names to ID maps
+    chemenv_name_id_map = node_a_id_map if node_a_name == 'chemenv' else node_b_id_map
+    element_name_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
 
     try:
         # Extract coordination environments, connections, and site element names from the material data
-        coord_envs = [coord_env[0]['ce_symbol'] for coord_env in db['coordination_environments_multi_weight']]
+        coord_envs = [coord_env[0]['ce_symbol'].replace(':','_') for coord_env in db['coordination_environments_multi_weight']]
 
         site_element_names = [x['label'] for x in db['structure']['sites']]
         
@@ -152,10 +173,14 @@ def create_chemenv_element_task(material_file):
             site_coord_env_name=coord_envs[i_site]
             site_element_name = site_element_names[i_site]
 
-            site_chemenv_id=CHEMENV_NAMES_ID_MAP[site_coord_env_name]
-            site_element_id=ELEMENTS_ID_MAP[site_element_name]
+            site_chemenv_id=chemenv_name_id_map[site_coord_env_name]
+            site_element_id=element_name_id_map[site_element_name]
 
-            data = (site_chemenv_id,site_element_id)
+            if  node_a_name == 'elements':
+                data = (site_element_id,site_chemenv_id)
+            else:
+                data = (site_chemenv_id,site_element_id)
+                
             material_connections.append(data)
 
     except Exception as e:
@@ -163,12 +188,16 @@ def create_chemenv_element_task(material_file):
 
     return material_connections
 
-def create_material_element_task(material_file):
+def create_material_element_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create material-element relationships based on the given material file.
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples representing the material-element relationships.
@@ -186,7 +215,12 @@ def create_material_element_task(material_file):
     
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
+    
+    # Map names to ID maps
+    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    element_name_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
 
+    material_id=materials_id_map[mpid]
     try:
 
         site_element_names = [x['label'] for x in db['structure']['sites']]
@@ -195,9 +229,13 @@ def create_material_element_task(material_file):
         for i_site, site_element_name in enumerate(site_element_names):
 
             site_element_name = site_element_names[i_site]
-            site_element_id=ELEMENTS_ID_MAP[site_element_name]
+            site_element_id=element_name_id_map[site_element_name]
 
-            data = (mpid,site_element_id)
+            if  node_a_name == 'elements':
+                data = (site_element_id,material_id)
+            else:
+                data = (material_id,site_element_id)
+
             material_connections.append(data)
 
     except Exception as e:
@@ -205,7 +243,7 @@ def create_material_element_task(material_file):
 
     return material_connections
 
-def create_material_chemenv_task(material_file):
+def create_material_chemenv_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create material-chemenv task.
 
@@ -215,6 +253,10 @@ def create_material_chemenv_task(material_file):
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of material connections, where each connection is represented as a tuple
@@ -230,9 +272,14 @@ def create_material_chemenv_task(material_file):
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
+    # Map names to ID maps
+    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    chemenv_name_id_map = node_a_id_map if node_a_name == 'chemenv' else node_b_id_map
+
+    material_id=materials_id_map[mpid]
     try:
         # Extract coordination environments, connections, and site element names from the material data
-        coord_envs = [coord_env[0]['ce_symbol'] for coord_env in db['coordination_environments_multi_weight']]
+        coord_envs = [coord_env[0]['ce_symbol'].replace(':','_') for coord_env in db['coordination_environments_multi_weight']]
 
         site_element_names = [x['label'] for x in db['structure']['sites']]
         
@@ -240,9 +287,13 @@ def create_material_chemenv_task(material_file):
         for i_site, site_element_name in enumerate(site_element_names):
 
             site_coord_env_name=coord_envs[i_site]
-            site_chemenv_id=CHEMENV_NAMES_ID_MAP[site_coord_env_name]
+            site_chemenv_id=chemenv_name_id_map[site_coord_env_name]
+            
+            if  node_a_name == 'chemenv':
+                data = (site_chemenv_id,material_id)
+            else:
+                data = (material_id,site_chemenv_id)
 
-            data = (mpid,site_chemenv_id)
             material_connections.append(data)
 
     except Exception as e:
@@ -250,7 +301,7 @@ def create_material_chemenv_task(material_file):
 
     return material_connections
 
-def create_material_chemenvElement_task(material_file):
+def create_material_chemenvElement_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create material-chemenvElement relationship task.
 
@@ -261,6 +312,10 @@ def create_material_chemenvElement_task(material_file):
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples representing the material-chemenvElement relationships.
@@ -278,9 +333,14 @@ def create_material_chemenvElement_task(material_file):
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
+    # Map names to ID maps
+    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    chemenv_element_name_id_map = node_a_id_map if node_a_name == 'chemenv_element' else node_b_id_map
+    
+    material_id=materials_id_map[mpid]
     try:
         # Extract coordination environments, connections, and site element names from the material data
-        coord_envs = [coord_env[0]['ce_symbol'] for coord_env in db['coordination_environments_multi_weight']]
+        coord_envs = [coord_env[0]['ce_symbol'].replace(':','_') for coord_env in db['coordination_environments_multi_weight']]
 
         site_element_names = [x['label'] for x in db['structure']['sites']]
         
@@ -291,10 +351,13 @@ def create_material_chemenvElement_task(material_file):
             site_element_name = site_element_names[i_site]
             site_chemenv_element_name=site_element_name+'_'+site_coord_env_name
 
-            site_chemenvElement_id=CHEMENV_ELEMENT_NAMES_ID_MAP[site_chemenv_element_name]
+            site_chemenvElement_id=chemenv_element_name_id_map[site_chemenv_element_name]
 
+            if  node_a_name == 'chemenv_element':
+                data = (site_chemenvElement_id,material_id)
+            else:
+                data = (material_id,site_chemenvElement_id)
 
-            data = (mpid,site_chemenvElement_id)
             material_connections.append(data)
 
     except Exception as e:
@@ -302,12 +365,16 @@ def create_material_chemenvElement_task(material_file):
 
     return material_connections
 
-def create_material_spg_task(material_file):
+def create_material_spg_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create material-spg relationships based on the given material file.
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples representing the material-spg relationships.
@@ -326,12 +393,21 @@ def create_material_spg_task(material_file):
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
+    # Map names to ID maps
+    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    spg_id_map = node_a_id_map if node_a_name == 'spg' else node_b_id_map
+
+    material_id=materials_id_map[mpid]
     try:
         spg_name = db['symmetry']['number']
         spg_name = 'spg_' + str(spg_name)
-        spg_id=SPG_MAP[spg_name]
+        spg_id=spg_id_map[spg_name]
 
-        data = (mpid,spg_id)
+        if  node_a_name == 'spg_id':
+            data = (spg_id,material_id)
+        else:
+            data = (material_id,spg_id)
+ 
         material_connections.append(data)
 
     except Exception as e:
@@ -339,12 +415,16 @@ def create_material_spg_task(material_file):
 
     return material_connections
 
-def create_material_crystal_system_task(material_file):
+def create_material_crystal_system_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Create material-crystal_system relationships based on the given material file.
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples representing the material-crystal_system relationships.
@@ -363,11 +443,21 @@ def create_material_crystal_system_task(material_file):
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
+    # Map names to ID maps
+    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    crystal_system_id_map = node_a_id_map if node_a_name == 'crystal_system' else node_b_id_map
+
+
+    material_id=materials_id_map[mpid]
     try:
         crystal_system_name = db['symmetry']['crystal_system'].lower()
-        crystal_system_id=CRYSTAL_SYSTEMS_ID_MAP[crystal_system_name]
+        crystal_system_id=crystal_system_id_map[crystal_system_name]
 
-        data = (mpid,crystal_system_id)
+        if  node_a_name == 'crystal_system':
+            data = (crystal_system_id,material_id)
+        else:
+            data = (material_id,crystal_system_id)
+
         material_connections.append(data)
 
     except Exception as e:
@@ -375,12 +465,16 @@ def create_material_crystal_system_task(material_file):
 
     return material_connections
 
-def create_oxi_state_element_task(material_file):
+def create_oxi_state_element_task(material_file,node_a_name,node_b_name,node_a_id_map,node_b_id_map):
     """
     Creates a list of tuples representing the connections between site elements and their oxidation states.
 
     Args:
         material_file (str): The path to the material file.
+        node_a_name (str): The name of the first node in the relationship.
+        node_b_name (str): The name of the second node in the relationship.
+        node_a_id_map (dict): A dictionary mapping node names to IDs.
+        node_b_id_map (dict): A dictionary mapping node names to IDs.
 
     Returns:
         list: A list of tuples representing the connections between site elements and their oxidation states.
@@ -396,6 +490,9 @@ def create_oxi_state_element_task(material_file):
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0]
 
+    element_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
+    oxidation_state_id_map = node_a_id_map if node_a_name == 'oxidation_states' else node_b_id_map
+
     try:
 
         site_element_names = [x['label'] for x in db['structure']['sites']]
@@ -405,10 +502,14 @@ def create_oxi_state_element_task(material_file):
         for i_site, element_name in enumerate(site_element_names):
             oxi_state=oxi_states[0][element_name]
 
-            site_element_id=ELEMENTS_ID_MAP[element_name]
-            oxi_id= OXIDATION_STATES_ID_MAP[oxi_state]
+            site_element_id=element_id_map[element_name]
+            oxi_id= oxidation_state_id_map[oxi_state]
 
-            data = (site_element_id,oxi_id)
+            if node_a_name == 'elements':
+                data = (site_element_id,oxi_id)
+            else:
+                data = (oxi_id,site_element_id)
+
             material_connections.append(data)
 
     except Exception as e:
@@ -416,7 +517,7 @@ def create_oxi_state_element_task(material_file):
 
     return material_connections
 
-def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNECTS', filepath=None):
+def create_relationships(node_a_csv, node_b_csv, material_csv, mp_task, mp_task_params={}, connection_name='CONNECTS', filepath=None):
     """
     Create relationships between nodes based on the provided CSV files.
 
@@ -431,20 +532,35 @@ def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNEC
         pandas.DataFrame: DataFrame containing the relationships between the nodes.
 
     """
+
     df_a=pd.read_csv(node_a_csv)
     df_b=pd.read_csv(node_b_csv)
     node_a_id_space = extract_id_column_headers(df_a)
     node_b_id_space = extract_id_column_headers(df_b)
+
+    node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
+    node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
+    node_a_name_id_map = get_name_id_map(df_a)
+    node_b_name_id_map = get_name_id_map(df_b)
+
+    mp_task_params['node_a_name']=node_a_name
+    mp_task_params['node_b_name']=node_b_name
+    mp_task_params['node_a_id_map']=node_a_name_id_map
+    mp_task_params['node_b_id_map']=node_b_name_id_map
+
+    db_manager=DBManager()
+    database_dir=db_manager.directory_path
+    material_df=pd.read_csv(material_csv,index_col=0)
+    material_ids=material_df['material_id:string'].tolist()
+    files=[os.path.join(database_dir,f'{material_id}.json') for material_id in material_ids]
+    materials=db_manager.process_task(mp_task,files,**mp_task_params)
+
 
     node_dict={
             f':START_ID({node_a_id_space})':[],
             f':END_ID({node_b_id_space})':[],
             f':TYPE':[],
     }
-
-    with Pool(N_CORES) as p:
-        materials=p.map(mp_task,MATERIAL_FILES[:])
-
     properties_names=None
     # Get the properties names of relationships if any
     if len(materials[0][0]) != 2:
@@ -456,20 +572,13 @@ def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNEC
             node_dict.update({name:[] for name in properties_names} )
 
     # Iterate over the materials and create the relationships
-    for imat,material in enumerate(materials):
+    for imat, material in enumerate(materials):
 
         # Iterate over the connections in the material
         for i,connection in enumerate(material):
             
-            if node_a_id_space == 'material-ID':
-                node_dict[f':START_ID({node_a_id_space})'].append(imat)
-                node_dict[f':END_ID({node_b_id_space})'].append(connection[1])
-            elif node_b_id_space == 'material-ID':
-                node_dict[f':START_ID({node_a_id_space})'].append(connection[0])
-                node_dict[f':END_ID({node_b_id_space})'].append(imat)
-            else:
-                node_dict[f':START_ID({node_a_id_space})'].append(connection[0])
-                node_dict[f':END_ID({node_b_id_space})'].append(connection[1])
+            node_dict[f':START_ID({node_a_id_space})'].append(connection[0])
+            node_dict[f':END_ID({node_b_id_space})'].append(connection[1])
             node_dict[f':TYPE'].append(connection_name)
 
             if properties_names:
@@ -499,6 +608,10 @@ def create_relationships(node_a_csv,node_b_csv, mp_task, connection_name='CONNEC
 
     return df_weighted
 
+def format_connections_task(connection):
+
+    return connection[0]
+    
 
 ############################################################
 # Below is for similarity between materials
@@ -598,9 +711,11 @@ def create_material_material_relationship(material_file_csv, mp_task, similarity
     material_id_combs = tuple(itertools.combinations_with_replacement(material_ids, r=2))
     material_id_combs_chunks = chunk_list(material_id_combs, chunk_size)
 
+    db_manager=DBManager()
+    files=db_manager.database_files()
     # Get the structures and compositions for each material
     with Pool(N_CORES) as p:
-        structure_composition_tuples = p.map(mp_task, MATERIAL_FILES[:])
+        structure_composition_tuples = p.map(mp_task, files)
 
     structures = []
     compositions = []
@@ -628,222 +743,26 @@ def create_material_material_relationship(material_file_csv, mp_task, similarity
 
 
 def main():
-    """
-    This function is the entry point of the script and is responsible for creating relationships between different nodes.
-    It calls the `create_relationships` function multiple times with different parameters to create various types of relationships.
-    """
-    save_path=os.path.join(RELATIONSHIP_DIR)
-    print('Save_path : ', save_path)
-    os.makedirs(save_path,exist_ok=True)
-    print('Creating Relationship...')
-
-    # # # ##########################################################################################################################
-    # # # # Element - Element Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'elements.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='element', bonding_method='geometric_electric'), 
-    #                      connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'element_element_geometric-electric.csv'))
-    
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'elements.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='element',bonding_method='geometric'), 
-    #                      connection_name='GEOMETRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'element_element_geometric.csv'))
-    
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'elements.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='element',bonding_method='electric'), 
-    #                      connection_name='ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'element_element_electric.csv'))
-    
-    # # ##########################################################################################################################
-    # # # # Chemenv - Chemenv Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric_electric'), 
-    #                      connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_geometric-electric.csv'))
-    
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='geometric'), 
-    #                      connection_name='GEOMETRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_geometric.csv'))
-    
-
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenv',bonding_method='electric'), 
-    #                      connection_name='ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,f'chemenv_chemenv_electric.csv'))
-
-    # # ##########################################################################################################################
-    # # # # ChemenvElement - ChemenvElement Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenvElement',bonding_method='geometric_electric'),
-    #                      connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,'chemenvElement_chemenvElement_geometric-electric.csv'))
-    
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenvElement',bonding_method='geometric'),
-    #                      connection_name='GEOMETRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,'chemenvElement_chemenvElement_geometric.csv'))
-    
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=partial(create_bonding_task,node_type='chemenvElement',bonding_method='electric'),
-    #                      connection_name='ELECTRIC_CONNECTS',
-    #                      filepath=os.path.join(save_path,'chemenvElement_chemenvElement_electric.csv'))
-
-    # # # ##########################################################################################################################
-    # # # # # Chemenv - Element Connections
-
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=create_chemenv_element_task,
-    #                      connection_name='CAN_OCCUR',
-    #                      filepath=os.path.join(save_path,f'chemenv_elements.csv'))
-    
-    ###################################################################################################
-    # Material Relationships
-    #######################################################################################
-    
-    # # Material - Element Connections
-
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=create_material_element_task,
-    #                      connection_name='COMPOSED_OF',
-    #                      filepath=os.path.join(save_path,f'materials_elements.csv'))
-    
-
-    # # # # Material - Chemenv Connections
-
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-    #                      mp_task=create_material_chemenv_task,
-    #                      connection_name='COMPOSED_OF',
-    #                      filepath=os.path.join(save_path,f'materials_chemenv.csv'))
-    
-    # # # # # Material - ChemenvElement Connections
-
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=create_material_chemenvElement_task,
-    #                      connection_name='COMPOSED_OF',
-    #                      filepath=os.path.join(save_path,f'materials_chemenvElement.csv'))
-    
-    # # # # Material - spg Connections
-
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'spg.csv'), 
-                         mp_task=create_material_spg_task,
-                         connection_name='HAS_SPACE_GROUP_SYMMETRY',
-                         filepath=os.path.join(save_path,f'materials_spg.csv'))
-
-    # # # # Material - crystal_system Connections
-
-    create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                         node_b_csv=os.path.join(NODE_DIR,'crystal_systems.csv'), 
-                         mp_task=create_material_crystal_system_task,
-                         connection_name='HAS_CRYSTAL_SYSTEM',
-                         filepath=os.path.join(save_path,f'materials_crystal_system.csv'))
+    pass
+    # df=pd.read_csv('/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/graph_database/main/nodes/chemenv.csv')
+    # map=get_name_id_map(df)
+    # print(map)
+    # material_file='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/graph_database/main/nodes/materials.csv'
+    # material_file='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/json_database/mp-170.json'
+    # node_a_csv='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/graph_database/main/nodes/chemenv.csv'
+    # node_b_csv='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/graph_database/main/nodes/chemenv.csv'
+    # df_a=pd.read_csv(node_a_csv)
+    # df_b=pd.read_csv(node_b_csv)
+    # node_a_id_space = extract_id_column_headers(df_a)
+    # node_b_id_space = extract_id_column_headers(df_b)
 
 
+    # node_a_name=os.path.basename(node_a_csv).split('.')[0]
+    # node_b_name=os.path.basename(node_a_csv).split('.')[0]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # # ChemenvElement - ChemenvElement Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=create_chemenvElement_chemenvElement_task, 
-    #                      filepath=os.path.join(save_path,'chemenvElement_chemenvElement.csv'))
-
-    # # Material - ChemenvElement Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_element_names.csv'), 
-    #                      mp_task=create_chemenv_chemenv_task, 
-    #                      filepath=os.path.join(save_path,'materials_chemenvElement.csv'))
-
-    # Bonding Relationships
-    # oxidation_states - Magnetic States Connections
-    # create_bonding_relationships(node_a_csv=os.path.join(NODE_DIR,'oxidation_states.csv'),
-    #                         node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                         mp_task=create_oxi_state_element_task, 
-    #                         filepath=os.path.join(save_path,'oxiStates_elements.csv'))
-
-
-
-    # # Material - Element Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-    #                      mp_task=, 
-    #                      filepath=os.path.join(save_path,'materials_elements.csv'))
-    
-    # # Material - Chemenv Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                      node_b_csv=os.path.join(NODE_DIR,'chemenv_names.csv'), 
-    #                      mp_task=, 
-    #                      filepath=os.path.join(save_path,'materials_chemenv.csv'))
-    
-    # # Material - Crystal System Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                         node_b_csv=os.path.join(NODE_DIR,'crystal_systems.csv'), 
-    #                         mp_task=, 
-    #                         filepath=os.path.join(save_path,'materials_crystal_systems.csv'))
-    
-    # # Material - Magnetic States Connections
-    # create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                         node_b_csv=os.path.join(NODE_DIR,'magnetic_states.csv'), 
-    #                         mp_task=, 
-    #                         filepath=os.path.join(save_path,'materials_magnetic_states.csv'))
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-    # Below is for similarity between materials
-    # Note for 10647 materials this took 1457.1755.0496 seconds to complete. Max memory used 18.5 Gb
-    # Reset the index
-    # df=pd.read_csv(os.path.join(ENCODING_DIR,'MEGNet-MP-2018.6.1-Eform.csv'),index_col=0)
-    # df.reset_index(drop=True, inplace=True)
-
-    # create_material_material_relationship(material_file_csv=os.path.join(NODE_DIR,'materials.csv'),
-    #                                       mp_task=get_structure_composition_task,
-    #                                       similarity_task=megnet_lookup_task,
-    #                                       features=df,
-    #                                       chunk_size=500,
-    #                                       filepath=os.path.join(save_path,'material-material_MEGNet-MP-2018.6.1-Eform-similarity.csv')
-    #                                       )
-    # print('Finished creating nodes')
+    # node_a_id_map=get_name_id_map(df_a)
+    # node_b_id_map=get_name_id_map(df_b)
+    # create_bonding_task(material_file, node_a_name, node_b_name, node_a_id_map, node_b_id_map, bonding_method='geometric_electric')
 
 
 if __name__ == '__main__':

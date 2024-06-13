@@ -6,10 +6,7 @@ from glob import glob
 import pandas as pd
 import pymatgen.core as pmat
 
-from matgraphdb.graph.node_types import (ELEMENTS,ELEMENT_PROPERTIES, MAGNETIC_STATES, CRYSTAL_SYSTEMS, CHEMENV_NAMES,
-                                                CHEMENV_ELEMENT_NAMES, SPG_NAMES,OXIDATION_STATES,OXIDATION_STATES_NAMES,
-                                                MATERIAL_FILES,MATERIAL_IDS, MATERIAL_PROPERTIES, SPG_WYCKOFFS,
-                                                LATTICE_IDS, LATTICE_PROPERTIES,SITE_IDS, SITE_PROPERTIES, SITES_IDS, SITES_PROPERTIES)
+from matgraphdb.graph.node_types import NodeTypes
 from matgraphdb.utils import  GLOBAL_PROP_FILE, NODE_DIR, LOGGER, ENCODING_DIR
 
 def create_nodes(node_names, node_type, node_prefix, node_properties=None, filepath=None):
@@ -68,62 +65,76 @@ def main():
     os.makedirs(save_path, exist_ok=True)
     
     print('Creating nodes...')
-    
+    node_types=NodeTypes()
+
     # # Elements
-    # create_nodes(node_names=ELEMENTS, 
+    # elements,elements_properties,element_id_map=node_types.get_element_nodes()
+    # create_nodes(node_names=elements, 
     #             node_type='Element', 
     #             node_prefix='element', 
-    #             node_properties=ELEMENT_PROPERTIES,
+    #             node_properties=elements_properties,
     #             filepath=os.path.join(save_path, 'elements.csv'))
     
-    # # Crystal Systems
-    # create_nodes(node_names=CRYSTAL_SYSTEMS, 
+    # # # Crystal Systems
+    # crystal_systems,crystal_systems_properties,crystal_system_id_map=node_types.get_crystal_system_nodes()
+    # create_nodes(node_names=crystal_systems, 
     #             node_type='CrystalSystem', 
     #             node_prefix='crystalSystem', 
+    #             node_properties=crystal_systems_properties,
     #             filepath=os.path.join(save_path, 'crystal_systems.csv'))
+
+    # # Chemenv
+    # chemenv_names,chemenv_names_properties,chemenv_name_id_map=node_types.get_chemenv_nodes()
+    # create_nodes(node_names=chemenv_names, 
+    #             node_type='Chemenv', 
+    #             node_prefix='chemenv', 
+    #             node_properties=chemenv_names_properties,
+    #             filepath=os.path.join(save_path, 'chemenv_names.csv'))
     
-    # Chemenv
-    create_nodes(node_names=CHEMENV_NAMES, 
-                node_type='Chemenv', 
-                node_prefix='chemenv', 
-                filepath=os.path.join(save_path, 'chemenv_names.csv'))
+    # # Chemenv Element
+    # chemenv_element_names,chemenv_element_names_properties,chemenv_element_name_id_map=node_types.get_chemenv_element_nodes()
+    # create_nodes(node_names=chemenv_element_names, 
+    #             node_type='ChemenvElement', 
+    #             node_prefix='chemenvElement', 
+    #             filepath=os.path.join(save_path, 'chemenv_element_names.csv'))
     
-    # Chemenv Element
-    create_nodes(node_names=CHEMENV_ELEMENT_NAMES, 
-                node_type='ChemenvElement', 
-                node_prefix='chemenvElement', 
-                filepath=os.path.join(save_path, 'chemenv_element_names.csv'))
+    # # Magnetic States
+    # magnetic_states,magnetic_states_properties,magnetic_state_id_map=node_types.get_magnetic_states_nodes()
+    # create_nodes(node_names=magnetic_states, 
+    #             node_type='MagneticState', 
+    #             node_prefix='magState', 
+    #             filepath=os.path.join(save_path, 'magnetic_states.csv'))
     
-    # Magnetic States
-    create_nodes(node_names=MAGNETIC_STATES, 
-                node_type='MagneticState', 
-                node_prefix='magState', 
-                filepath=os.path.join(save_path, 'magnetic_states.csv'))
+    # # Space Groups
+    # space_groups,space_groups_properties,space_groups_id_map=node_types.get_space_group_nodes()
+    # create_nodes(node_names=space_groups, 
+    #             node_type='SpaceGroup', 
+    #             node_prefix='spg', 
+    #             filepath=os.path.join(save_path, 'spg.csv'))
     
-    # Space Groups
-    create_nodes(node_names=SPG_NAMES, 
-                node_type='SpaceGroup', 
-                node_prefix='spg', 
-                filepath=os.path.join(save_path, 'spg.csv'))
+    # # Oxidation States
+    # oxidation_states,oxidation_states_names,oxidation_state_id_map=node_types.get_oxidation_states_nodes()
+    # create_nodes(node_names=oxidation_states, 
+    #             node_type='OxidationState', 
+    #             node_prefix='oxiState', 
+    #             filepath=os.path.join(save_path, 'oxidation_states.csv'))
     
-    # Oxidation States
-    create_nodes(node_names=OXIDATION_STATES_NAMES, 
-                node_type='OxidationState', 
-                node_prefix='oxiState', 
-                filepath=os.path.join(save_path, 'oxidation_states.csv'))
+    # # Materials
+    # materials,materials_properties,material_id_map=node_types.get_material_nodes()
+    # create_nodes(node_names=materials,
+    #             node_type='Material',
+    #             node_prefix='material',
+    #             node_properties=materials_properties,
+    #             filepath=os.path.join(save_path, 'materials.csv'))
     
-    # Materials
-    create_nodes(node_names=MATERIAL_IDS,
-                node_type='Material',
-                node_prefix='material',
-                node_properties=MATERIAL_PROPERTIES,
-                filepath=os.path.join(save_path, 'materials.csv'))
-    
-    # SPG_WYCKOFFS
-    create_nodes(node_names=SPG_WYCKOFFS,
-                node_type='SPGWyckoff',
-                node_prefix='spgWyckoff',
-                filepath=os.path.join(save_path, 'spg_wyckoff.csv'))
+    # # SPG_WYCKOFFS
+    # spg_wyckoffs,spg_wyckoff_properties,spg_wyckoff_id_map=node_types.get_wyckoff_positions_nodes()
+    # create_nodes(node_names=spg_wyckoffs,
+    #             node_type='SPGWyckoff',
+    #             node_prefix='spgWyckoff',
+    #             node_properties=spg_wyckoff_properties,
+    #             filepath=os.path.join(save_path, 'spg_wyckoff.csv'))
+
 
     ##################################################################################################
     # # Lattice
