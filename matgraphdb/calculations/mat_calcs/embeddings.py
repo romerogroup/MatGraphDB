@@ -12,7 +12,7 @@ from matminer.featurizers.composition import ElementFraction
 from pymatgen.core import Structure
 
 from matgraphdb.utils import OPENAI_API_KEY, LOGGER
-from matgraphdb.graph.node_types import PROPERTIES
+
 
 
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
@@ -57,6 +57,7 @@ def extract_text_from_json(json_file):
         str: A compact JSON string containing the extracted text data.
     """
     import json
+    from matgraphdb.graph.node_types import PROPERTIES
     PROPERTY_NAMES = [prop[0] for prop in PROPERTIES]
     # Extract text from json file
     with open(json_file, 'r') as f:
