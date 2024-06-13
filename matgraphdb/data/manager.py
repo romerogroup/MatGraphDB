@@ -7,7 +7,7 @@ from functools import partial
 
 import pandas as pd
 import numpy as np
-from pymatgen.core import Structure, Composition,Lattice
+from pymatgen.core import Structure, Composition
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER, GLOBAL_PROP_FILE,ENCODING_DIR
@@ -207,7 +207,7 @@ class DBManager:
 
         return json_file
     
-    def check_property_task(self, file, property_name=''):
+    def check_property_task(self, json_file, property_name=''):
         """
         Check if a given property exists in the data loaded from a JSON file.
 
@@ -218,8 +218,15 @@ class DBManager:
         Returns:
             bool: True if the property exists and is not None, False otherwise.
         """
-        data = self.load_json(file)
-        
+
+        mpid=json_file.split('/')[-1].split('.')[0]
+        try:
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+        except Exception as e:
+            LOGGER.error(f"Error processing file {mpid}: {e}")
+            data={}
+            
         check=True
         if property_name not in data:
             check=False
@@ -286,101 +293,7 @@ class DBManager:
 
         return success, failed
 
-    def add_chargemol_slurm_script(self, partition_info=('comm_small_day','24:00:00','16', '1'), exclude=[]):
-        """
-        Adds a SLURM script for running Chargemol calculations to each calculation directory.
-
-        Args:
-            partition_info (tuple): A tuple containing information about the SLURM partition.
-                Default is ('comm_small_day','24:00:00','16', '1').
-            exclude (list): A list of nodes to exclude from the SLURM job. Default is an empty list.
-
-        Returns:
-            None
-        """
-        calc_dirs = glob(self.calculation_path + os.sep + 'mp-*')
-        LOGGER.info("Processing files from : ",self.calculation_path + os.sep + 'mp-*')
-        results=self.process_task(self.check_chargemol_task, calc_dirs)
-
-        for path, result in zip(calc_dirs[:],results[:]):
-
-            
-
-            if result==False:
-                with open(os.path.join(path,'POSCAR')) as f:
-                    lines=f.readlines()
-                    raw_natoms=lines[6].split()
-                    natoms=0
-                    for raw_natom in raw_natoms:
-                        natoms+=int(raw_natom)
-
-                # Read INCAR and modify NCORE and KPAR
-                incar_path = os.path.join(path, 'chargemol','INCAR')
-                with open(incar_path, 'r') as file:
-                    incar_lines = file.readlines()
-
-                if natoms >= 60:  
-                    nnode=4
-                    ncore = 32  
-                    kpar=4   
-                    ntasks=160
-                elif natoms >= 40:  
-                    nnode=3
-                    ncore = 20  
-                    kpar=3  
-                    ntasks=120
-                elif natoms >= 20: 
-                    nnode=2
-                    ncore = 16  
-                    kpar = 2   
-                    ntasks=80
-                else:
-                    nnode=1
-                    ntasks=40
-                    ncore = 40 
-                    kpar = 1
-
-                with open(incar_path, 'w') as file:
-                    for line in incar_lines:
-                        if line.strip().startswith('NCORE'):
-                            file.write(f'NCORE = {ncore}\n')
-                        elif line.strip().startswith('KPAR'):
-                            file.write(f'KPAR = {kpar}\n')
-                        else:
-                            file.write(line)
-
-
-
-                chargemol_dir=os.path.join(path,'chargemol')
-                sumbit_script=os.path.join(chargemol_dir,'run.slurm')
-                with open(sumbit_script, 'w') as file:
-                    file.write('#!/bin/bash\n')
-                    file.write('#SBATCH -J mp_database_chargemol\n')
-                    file.write(f'#SBATCH --nodes={nnode}\n')
-                    file.write(f'#SBATCH -n {ntasks}\n')
-                    file.write(f'#SBATCH -p {partition_info[0]}\n')
-                    file.write(f'#SBATCH -t {partition_info[1]}\n')
-                    if exclude:
-                        node_list_string= ','.join(exclude)
-                        file.write(f'#SBATCH --exclude={node_list_string}\n')
-                    file.write(f'#SBATCH --output={chargemol_dir}/jobOutput.out\n')
-                    file.write(f'#SBATCH --error={chargemol_dir}/jobError.err\n')
-                    file.write('\n')
-                    file.write('source ~/.bashrc\n')
-                    file.write('module load atomistic/vasp/6.2.1_intel22_impi22\n')
-                    file.write(f'cd {chargemol_dir}\n')
-                    file.write(f'echo "CALC_DIR: {chargemol_dir}"\n')
-                    file.write(f'echo "NCORES: $((SLURM_NTASKS))"\n')
-                    file.write('\n')
-                    file.write(f'mpirun -np $SLURM_NTASKS vasp_std\n')
-                    file.write('\n')
-                    file.write(f'export OMP_NUM_THREADS=$SLURM_NTASKS\n')
-                    file.write('~/SCRATCH/Codes/chargemol_09_26_2017/chargemol_FORTRAN_09_26_2017/compiled_binaries'
-                    '/linux/Chargemol_09_26_2017_linux_parallel> chargemol_debug.txt 2>&1\n')
-                    file.write('\n')
-                    file.write(f'echo "run complete on `hostname`: `date`" 1>&2\n')
-
-    def chargemol_task(self, dir):
+    def collect_chargemol_info_task(self, dir):
         """Check if a given property exists in the data."""
         material_id=dir.split(os.sep)[-1]
         json_file=os.path.join(self.directory_path,material_id+'.json')
@@ -419,7 +332,6 @@ class DBManager:
         return None
         
     def collect_chargemol_info(self):
-        
         calc_dirs = self.calculation_dirs()
         self.process_task(self.chargemol_task, calc_dirs)
         LOGGER.info(f"Finished collection Chargemol information")
@@ -429,7 +341,7 @@ class DBManager:
         # Load data from JSON file
         with open(json_file) as f:
             data = json.load(f)
-            struct = Structure.from_dict(db['structure'])
+            struct = Structure.from_dict(data['structure'])
 
         # Extract material project ID from file name
         mpid = json_file.split(os.sep)[-1].split('.')[0]
@@ -475,15 +387,24 @@ class DBManager:
 
     def bonding_task(self, json_file):
         # Load data from JSON file
-        with open(json_file) as f:
-            data = json.load(f)
-            structure=Structure.from_dict(db['structure'])
-
         mpid=json_file.split('/')[-1].split('.')[0]
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+                structure=Structure.from_dict(data['structure'])
+        except Exception as e:
+            LOGGER.error(f"Error processing file {mpid}: {e}")
+            return None
+        
 
-        geo_coord_connections = data['coordination_multi_connections']
-        elec_coord_connections = data['chargemol_bonding_connections']
-        chargemol_bond_orders = data['chargemol_bonding_orders']
+        geo_coord_connections=None
+        elec_coord_connections=None
+        chargemol_bond_orders=None
+        if 'coordination_multi_connections' in data:
+            geo_coord_connections = data['coordination_multi_connections']
+        if 'chargemol_bonding_connections' in data:
+            elec_coord_connections = data['chargemol_bonding_connections']
+            chargemol_bond_orders = data['chargemol_bonding_orders']
 
         final_geo_connections, final_bond_orders = calculate_geometric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
         data['geometric_consistent_bond_connections']=final_geo_connections
@@ -493,12 +414,13 @@ class DBManager:
         data['electric_consistent_bond_connections']=final_elec_connections
         data['electric_consistent_bond_orders']=final_bond_orders
 
-        final_geo_elec_connections, final_bond_orders = calculate_geometric_electric_consistent_bonds(final_geo_connections, final_elec_connections, final_bond_orders)
+        final_geo_elec_connections, final_bond_orders = calculate_geometric_electric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
         data['geometric_electric_consistent_bond_connections']=final_geo_elec_connections
         data['geometric_electric_consistent_bond_orders']=final_bond_orders
 
         final_cutoff_connections = calculate_cutoff_bonds(structure)
         data['bond_cutoff_connections']=final_cutoff_connections
+
         with open(json_file,'w') as f:
             json.dump(data, f, indent=4)
 
@@ -514,6 +436,8 @@ class DBManager:
         if len(error_messge)>0:
             LOGGER.error(f"Error processing file {mpid}: {error_messge} calculation failed")
 
+        return None
+    
     def bonding_calc(self):
 
         LOGGER.info(f"Starting collection Bonding Calculations")
@@ -539,24 +463,30 @@ class DBManager:
             Exception: If there is an error processing the file.
 
         """
-
-        # Load database from JSON file
-        with open(json_file) as f:
-            data = json.load(f)
-        
-        # Extract material project ID from file name
         mpid = json_file.split(os.sep)[-1].split('.')[0]
-
-   
         try:
+            # Load database from JSON file
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            LOGGER.error(f"Error processing file {mpid}: {e}")
+            data={}
+        
+        bond_orders=None
+        bond_connections=None
+        site_element_names=None
+        if 'chargemol_bonding_orders' in data:
             bond_orders = data["chargemol_bonding_orders"]
+        if 'chargemol_bonding_connections' in data:
             bond_connections = data["chargemol_bonding_connections"]
+        if 'structure' in data:
             site_element_names = [x['label'] for x in data['structure']['sites']]
 
-            bond_orders_sum, n_bond_orders = calculate_bond_orders_sum(bond_orders, bond_connections, site_element_names)
 
-        except Exception as e:
-            LOGGER.error(f"Error processing file {mpid}")
+        bond_orders_sum, n_bond_orders = calculate_bond_orders_sum(bond_orders, bond_connections, site_element_names)
+
+        if bond_orders is None or bond_connections is None or site_element_names is None:
+            LOGGER.error(f"Error processing file {mpid}: Bond Orders Stats calculation failed")
 
         return bond_orders_sum, n_bond_orders
     
@@ -571,31 +501,33 @@ class DBManager:
         bond_orders_sum_squared_differences (numpy.ndarray): The sum_squared_differences of bond orders between different elements.
         1 (int): A placeholder value indicating the function has completed successfully.
         """
-
-        # Load database from JSON file
-        with open(json_file) as f:
-            db = json.load(f)
+        mpid = json_file.split(os.sep)[-1].split('.')[0]
+        try:
+            # Load database from JSON file
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            LOGGER.error(f"Error processing file {json_file}: {e}")
+            data={}
 
         with open(GLOBAL_PROP_FILE) as f:
-            data = json.load(f)
-            bond_orders_avg=np.array(data['bond_orders_avg'])
-            n_bond_orders=np.array(data['n_bond_orders'])
+            global_data = json.load(f)
+            bond_orders_avg=np.array(global_data['bond_orders_avg'])
+            n_bond_orders=np.array(global_data['n_bond_orders'])
 
-        # Extract material project ID from file name
-        mpid = json_file.split(os.sep)[-1].split('.')[0]
 
-        # Initialize arrays for bond order calculations
-        n_elements = len(n_bond_orders)
-        bond_orders_sum_squared_differences = np.zeros(shape=(n_elements, n_elements))
-        try:
-            bond_orders = db["chargemol_bonding_orders"]
-            bond_connections = db["chargemol_bonding_connections"]
-            site_element_names = [x['label'] for x in db['structure']['sites']]
+        bond_orders=None
+        bond_connections=None
+        site_element_names=None
+        if 'chargemol_bonding_orders' in data:
+            bond_orders = data["chargemol_bonding_orders"]
+        if 'chargemol_bonding_connections' in data:
+            bond_connections = data["chargemol_bonding_connections"]
+        if 'structure' in data:
+            site_element_names = [x['label'] for x in data['structure']['sites']]
 
-            bond_orders_sum_squared_differences = calculate_bond_orders_sum_squared_differences(bond_orders, bond_connections, site_element_names, bond_orders_avg, n_bond_orders)
+        bond_orders_sum_squared_differences = calculate_bond_orders_sum_squared_differences(bond_orders, bond_connections, site_element_names, bond_orders_avg, n_bond_orders)
 
-        except Exception as e:
-            LOGGER.error(f"Error processing file {mpid}")
         return bond_orders_sum_squared_differences
     
     def bond_orders_stats_calculation(self):
@@ -629,9 +561,12 @@ class DBManager:
             n_bond_orders += result[1]
         bond_orders_avg = np.divide(bond_orders_avg, n_bond_orders, out=np.zeros_like(bond_orders_avg), where=n_bond_orders != 0)
         with open(GLOBAL_PROP_FILE) as f:
-            data = json.load(f)
-            data['bond_orders_avg'] = bond_orders_avg.tolist()
-            data['n_bond_orders'] = n_bond_orders.tolist()
+            global_data = json.load(f)
+        global_data['bond_orders_avg'] = bond_orders_avg.tolist()
+        global_data['n_bond_orders'] = n_bond_orders.tolist()
+        with open(GLOBAL_PROP_FILE,'w') as f:
+            json.dump(global_data, f)
+            
         LOGGER.info("Finished calculation of bond order average")
 
         LOGGER.info("Starting calculation of bond order standard deviation")
@@ -645,17 +580,15 @@ class DBManager:
         bond_orders_std = bond_orders_std ** 0.5
 
         with open(GLOBAL_PROP_FILE) as f:
-            data = json.load(f)
-            data['bond_orders_std'] = bond_orders_std.tolist()
+            global_data = json.load(f)
+            global_data['bond_orders_std'] = bond_orders_std.tolist()
         LOGGER.info("Finished calculation of bond order standard deviation")
 
         LOGGER.info("Saving bond order average and standard deviation to global property file")
         with open(GLOBAL_PROP_FILE, 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(global_data, f)
 
         LOGGER.info("Finished calculation of bond order statistics")
-
-
         return None
 
     def generate_composition_embeddings(self):
@@ -754,14 +687,19 @@ class DBManager:
         Returns:
             None
         """
-        with open(json_file) as f:
-            data = json.load(f)
-            struct = Structure.from_dict(data['structure'])
         mpid=json_file.split(os.sep)[-1].split('.')[0]
-
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+                struct = Structure.from_dict(data['structure'])
+        except Exception as e:
+            LOGGER.error(f"Error processing file {mpid}: {e}")
+            return None
+        
+        wyckoffs=None
         if 'wyckoffs' not in data:
             wyckoffs=calculate_wyckoff_positions(struct)
-            db['wyckoffs']=wyckoffs
+            data['wyckoffs']=wyckoffs
 
         with open(json_file,'w') as f:
             json.dump(data, f, indent=4)
@@ -786,19 +724,33 @@ class DBManager:
 
 if __name__=='__main__':
 
-    properties=['chargemol_bonding_orders','coordination_environments_multi_weight']
+    properties=['chargemol_bonding_orders','coordination_environments_multi_weight','coordination_multi_connections',
+                'geometric_consistent_bond_connections','electric_consistent_bond_connections','geometric_electric_consistent_bond_connections']
 
-    db=DBManager()
-    success,failed=db.check_property(property_name=properties[0])
+    data=DBManager()
+    print("geometric consistent bond connections")
+    success,failed=data.check_property(property_name=properties[3])
+    print("Number of failed files: ", len(failed))
+    print("Number of success files: ", len(success))
+
+    print("electric consistent bond connections")
+    success,failed=data.check_property(property_name=properties[4])
+    print("Number of failed files: ", len(failed))
+    print("Number of success files: ", len(success))
+
+    print("geometric electric consistent bond connections")
+    success,failed=data.check_property(property_name=properties[5])
     print("Number of failed files: ", len(failed))
     print("Number of success files: ", len(success))
 
 
-    # db.create_material(composition='Li2O')
+
+
+    # data.create_material(composition='Li2O')
     # Define the structure
 
-    # file=db.database_files[0]
-    # structure = Structure.from_dict(db.load_json(file)['structure'])
+    # file=data.database_files[0]
+    # structure = Structure.from_dict(data.load_json(file)['structure'])
     # print(structure)
     # # structure = Structure(
     # #     Lattice.cubic(3.0),
@@ -808,25 +760,25 @@ if __name__=='__main__':
     # #         [0.25, 0.25, 0.25],  # Coordinates for the second Si atom (basis of the diamond structure)
     # #     ]
     # # )
-    # db.create_material(structure=structure)
+    # data.create_material(structure=structure)
 
 
     
     #Create a test structure
 
-    # success,failed=db.check_property(property_name=properties[0])
+    # success,failed=data.check_property(property_name=properties[0])
 
 
-    # db.chargemol_task(dir=db.calculation_dirs()[0])
+    # data.chargemol_task(dir=data.calculation_dirs()[0])
     # print(N_CORES)
-    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
+    # data.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1') )
 
-    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00'),exclude=[] )
-    # success,failed=db.check_chargemol()
+    # data.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00'),exclude=[] )
+    # success,failed=data.check_chargemol()
     # # print(success[:10])
     # print(failed[:20])
-    # db.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1'),exclude=[] )
-    # success,failed=db.check_chargemol()
+    # data.add_chargemol_slurm_script(partition_info=('comm_small_day','24:00:00','20', '1'),exclude=[] )
+    # success,failed=data.check_chargemol()
     # # print(success[:10])
     # print(failed[:20])
 
