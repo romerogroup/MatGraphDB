@@ -2,9 +2,12 @@ import os
 import json
 from typing import List, Tuple, Union
 from glob import glob
+import textwrap
 from neo4j import GraphDatabase
 
-from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME,DBMSS_DIR,MAIN_GRAPH_DIR,GRAPH_DIR
+import pandas as pd
+
+from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME,DBMSS_DIR,MAIN_GRAPH_DIR,GRAPH_DIR, LOGGER,MP_DIR
 from matgraphdb.utils.general import get_os
 from matgraphdb.graph.similarity_chat import get_similarity_query
 
@@ -12,12 +15,14 @@ class MatGraphDB:
 
     def __init__(self,database_path=None,uri=LOCATION, user=USER, password=PASSWORD, from_scratch=False):
         """
-        Initializes a GraphDatabase object.
+        Initializes a MatGraphDB object.
 
         Args:
+            database_path (str): The path to the database.
             uri (str): The URI of the graph database.
             user (str): The username for authentication.
             password (str): The password for authentication.
+            from_scratch (bool): Whether to create a new database or use an existing one.
         """
 
         self.uri = uri
@@ -322,7 +327,7 @@ class MatGraphDB:
             raise Exception("Graph database is not connected. Please connect to the database first.")
         with self.driver.session(database=database_name) as session:
             results = session.run(query, parameters)
-        return list(results)
+            return [record for record in results]
     
     def execute_llm_query(self, prompt, database_name, n_results=5):
         """
@@ -444,15 +449,270 @@ class MatGraphDB:
             results = self.execute_query(query)
             return results
     
+class Neo4jDLManager:
+    def __init__(self, matgraphdb:MatGraphDB):
+        self.matgraphdb = matgraphdb
+        if self.matgraphdb.driver is None:
+            raise Exception("Graph database is not connected. Please ccreate a driver")
+        
+    def list_graphs(self,database_name):
+        """
+        Lists the graphs in a database.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-list/
 
+        Args:
+            database_name (str): The name of the database.
+        Returns:
+            list: A list of the graphs in the database.
+        """
+        cypher_statement=f"""
+        CALL gds.graph.list()
+        YIELD graphName
+        RETURN graphName;
+        """
+        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        graph_names=[result['graphName'] for result in results]
+        return graph_names
+    
+    def is_graph_in_memory(self,database_name,graph_name):
+        """
+        Checks if the graph exists in memory.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-list/
+
+        Args:
+            database_name (str): The name of the database.
+            graph_name (str): The name of the graph.
+
+        Returns:
+            bool: True if the graph exists in memory, False otherwise.
+        """
+
+        cypher_statement=f"""
+        CALL gds.graph.list("{graph_name}")
+        YIELD graphName
+        RETURN graphName;
+        """
+        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        if len(results)!=0:
+            return True
+        return False
+    
+    def drop_graph(self,database_name,graph_name):
+        """
+        Drops a graph from a database. 
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-drop/
+
+        Args:
+            database_name (str): The name of the database.
+            graph_name (str): The name of the graph.
+
+        Returns:
+            None
+        """
+        cypher_statement=f"""
+        CALL gds.graph.drop("{graph_name}")
+        """
+        self.matgraphdb.query(cypher_statement,database_name=database_name)
+        return None
+
+    def list_graph_data_science_algorithms(self,database_name, save=False):
+        """
+        Lists the algorithms in a database.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-list-algorithms/
+
+        Args:
+            database_name (str): The name of the database.
+
+        Returns:
+            list: A list of the algorithms in the database.
+        """
+        cypher_statement=f"""
+        CALL gds.list()
+        YIELD name,description
+        RETURN  name,description;
+        """
+        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        algorithm_names={result['name']:result['description'] for result in results}
+        if save:
+            print("Saving algorithms to : ",os.path.join(MP_DIR,'neo4j_graph_data_science_algorithms.txt'))
+            with open(os.path.join(MP_DIR,'neo4j_graph_data_science_algorithms.json'), "w") as file:
+                json.dump(algorithm_names, file, indent=4)
+            # Decide on a fixed width for the name column
+            with open(os.path.join(MP_DIR,'neo4j_graph_data_science_algorithms.txt'), "w") as file:
+                fmt = '{0:75s}{1:200s}\n'
+                for result in results:
+                    file.write(fmt.format(result['name'],result['description']))
+                    file.write('_'*300)
+                    file.write('\n')
+        return algorithm_names
+
+    def load_graph_into_memory(self,database_name:str, 
+                               graph_name:str,
+                               node_projections:Union[str,List,dict], 
+                               relationship_projections:Union[str,List,dict],
+                               config:dict=None):
+        """
+        Loads a graph into memory.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-creation/graph-project/
+
+        Args:
+            database_name (str): The name of the database.
+            graph_name (str): The name of the graph.
+            nodes_names (list): A list of node names.
+            relationships_names (list): A list of relationship names.
+
+        Returns:
+            None
+        """
+        if self.is_graph_in_memory(database_name=database_name,graph_name=graph_name):
+            LOGGER.info(f"Graph {graph_name} already in memory")
+            return None
+        formated_node_str=format_projection(projections=node_projections)
+        formated_relationship_str=format_projection(projections=relationship_projections)
+        
+        cypher_statement=f"""CALL gds.graph.project(
+                "{graph_name}",
+                {formated_node_str},
+                {formated_relationship_str}"""
+        
+        if config:
+            cypher_statement+=", "
+            cypher_statement+=format_dictionary(projections=config)
+        cypher_statement+=")"
+
+        self.matgraphdb.query(cypher_statement,database_name=database_name)
+        return None
+    
+    def estimate_memeory_for_algorithm(self,database_name:str,graph_name:str,algorithm_name:str,model:str='stream',algorithm_config:dict=None):
+        """
+        Estimates the memory required for a given algorithm.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-estimate-memory/
+
+        Args:
+            database_name (str): The name of the database.
+            graph_name (str): The name of the graph.
+            algorithm_name (str): The name of the algorithm.
+
+        Returns:
+            float: The estimated memory required for the algorithm.
+        """
+        cypher_statement=f"CALL gds.{algorithm_name}.{model}.estimate("
+        cypher_statement+=f"{format_string(graph_name)},"
+        cypher_statement+=f"{format_dictionary(algorithm_config)}"
+        cypher_statement+=")"
+        cypher_statement+="YIELD nodeCount, relationshipCount, bytesMin, bytesMax, requiredMemory"
+        result = self.matgraphdb.query(cypher_statement,database_name=database_name)[0]
+        names=('nodeCount','relationshipCount','bytesMin','bytesMax','requiredMemory')
+        return {name:result[name] for name in names}
+    
+def format_list(prop_list):
+    """
+    Formats a list into a string for use in Cypher queries.
+
+    Args:
+        prop_list (list): A list containing the properties.
+
+    Returns:
+        str: A string representation of the properties.
+    """
+    return [f"{prop}" for prop in prop_list]
+
+def format_string(prop_string):
+    """
+    Formats a string into a string for use in Cypher queries.
+
+    Args:
+        prop_string (str): A string containing the properties.
+
+    Returns:
+        str: A string representation of the properties.
+    """
+    return f"'{prop_string}'"
+
+def format_dictionary(prop_dict):
+    """
+    Formats a dictionary into a string for use in Cypher queries.
+
+    Args:
+        prop_dict (dict): A dictionary containing the properties.
+
+    Returns:
+        str: A string representation of the properties.
+    """
+    formatted_properties="{"
+    n_props=len(prop_dict)
+    for i,(prop_name,prop_params) in enumerate(prop_dict.items()):
+        if isinstance(prop_params,str):
+            formatted_properties+=f"{prop_name}: {format_string(prop_params)}"
+        elif isinstance(prop_params,int):
+            formatted_properties+=f"{prop_name}: {prop_params}"
+        elif isinstance(prop_params,float):
+            formatted_properties+=f"{prop_name}: {prop_params}"
+        elif isinstance(prop_params,List):
+            formatted_properties+=f"{prop_name}: {format_list(prop_params)}"
+        elif isinstance(prop_params,dict):
+            formatted_properties+=f"{prop_name}: {format_dictionary(prop_params)}"
+
+        if i!=n_props-1:
+            formatted_properties+=", "
+
+    formatted_properties+="}"
+    return formatted_properties
+
+def format_projection(projections:Union[str,List,dict]):
+    formatted_projections=""
+    if isinstance(projections,List):
+        formatted_projections=format_list(projections)
+    elif isinstance(projections,dict):
+        formatted_projections=format_dictionary(projections)
+    elif isinstance(projections,str):       
+        formatted_projections=format_string(projections)
+    return formatted_projections
 
 
 if __name__ == "__main__":
-    database_path=os.path.join(GRAPH_DIR,'main')
-    db=MatGraphDB(database_path=database_path,from_scratch=True)
-    print(db.get_databases())
+    # database_path=os.path.join(GRAPH_DIR,'main')
+    # db=MatGraphDB(database_path=database_path,from_scratch=True)
+    # print(db.get_databases())
+    with MatGraphDB() as matgraphdb:
+        database_name='nelements-1-2'
+        manager=Neo4jDLManager(matgraphdb)
+        print(manager.list_graphs(database_name))
+        print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
+        # print(manager.list_graph_data_science_algorithms(database_name))
+        graph_name='materials_chemenvElements'
+        node_projections=['ChemenvElement','Material']
+        relationship_projections={
+                    "GEOMETRIC_ELECTRIC_CONNECTS": {
+                    "orientation": 'UNDIRECTED',
+                    "properties": 'weight'
+                    },
+                    "COMPOSED_OF": {
+                        "orientation": 'UNDIRECTED',
+                        "properties": 'weight'
+                    }
+                }
+        
+        # print(format_dictionary(relationship_projections))
+        manager.load_graph_into_memory(database_name=database_name,
+                                       graph_name=graph_name,
+                                       node_projections=node_projections,
+                                       relationship_projections=relationship_projections)
+        
+        print(manager.list_graphs(database_name))
+        # print(manager.is_graph_in_memory(database_name,graph_name))
+        # print(manager.drop_graph(database_name,graph_name))
+        # print(manager.list_graphs(database_name))
+        # print(manager.is_graph_in_memory(database_name,graph_name))
 
-    # database_path=os.path.join(GRAPH_DIR,'nelements-1-2')
+
+        result=manager.estimate_memeory_for_algorithm(database_name=database_name,
+                                               graph_name=graph_name,
+                                               algorithm_name='fastRP',
+                                               model='stream',
+                                               algorithm_config={'embeddingDimension':128})
+        print(result)
+    # # database_path=os.path.join(GRAPH_DIR,'nelements-1-2')
     # db=MatGraphDB(database_path=database_path,from_scratch=True)
     # print(db.get_databases())
     # with GraphDatabase() as session:
@@ -508,3 +768,60 @@ if __name__ == "__main__":
     #     print(record)
     # session.close()
     # connection.close()
+
+    ##################################################################################################
+    # # Testing Neo4jDLManager
+    ##################################################################################################
+    # with MatGraphDB() as matgraphdb:
+    #     database_name='nelements-1-2'
+    #     manager=Neo4jDLManager(matgraphdb)
+    #     print(manager.list_graphs(database_name))
+    #     print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
+
+    #     graph_name='materials_chemenvElements'
+    #     node_projections=['ChemenvElement','Material']
+        # node_projections={
+        #     "ChemenvElement":{
+        #         "label":'ChemenvElement',
+        #         "properties":{
+        #             "chemical_symbol":{'property':'chemical_symbol','defaultValue':'','aggregation':'sum'},
+        #             "atomic_number":{'property':'atomic_number','defaultValue':0,'aggregation':'sum'},
+        #             "X":{'property':'X','defaultValue':0.0,'aggregation':'sum'},
+        #             "atomic_radius":{'property':'atomic_radius','defaultValue':0.0,'aggregation':'sum'},
+        #             "group":{'property':'group','defaultValue':0,'aggregation':'sum'},
+        #             "row":{'property':'row','defaultValue':0,'aggregation':'sum'},
+        #             "atomic_mass":{'property':'atomic_mass','defaultValue':0.0,'aggregation':'sum'}}
+        #         }
+        #     }
+    #     relationship_projections={
+    #                 "GEOMETRIC_ELECTRIC_CONNECTS": {
+    #                 "orientation": 'UNDIRECTED',
+    #                 "properties": 'weight'
+    #                 },
+    #                 "COMPOSED_OF": {
+    #                     "orientation": 'UNDIRECTED',
+    #                     "properties": {
+    #                                    'distance':{'property':'distance','defaultValue':0.0,'aggregation':'sum'},
+    #                                    'weight':{'property':'weight','defaultValue':1.0,'aggregation':'sum'}
+    #                                 }
+    #                 }
+    #             }
+        
+    #     print(format_dictionary(relationship_projections))
+    #     manager.load_graph_into_memory(database_name=database_name,
+    #                                    graph_name=graph_name,
+    #                                    node_projections=node_projections,
+    #                                    relationship_projections=relationship_projections)
+
+    ##################################################################################################
+    # # Testing Neo4jDLManager
+    ##################################################################################################
+    # with MatGraphDB() as matgraphdb:
+    #     database_name='nelements-1-2'
+    #     manager=Neo4jDLManager(matgraphdb)
+    #     print(manager.list_graphs(database_name))
+    #     print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
+        results=manager.list_graph_data_science_algorithms(database_name,save=True)
+        # for result in results:
+        #     # print the reuslts in two columns
+        #     print(result[0],'|||||||||||||||',result[1])
