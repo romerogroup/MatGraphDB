@@ -38,7 +38,9 @@ To activeate the enviornment use:
 conda activate matgraphdb
 ```
 
-### Neo4j Interface
+### Neo4jDektop Interface
+To use neo4jdektop, you will need to install the neo4j desktop application. You can download the application from the [neo4j website](https://neo4j.com/docs/operations-manual/current/installation/). Create a project and then create a new database management system (DBMS) , name it `MatGraphDB` and select the `Neo4j Community Edition` as the DBMS.
+
 
 #### Bulk Importing Data
 The best way to put large amounts of data into neo4j is to use the **neo4j-admin** to import csv files when the dbms is not runnning. This allows to put data into the database in a parallel way without having to worry abour ACID operations

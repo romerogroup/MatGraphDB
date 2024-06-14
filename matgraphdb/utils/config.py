@@ -54,5 +54,7 @@ RELATIONSHIP_DIR=os.path.join(GRAPH_DIR,'relationships')
 DB_CALC_DIR=os.path.join(MP_DIR,'calculations','MaterialsData')
 GLOBAL_PROP_FILE=os.path.join(MP_DIR,'global_properties.json')
 
+NEO4J_DESKTOP_DIR=CONFIG['NEO4J_DESKTOP_DIR']
+DBMSS_DIR = os.path.join(NEO4J_DESKTOP_DIR,'relate-data','dbmss')
 
 

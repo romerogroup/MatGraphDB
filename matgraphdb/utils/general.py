@@ -44,7 +44,13 @@ def print_directory_tree(directory, skip_dirs=None):
         for file in files:
             print(f'{indent}{file}')
 
-
+def get_os():
+    if os.name == 'nt':
+        return "Windows"
+    elif os.name == 'posix':
+        return "Linux or macOS"
+    else:
+        return "Unknown OS"
 
 
 if __name__ == '__main__':

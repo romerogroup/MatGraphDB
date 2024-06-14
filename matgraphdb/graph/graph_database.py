@@ -1,15 +1,16 @@
+import os
+import json
 from typing import List, Tuple, Union
-
-import numpy as np
+from glob import glob
 from neo4j import GraphDatabase
-from pymatgen.core import Structure, Composition
 
-from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME
+from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME,DBMSS_DIR,MAIN_GRAPH_DIR,GRAPH_DIR
+from matgraphdb.utils.general import get_os
 from matgraphdb.graph.similarity_chat import get_similarity_query
 
 class MatGraphDB:
 
-    def __init__(self, uri=LOCATION, user=USER, password=PASSWORD):
+    def __init__(self,database_path=None,uri=LOCATION, user=USER, password=PASSWORD, from_scratch=False):
         """
         Initializes a GraphDatabase object.
 
@@ -18,10 +19,20 @@ class MatGraphDB:
             user (str): The username for authentication.
             password (str): The password for authentication.
         """
+
         self.uri = uri
         self.user = user
         self.password = password
         self.driver = None
+        self.dbms_dir = None
+        self.dbms_json = None
+        self.from_scratch=from_scratch
+        self.get_dbms_dir()
+        self.neo4j_admin_path=None
+        self.neo4j_cypher_shell_path=None
+        self.get_neo4j_tools_path()
+        if database_path:
+            self.load_graph_database_into_neo4j(database_path)
 
     def __enter__(self):
             """
@@ -54,22 +65,23 @@ class MatGraphDB:
             self.close()
 
     def create_driver(self):
-            """
-            Creates a driver object for connecting to the graph database.
+        """
+        Creates a driver object for connecting to the graph database.
 
-            Returns:
-                None
-            """
-            self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+        Returns:
+            None
+        """
+        self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
 
     def close(self):
-            """
-            Closes the database connection.
+        """
+        Closes the database connection.
 
-            This method closes the connection to the database if it is open.
-            """
-            if self.driver:
-                self.driver.close()
+        This method closes the connection to the database if it is open.
+        """
+        if self.driver:
+            self.driver.close()
+            self.driver=None
 
     def list_schema(self):
         """
@@ -157,50 +169,179 @@ class MatGraphDB:
         
         return schema_list
     
-    def execute_query(self, query, parameters=None):
-            """
-            Executes a query on the graph database.
+    def get_dbms_dir(self):
+        """
+        Returns the directory where the database management system (DBMS) is located.
 
-            Args:
-                query (str): The Cypher query to execute.
-                parameters (dict, optional): Parameters to pass to the query. Defaults to None.
+        Returns:
+            str: The directory where the DBMS is located.
+        """
+        dbmss_dirs=glob(os.path.join(DBMSS_DIR,'*'))
+        for dbms_dir in dbmss_dirs:
+            relate_json=os.path.join(dbms_dir,'relate.dbms.json')
+            with open(relate_json,'r') as f:
+                dbms_info=json.loads(f.read())
+            dbms_name=dbms_info['name'].split()[0]
+            if dbms_name=='MatGraphDB':
+                self.dbms_dir=dbms_dir
+                self.dbms_json=relate_json
+                return self.dbms_dir
+        if self.dbms_dir is None:
+             raise Exception("MatGraphDB DBMS is not found. Please create a new DBMS with the name 'MatGraphDB'")
 
-            Returns:
-                list: A list of records returned by the query.
-            """
-            with self.driver.session(database=GRAPH_DB_NAME) as session:
-                results = session.run(query, parameters)
-                return [record for record in results]
+    def get_neo4j_tools_path(self):
+        """
+        Returns the path to the Neo4j tools.
+
+        Returns:
+            str: The path to the Neo4j tools.
+        """
+        if get_os()=='Windows':
+            self.neo4j_admin_path=os.path.join(self.dbms_dir,'bin','neo4j-admin.bat')
+            self.neo4j_cypher_shell_path=os.path.join(self.dbms_dir,'bin','cypher-shell.bat')
+        else:
+            self.neo4j_admin_path=os.path.join(self.dbms_dir,'bin','neo4j-admin')
+            self.neo4j_cypher_shell_path=os.path.join(self.dbms_dir,'bin','cypher-shell')
+        return self.neo4j_admin_path,self.neo4j_cypher_shell_path
+    
+    def get_load_statments(self,database_path):
+        """
+        Returns the load statement.
+
+        Returns:
+            str: The load statement for nodes.
+        """
+        node_statement=" --nodes"
+        node_files=glob(os.path.join(database_path,'nodes','*.csv'))
+        for node_file in node_files:
+            node_statement+=f" \"{node_file}\""
+        relationship_files=glob(os.path.join(database_path,'relationships','*.csv'))
+        relationship_statement=" --relationships"
+        for relationship_file in relationship_files:
+            relationship_statement+=f" \"{relationship_file}\""
+        statement=node_statement+relationship_statement
+        return statement
+    
+    def get_databases(self):
+        """
+        Returns a list of databases in the graph database.
+
+        Returns:
+            bool: True if the graph database exists, False otherwise.
+        """
+        self.create_driver()
+        results=self.execute_query("SHOW DATABASES",database_name='system')
+        names=[result['name'] for result in results]
+        self.close()
+        return names
+
+    def remove_database(self,database_name):
+        """
+        Removes a database from the graph database.
+
+        Args:
+            database_name (str): The name of the database to remove.
+        """
+        self.create_driver()
+        self.execute_query(f"DROP DATABASE `{database_name}`",database_name='system')
+        self.close()
+
+    def create_database(self,database_name):
+        """
+        Creates a new database in the graph database.
+
+        Args:
+            database_name (str): The name of the database to create.
+        """
+        self.create_driver()
+        self.execute_query(f"CREATE DATABASE `{database_name}`",database_name='system')
+        self.close()
+
+    def load_graph_database_into_neo4j(self,database_path):
+        """
+        Loads a graph database into Neo4j.
+
+        Args:
+            graph_datbase_path (str): The path to the graph database to load.
+        """
+        database_name=os.path.basename(database_path)
+        db_names=self.get_databases()
+        if self.from_scratch and database_name in db_names:
+            self.remove_database(database_name)
+        db_names=self.get_databases()
+
+        if database_name in db_names:
+            raise Exception(f"Graph database {database_name} already exists. " 
+                            "It must be removed before loading. " 
+                            "Set from_scratch=True to force a new database to be created.")
+
+
+        import_statment=f'{self.neo4j_admin_path} database import full'
+        load_statment=self.get_load_statments(database_path)
+        import_statment+=load_statment
+        import_statment+=f" --overwrite-destination {database_name}"
+        print(import_statment)
+        # Execute the import statement
+        os.system(import_statment)
+
+        self.create_database(database_name)
+        return None
+
+    def execute_query(self, query, database_name, parameters=None):
+        """
+        Executes a query on the graph database.
+
+        Args:
+            query (str): The Cypher query to execute.
+            database_name (str): The name of the database to execute the query on. Defaults to None.
+            parameters (dict, optional): Parameters to pass to the query. Defaults to None.
+
+        Returns:
+            list: A list of records returned by the query.
+        """
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
+
+        with self.driver.session(database=database_name) as session:
+            results = session.run(query, parameters)
+            return [record for record in results]
             
-    def query(self, query, parameters=None):
-            """
-            Executes a query on the graph database.
+    def query(self, query, database_name, parameters=None):
+        """
+        Executes a query on the graph database.
 
-            Args:
-                query (str): The Cypher query to execute.
-                parameters (dict, optional): Parameters to pass to the query. Defaults to None.
+        Args:
+            query (str): The Cypher query to execute.
+            database_name (str): The name of the database to execute the query on. Defaults to None.
+            parameters (dict, optional): Parameters to pass to the query. Defaults to None.
 
-            Returns:
-                list: A list of records returned by the query.
-            """
-            with self.driver.session(database=GRAPH_DB_NAME) as session:
-                results = session.run(query, parameters)
-            return list(results)
-    def execute_llm_query(self, prompt, n_results=5):
+        Returns:
+            list: A list of records returned by the query.
+        """
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
+        with self.driver.session(database=database_name) as session:
+            results = session.run(query, parameters)
+        return list(results)
+    
+    def execute_llm_query(self, prompt, database_name, n_results=5):
         """
         Executes a query in the graph database using the LLM (Language-Modeling) approach.
 
         Args:
             prompt (str): The prompt for the query.
+            database_name (str): The name of the database to execute the query on.
             n_results (int, optional): The number of results to return. Defaults to 5.
 
         Returns:
             list: A list of records returned by the query.
         """
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
         embedding, execute_statement = get_similarity_query(prompt)
         parameters = {"embedding": embedding, "nresults": n_results}
 
-        with self.driver.session(database=GRAPH_DB_NAME) as session:
+        with self.driver.session(database=database_name) as session:
             results = session.run(execute_statement, parameters)
 
             return [record for record in results]
@@ -307,10 +448,16 @@ class MatGraphDB:
 
 
 if __name__ == "__main__":
+    database_path=os.path.join(GRAPH_DIR,'main')
+    db=MatGraphDB(database_path=database_path,from_scratch=True)
+    print(db.get_databases())
 
-    with GraphDatabase() as session:
-        # result = matgraphdb.execute_query(query, parameters)
-        schema_list=session.list_schema()
+    # database_path=os.path.join(GRAPH_DIR,'nelements-1-2')
+    # db=MatGraphDB(database_path=database_path,from_scratch=True)
+    # print(db.get_databases())
+    # with GraphDatabase() as session:
+    #     # result = matgraphdb.execute_query(query, parameters)
+    #     schema_list=session.list_schema()
 
         # results=session.read_material(material_ids=['mp-1000','mp-1001'],
         #                        elements=['Te','Ba'])

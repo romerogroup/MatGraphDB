@@ -7,3 +7,4 @@ USER: "neo4j"
 PASSWORD: "password"
 LOCATION: "bolt://localhost:7687"
 GRAPH_DB_NAME: 'matgraphdb'
+NEO4J_DESKTOP_DIR: "C:/Users/lllang/.Neo4jDesktop"
