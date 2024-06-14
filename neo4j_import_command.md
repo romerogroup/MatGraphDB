@@ -22,16 +22,16 @@
 CALL gds.graph.project(
   'materials_chemenvElements',
   ['ChemenvElement','Material'],
-  {
-    GEOMETRIC_ELECTRIC_CONNETS: {
-      orientation: 'UNDIRECTED',
-      properties: 'weight'
-    },
-    COMPOSED_OF: {
-        orientation: 'UNDIRECTED',
-        properties'weight'
-    }
-  }
+    {
+                    GEOMETRIC_ELECTRIC_CONNETS: {
+                    orientation: 'UNDIRECTED',
+                    properties: 'weight'
+                    },
+                    COMPOSED_OF: {
+                        orientation: 'UNDIRECTED',
+                        properties'weight'
+                    }
+                }
 )
 
 
