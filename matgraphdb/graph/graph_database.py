@@ -517,6 +517,167 @@ class MatGraphDB:
             results = self.execute_query(query)
             return results
     
+    def create_vector_index(self,
+                            database_name:str,
+                            property_dimensions:int,
+                            similarity_function:str,
+                            node_type:str=None,
+                            node_property_name:str=None,
+                            relationship_type:str=None,
+                            relationship_property_name:str=None,
+                            index_name:str=None,
+                            ):
+        """
+        Creates a vector index on a graph for either a node or a relationship.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-creation/vector-index/
+
+        Args:
+            database_name (str): The name of the database.
+            property_dimensions (int): The number of dimensions in the vector.
+            similarity_function (str): The similarity function to use.
+            node_type (str,optional): The type of the nodes. This is optional and if not provided,
+            node_property_name (str, optional): The name of the node property. This is optional and if not provided,
+            relationship_type (str, optional): The type of the relationships. This is optional and if not provided,
+            relationship_property_name (str, optional): The name of the relationship property. This is optional and if not provided,
+            index_name (str, optional): The name of the index. This is optional and if not provided, 
+            the default property name is used.
+
+        Returns:
+            None
+        """
+
+        if node_type is None and node_property_name is None and relationship_type is None and relationship_property_name is None:
+            raise Exception("Either node_type and node_property_name or relationship_type and relationship_property_name must be provided")
+        if node_type is None and node_property_name is not None:
+            raise Exception("node_type must be provided if node_property_name is provided")
+        if relationship_type is None and relationship_property_name is not None:
+            raise Exception("relationship_type must be provided if relationship_property_name is provided")
+        if node_property_name is None and node_type is not None:
+            raise Exception("node_property_name must be provided if node_type is provided")
+        if relationship_property_name is None and relationship_type is not None:
+            raise Exception("relationship_property_name must be provided if relationship_type is provided")
+
+        config={}
+        config['vector.dimensions']=property_dimensions
+        config['vector.similarity_function']=similarity_function
+
+        cypher_statement=f"CREATE VECTOR INDEX {format_string(index_name)} IF NOT EXISTS"
+
+        if node_type is not None:
+            cypher_statement+=f"FOR (n :{format_string(node_type)}) ON (n.{format_string(node_property_name)})"
+
+        if relationship_type is not None:
+            cypher_statement+=f"FOR ()-[r :{format_string(relationship_type)}]-() ON (r.{format_string(relationship_property_name)})"
+        
+        cypher_statement+=" OPTIONS {indexConfig:"
+        cypher_statement+=f"{format_dictionary(config)}"
+        cypher_statement+="}"
+
+        results=self.query(cypher_statement,database_name=database_name)
+
+        outputs=[]
+        for result in results:
+            output={ key:value for key, value in result.items()}
+            outputs.append(output)
+        return outputs
+    
+    def check_vector_index(self,
+                            database_name:str,
+                            index_name:str,
+                            ):
+        """
+        Checks if a vector index exists on a graph.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-creation/vector-index/
+
+        Args:
+            database_name (str): The name of the database.
+            index_name (str): The name of the index.
+
+        Returns:
+            bool: True if the index exists, False otherwise.
+        """
+        cypher_statement=f"CALL db.index.list('{format_string(index_name)}')"
+        results=self.query(cypher_statement,database_name=database_name)
+        if len(results)!=0:
+            return True
+        return False
+    
+    def drop_vector_index(self,
+                            database_name:str,
+                            index_name:str,
+                            ):
+        """
+        Drops a vector index on a graph.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-creation/vector-index/
+
+        Args:
+            database_name (str): The name of the database.
+            index_name (str): The name of the index.
+
+        Returns:
+            None
+        """
+        cypher_statement=f"CALL db.index.drop('{format_string(index_name)}')"
+        self.query(cypher_statement,database_name=database_name)
+        return None
+        
+    def query_vector_index(self,
+                            database_name:str,
+                            graph_name:str,
+                            index_name:str,
+                            nearest_neighbors:int=10,
+                            node_type:str=None,
+                            node_property_name:str=None,
+                            node_properties:dict=None,
+                            relationship_type:str=None,
+                            relationship_property_name:str=None,
+                            relationship_properties:dict=None,
+                            ):
+        """
+        Queries a vector index on a graph for either a node or a relationship.
+        https://neo4j.com/docs/graph-data-science/current/management-ops/graph-creation/vector-index/
+
+        Args:
+            database_name (str): The name of the database.
+            graph_name (str): The name of the graph.
+            index_name (str): The name of the index.
+            nearest_neighbors (int, optional): The number of nearest neighbors to return. Defaults to 10.
+            node_type (str,optional): The type of the nodes. This is optional and if not provided,
+            node_property_name (str, optional): The name of the node property for which the vector index is queried.
+            relationship_type (str, optional): The type of the relationships. This is optional and if not provided,
+            relationship_property_name (str, optional): The name of the relationship property. This is optional and if not provided,
+
+        Returns:
+            list: A list of tuples representing the query results.
+        """
+        if node_type is None and node_property_name is None and relationship_type is None and relationship_property_name is None:
+            raise Exception("Either node_type and node_property_name or relationship_type and relationship_property_name must be provided")
+        if node_type is None and node_property_name is not None:
+            raise Exception("node_type must be provided if node_property_name is provided")
+        if relationship_type is None and relationship_property_name is not None:
+            raise Exception("relationship_type must be provided if relationship_property_name is provided")
+        if node_property_name is None and node_type is not None:
+            raise Exception("node_property_name must be provided if node_type is provided")
+        if relationship_property_name is None and relationship_type is not None:
+            raise Exception("relationship_property_name must be provided if relationship_type is provided")
+        if node_type is not None and node_properties is None:
+            raise Exception("node_properties must be provided. This is to find a specific node")
+        if relationship_type is not None and relationship_properties is None:
+            raise Exception("relationship_properties must be provided. This is to find a specific relationship")
+        
+        if node_type:
+            cypher_statement=f"MATCH (m :{format_string(node_type)} {format_dictionary(node_properties)})"
+            cypher_statement+=f"CALL db.index.vector.queryNodes({format_string(index_name)}, {nearest_neighbors}, m.{format_string(node_property_name)})"
+        if relationship_type:
+            cypher_statement=f"MATCH ()-[r:{format_string(relationship_type)} {format_dictionary(relationship_properties)}]-()"
+            cypher_statement+=f"CALL db.index.vector.queryRelationships({format_string(index_name)}, {nearest_neighbors}, r.{format_string(relationship_property_name)})"
+        
+        outputs=[]
+        for result in self.query(cypher_statement,database_name=database_name):
+            output={ key:value for key, value in result.items()}
+            outputs.append(output)
+        return outputs
+
 class Neo4jGDSManager:
     def __init__(self, matgraphdb:MatGraphDB):
         self.matgraphdb = matgraphdb
