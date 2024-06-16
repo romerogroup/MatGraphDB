@@ -517,29 +517,46 @@ def create_oxi_state_element_task(material_file,node_a_name,node_b_name,node_a_i
 
     return material_connections
 
-def create_relationships(node_a_csv, node_b_csv, material_csv, mp_task, mp_task_params={}, connection_name='CONNECTS', filepath=None):
+def create_relationships(node_a_csv, node_b_csv, material_csv,  mp_task, 
+                         mp_task_params={}, 
+                         connection_name='CONNECTS',
+                         relationship_dir= None,
+                         ):
     """
     Create relationships between nodes based on the provided CSV files.
 
     Args:
         node_a_csv (str): Path to the CSV file containing the first set of nodes.
         node_b_csv (str): Path to the CSV file containing the second set of nodes.
+        material_csv (str): Path to the CSV file containing the material data.
         mp_task (function): A function that defines the task to be performed on each material.
+        relationship_dir (str,optional): The directory where the relationship files are saved. Defaults to None.
         connection_name (str, optional): The name of the relationship between the nodes. Defaults to 'CONNECTS'.
-        filepath (str, optional): Path to save the resulting CSV file. Defaults to None.
-
+        
     Returns:
         pandas.DataFrame: DataFrame containing the relationships between the nodes.
 
     """
+
+    node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
+    node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
+
+    filepath=None
+    if relationship_dir:
+        filename=f"{node_a_name}-{node_b_name}-{connection_name.lower()}.csv"
+        filepath=os.path.join(relationship_dir,filename)
+
+        if os.path.exists(filepath):
+            LOGGER.info(f"Relationship file {filepath} already exists. Skipping creation.")
+            return None
 
     df_a=pd.read_csv(node_a_csv)
     df_b=pd.read_csv(node_b_csv)
     node_a_id_space = extract_id_column_headers(df_a)
     node_b_id_space = extract_id_column_headers(df_b)
 
-    node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
-    node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
+    
+
     node_a_name_id_map = get_name_id_map(df_a)
     node_b_name_id_map = get_name_id_map(df_b)
 
@@ -563,13 +580,21 @@ def create_relationships(node_a_csv, node_b_csv, material_csv, mp_task, mp_task_
     }
     properties_names=None
     # Get the properties names of relationships if any
-    if len(materials[0][0]) != 2:
-        properties_names=[]
-        for i,property in enumerate(materials[0]):
-            if i>1:
-                properties_names.append(property[0])
-        for name in properties_names:
-            node_dict.update({name:[] for name in properties_names} )
+    # Note : Need better way to handle this
+    for material in materials:
+        try:
+            if len(material[0]) != 2:
+                properties_names=[]
+                for i,property in enumerate(material[0]):
+                    if i>1:
+                        properties_names.append(property[0])
+                for name in properties_names:
+                    node_dict.update({name:[] for name in properties_names} )
+            break
+        except:
+            LOGGER.error(f"Error processing file {material}")
+            continue
+        
 
     # Iterate over the materials and create the relationships
     for imat, material in enumerate(materials):
@@ -603,15 +628,11 @@ def create_relationships(node_a_csv, node_b_csv, material_csv, mp_task, mp_task_
     # Drop the id_tuple column
     df_weighted = df_weighted.drop(columns='id_tuple')
 
-    if filepath is not None:
+    if filepath:
         df_weighted.to_csv(filepath, index=False)
 
     return df_weighted
 
-def format_connections_task(connection):
-
-    return connection[0]
-    
 
 ############################################################
 # Below is for similarity between materials
