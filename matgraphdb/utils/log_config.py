@@ -2,7 +2,12 @@ import os
 from datetime import datetime
 import logging
 
-def setup_logging(log_dir):
+class InfoFilter(logging.Filter):
+    def filter(self, record):
+        # Only allow INFO level messages
+        return record.levelno == logging.INFO
+
+def setup_logging(log_dir,apply_filter=True):
     """
     Set up logging for the MatGraphDB package.
 
@@ -20,8 +25,10 @@ def setup_logging(log_dir):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     logging.basicConfig(filename=os.path.join(log_dir,log_filename), 
-                        level=logging.INFO, 
+                        level=logging.DEBUG, 
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s - Line: %(lineno)d')
 
     logger = logging.getLogger('matgraphdb')  # define globally (used in train.py, val.py, detect.py, etc.)
+    if apply_filter:
+        logger.addFilter(InfoFilter())  # Apply the custom filter to only log INFO messages
     return logger
