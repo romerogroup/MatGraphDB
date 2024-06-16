@@ -1,14 +1,57 @@
 # MatGraphDB
 
 
+
 ## Introduction
-MatGraphDB is a Python package designed to interface with primary and graph databases for the purpose of material analysis. The package facilitates complex computational tasks, including Density Functional Theory (DFT) calculations, through its modular components - `DataManager`, `CalcManager`, and `GraphManager`. This system is structured to handle vast datasets of materials data, encoding their properties and relationships within a graph-based analytical model. The ultimate goal of MatGraphDB is to leverage graph databases, specifically Neo4j, to enable advanced analysis and discovery in the realm of material science.
+# Introduction to MatGraphDB
 
-## System Architecture
+Welcome to **MatGraphDB**, a powerful Python package designed to interface with primary and graph databases for advanced material analysis. MatGraphDB excels in managing vast datasets of materials data, performing complex computational tasks, and encoding material properties and relationships within a graph-based analytical model.
+
+MatGraphDB is structured around several modular components that work together to streamline data management and analysis:
+
+- **DataManager**: Handles interactions with JSON databases and manages the extraction of information from completed calculation directories.
+- **CalcManager**: Manages Density Functional Theory (DFT) calculations, including setting up directories and launching calculations within `MaterialsData`.
+- **GraphDBGenerator**: Facilitates the creation of nodes and relationships for graph databases, storing this information in a specified directory and generating necessary CSV files for nodes and relationships.
+- **Neo4jManager** and **Neo4jGDSManager**: Manage connections to Neo4j databases, allowing for the creation, update, and removal of databases on the Neo4j server, as well as interaction with the Neo4j Graph Data Science library for advanced graph analytics.
+
+The ultimate goal of MatGraphDB is to leverage the capabilities of graph databases, specifically Neo4j, to enable advanced analysis and discovery in the realm of material science. By integrating data management, DFT calculations, and graph database functionalities, MatGraphDB provides a cohesive workflow for researchers and analysts to explore and understand complex material data.
+
+This documentation provides an overview of the package, detailing how the various components interact to facilitate efficient data management, computation, and analysis, ensuring that you can make the most out of your material science research with MatGraphDB.
+
+## Components and Their Interactions
+
 ![System Architecture of MatGraphDB](MatGraphDB.png)
-*Figure 1: The MatGraphDB architecture showcasing the interconnections between its components. `CalcManager` manages complex calculations, while `DataManager` oversees the interaction with JSON databases and encodings. The `GraphManager` facilitates operations with the Neo4j graph database, utilizing functions like `create_nodes()` and `create_relationships()` to represent materials and their interactions as graph elements stored in CSV format. The architecture illustrates the flow from the MatGraphDB package processing to the primary database, culminating in the Neo4j Graph Database for material analysis.*
+*Figure 1: MatGraphDB Package Overview - This diagram illustrates the main components and their interactions within the MatGraphDB package. It highlights the initialization of the `DataManager`, the execution of DFT calculations by `CalcManager`, the generation of the graph database using `GraphDBGenerator`, and the management of Neo4j databases through `Neo4jManager` and `Neo4jGDSManager`. The workflow demonstrates how data flows from JSON files to advanced graph analytics, facilitating comprehensive materials data analysis.
+
+### 1. DataManager Initialization
+The `DataManager` is the foundational component of the package. It is initialized with the `directory_path`, which points to the JSON database directory. The primary role of `DataManager` is to manage interactions with the JSON files and extract information from the completed calculation directories.
+
+### 2. DFT Calculations with CalcManager
+The `CalcManager` component manages DFT calculations through interactions with `data_manager`. This includes:
+- Performing DFT calculations (`dft_calcs`).
+- Managing calculations within `MaterialsData`.
+- Setting up directories and launching calculations.
+
+### 3. Graph Database Generation
+The `GraphDBGenerator` plays a crucial role in creating nodes and relationships for the graph database. It utilizes `data_manager` to handle these processes. To build the graph database, `GraphDBGenerator` uses the methods `create_nodes()` and `create_relationships()`. Once the database directory is set up, an additional method transforms the graph database into a GraphML file, compatible with various graph packages.
+
+- Creates and stores information in the `graph_databases/{database_name}/neo4j_csv` directory.
+- Generates node CSV files in the format `{node_filename}.csv`.
+- Generates relationship CSV files in the format `{node_1_filename}-{node_2_filename}-{connection_names}.csv`.
 
 
+### 4. Managing Neo4j Database Connections
+Neo4j database connections are managed by `Neo4jManager` and `Neo4jGDSManager`:
+- **Neo4jManager**: After the `GraphDBGenerator` creates the graph database directory, `Neo4jManager` can be initialized with this directory to manage databases on the Neo4j server. This includes creating, removing, updating, and listing databases, as well as importing all data from the directory.
+- **Neo4jGDSManager**: Once the database is imported, `Neo4jGDSManager` can be initialized. This component interacts with the Neo4j Graph Data Science library to perform various operations, such as:
+  - Loading graphs into memory.
+  - Removing graphs from memory.
+  - Writing and exporting graphs.
+  - Running algorithms on the graphs.
+
+### Summary
+
+MatGraphDB seamlessly integrates materials data management with advanced graph database functionalities, leveraging DFT calculations and Neo4j database management to provide a robust tool for materials science research. The interactions between `DataManager`, `CalcManager`, `GraphDBGenerator`, `Neo4jManager`, and `Neo4jGDSManager` create a cohesive workflow, from data management and DFT calculations to graph database creation and sophisticated data analysis.
 
 
 
