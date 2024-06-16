@@ -5,7 +5,7 @@
 MatGraphDB is a Python package designed to interface with primary and graph databases for the purpose of material analysis. The package facilitates complex computational tasks, including Density Functional Theory (DFT) calculations, through its modular components - `DataManager`, `CalcManager`, and `GraphManager`. This system is structured to handle vast datasets of materials data, encoding their properties and relationships within a graph-based analytical model. The ultimate goal of MatGraphDB is to leverage graph databases, specifically Neo4j, to enable advanced analysis and discovery in the realm of material science.
 
 ## System Architecture
-![System Architecture of MatGraphDB](figures/package_database_interface.svg)
+![System Architecture of MatGraphDB](MatGraphDB.png)
 *Figure 1: The MatGraphDB architecture showcasing the interconnections between its components. `CalcManager` manages complex calculations, while `DataManager` oversees the interaction with JSON databases and encodings. The `GraphManager` facilitates operations with the Neo4j graph database, utilizing functions like `create_nodes()` and `create_relationships()` to represent materials and their interactions as graph elements stored in CSV format. The architecture illustrates the flow from the MatGraphDB package processing to the primary database, culminating in the Neo4j Graph Database for material analysis.*
 
 
