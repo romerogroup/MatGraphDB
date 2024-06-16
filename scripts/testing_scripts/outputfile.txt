@@ -1,0 +1,17 @@
+20(x2)
+None
+2
+<class 'list'>
+['20', '20']
+<class 'NoneType'>
+None
+<class 'int'>
+2
+Traceback (most recent call last):
+  File "/users/lllang/SCRATCH/projects/MatGraphDB/scripts/testing_scripts/python_scripts/run_mp_test.py", line 53, in <module>
+    main()
+  File "/users/lllang/SCRATCH/projects/MatGraphDB/scripts/testing_scripts/python_scripts/run_mp_test.py", line 43, in main
+    total_cores = get_total_cores(cpus_per_node)
+  File "/users/lllang/SCRATCH/projects/MatGraphDB/scripts/testing_scripts/python_scripts/run_mp_test.py", line 22, in get_total_cores
+    return sum(cpus_per_node)
+TypeError: unsupported operand type(s) for +: 'int' and 'str'

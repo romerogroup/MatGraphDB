@@ -2,8 +2,8 @@
 #SBATCH -J mp_database_graph_generator
 #SBATCH --nodes=1
 #SBATCH -c 40
-#SBATCH -p comm_small_day
-#SBATCH -t 24:00:00
+#SBATCH -p standby
+#SBATCH -t 4:00:00
 
 source ~/.bashrc
 
