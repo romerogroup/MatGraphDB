@@ -1,8 +1,0 @@
-
-# Matches specific structure to connecting element and chemenv nodes
-MATCH (s:Structure {name: 'mp_1000'})-[r1]-(e:Element)
-MATCH (e)-[r2]-(c:chemenv)
-MATCH (e)-[r3]-(b:Element)
-RETURN e, r1, c, r2, b, r3
-ORDER BY r2.weight DESC
-LIMIT 5
