@@ -7,7 +7,7 @@ import pandas as pd
 
 from matgraphdb import DBManager
 from matgraphdb.utils import (DB_DIR, DB_CALC_DIR, N_CORES, GLOBAL_PROP_FILE, 
-                              ENCODING_DIR, MAIN_GRAPH_DIR, GRAPH_DIR,LOGGER,NEO4J_GRAPH_DIR)
+                              ENCODING_DIR, MAIN_GRAPH_DIR, GRAPH_DIR,LOGGER)
 from matgraphdb.graph.create_node_csv import create_nodes
 from matgraphdb.graph.create_relationship_csv import (create_relationships,create_bonding_task, create_chemenv_element_task, create_material_element_task, 
                                                       create_material_chemenv_task, create_material_chemenvElement_task, create_material_spg_task,
@@ -69,8 +69,8 @@ class GraphGenerator:
         self.node_types=NodeTypes()
         self.db_manager = DBManager()
 
-        self.main_node_dir=os.path.join(MAIN_GRAPH_DIR,'nodes')
-        self.main_relationship_dir=os.path.join(MAIN_GRAPH_DIR,'relationships')
+        self.main_node_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','nodes')
+        self.main_relationship_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','relationships')
         
         if from_scratch and os.path.exists(self.main_node_dir):
             LOGGER.info('Starting from scratch. Deleting main graph directory')
@@ -489,14 +489,15 @@ class GraphGenerator:
 
     def screen_graph_database(self,graph_dirname,from_scratch=False,**kwargs):
         
-        graph_dir=os.path.join(NEO4J_GRAPH_DIR,graph_dirname)
+        graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
+        neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
         if from_scratch and os.path.exists(graph_dir):
             LOGGER.info(f'Starting from scratch. Deleting graph directory {graph_dir}')
             shutil.rmtree(graph_dir)
 
         LOGGER.info('Screening the graph database')
-        node_dir=os.path.join(graph_dir,'nodes')
-        relationship_dir=os.path.join(graph_dir,'relationships')
+        node_dir=os.path.join(neo4j_graph_dir,'nodes')
+        relationship_dir=os.path.join(neo4j_graph_dir,'relationships')
 
         os.makedirs(node_dir,exist_ok=True)
         os.makedirs(relationship_dir,exist_ok=True)

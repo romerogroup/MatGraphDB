@@ -10,7 +10,7 @@ from matgraphdb.utils.config import (MP_DIR, DB_DIR, DATASETS_DIR, GRAPH_DIR, NO
 
 # Neo4j variables
 from matgraphdb.utils.config import (USER, PASSWORD, LOCATION, GRAPH_DB_NAME, DBMSS_DIR,
-                                     MAIN_GRAPH_DIR, GRAPH_DIR,NEO4J_GRAPH_DIR)
+                                     MAIN_GRAPH_DIR, GRAPH_DIR)
 
 # Other important variables
 from matgraphdb.utils.log_config import setup_logging
