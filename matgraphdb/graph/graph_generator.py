@@ -52,22 +52,20 @@ def is_in_list(val, string_list: List, negation: bool = True) -> bool:
 
 class GraphGenerator:
 
-    def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, from_scratch=False, n_cores=N_CORES):
+    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), from_scratch=False):
         """
         Initializes the GraphGenerator object.
 
         Args:
-            directory_path (str): The path to the directory where the database is stored.
-            calc_path (str): The path to the directory where calculations are stored.
-            n_cores (int): The number of CPU cores to be used for parallel processing.
+            db_manager (DBManager,optional): The database manager object. Defaults to DBManager().
+            node_types (NodeTypes,optional): The node types object. Defaults to NodeTypes().
+            from_scratch (bool,optional): If True, deletes the graph database and recreates it from scratch.
 
         """
-        self.directory_path = directory_path
-        self.calculation_path = calc_path
+
         self.from_scratch = from_scratch
-        self.n_cores = N_CORES
-        self.node_types=NodeTypes()
-        self.db_manager = DBManager()
+        self.node_types=node_types
+        self.db_manager = db_manager
 
         self.main_node_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','nodes')
         self.main_relationship_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','relationships')
@@ -83,6 +81,16 @@ class GraphGenerator:
         self.initialize_relationships(node_dir=self.main_node_dir,relationship_dir=self.main_relationship_dir)
 
     def get_node_id_maps(self,node_dir=None,graph_dir=None):
+        """
+        Get the node id maps for the graph database.
+
+        Args:
+            node_dir (str,optional): The directory where the node csv files are stored. Defaults to None.
+            graph_dir (str,optional): The directory where the graph database is stored. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing the node id maps.
+        """
         if node_dir is None and graph_dir is None:
             raise Exception("Either node_dir or graph_dir must be provided")
         if node_dir:
@@ -100,7 +108,13 @@ class GraphGenerator:
         return all_maps
 
     def initialize_nodes(self,node_dir):
-  
+        """
+        Initialize the nodes for the graph database.
+
+        Args:
+            node_dir (str): The directory where the node csv files are stored.
+
+        """
         # Materials
         if not os.path.exists(os.path.join(node_dir,'materials.csv')):
             LOGGER.info("Creating material nodes")
@@ -182,7 +196,14 @@ class GraphGenerator:
         return None
 
     def initialize_relationships(self,node_dir,relationship_dir):
+        """
+        Initialize the relationships for the graph database.
 
+        Args:
+            node_dir (str): The directory where the node csv files are stored.
+            relationship_dir (str): The directory where the relationship csv files are stored.
+
+        """
         # Element - Element Connections
         LOGGER.info("Attemping to create element-element geometric-electric relationship")
         create_relationships(node_a_csv=os.path.join(node_dir,'elements.csv'),
@@ -322,6 +343,16 @@ class GraphGenerator:
                             connection_name='HAS_CRYSTAL_SYSTEM',
                             relationship_dir=relationship_dir)
 
+    def list_graph_databases(self):
+        """
+        List the graph databases in the graph directory.
+
+        Returns:
+            list: A list of the graph databases in the graph directory.
+        """
+        graph_dirs = glob(os.path.join(GRAPH_DIR, '*'))
+        return [os.path.basename(d) for d in graph_dirs]
+    
     def screen_material_nodes(self,
                         material_csv:str,
                         include:bool=True,
@@ -488,7 +519,16 @@ class GraphGenerator:
         return filtered_df
 
     def screen_graph_database(self,graph_dirname,from_scratch=False,**kwargs):
-        
+        """
+        Screen the graph database for materials.
+
+        Args:
+            graph_dirname (str): The name of the graph database directory.
+            from_scratch (bool, optional): If True, deletes the graph database and recreates it from scratch. Defaults to False.
+
+        Returns:
+            None
+        """
         graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
         neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
         if from_scratch and os.path.exists(graph_dir):
