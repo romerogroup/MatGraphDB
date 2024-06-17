@@ -4,6 +4,7 @@ from glob import glob
 from typing import List, Tuple, Union
 
 import pandas as pd
+import networkx as nx
 
 from matgraphdb import DBManager
 from matgraphdb.utils import (DB_DIR, DB_CALC_DIR, N_CORES, GLOBAL_PROP_FILE, 
@@ -13,6 +14,7 @@ from matgraphdb.graph.create_relationship_csv import (create_relationships,creat
                                                       create_material_chemenv_task, create_material_chemenvElement_task, create_material_spg_task,
                                                       create_material_crystal_system_task)
 from matgraphdb.graph.node_types import NodeTypes
+
 
 def is_in_range(val:Union[float, int],min_val:Union[float, int],max_val:Union[float, int], negation:bool=True):
     """
@@ -52,7 +54,7 @@ def is_in_list(val, string_list: List, negation: bool = True) -> bool:
 
 class GraphGenerator:
 
-    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), from_scratch=False):
+    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), from_scratch=False, skip_main_init=True):
         """
         Initializes the GraphGenerator object.
 
@@ -60,6 +62,7 @@ class GraphGenerator:
             db_manager (DBManager,optional): The database manager object. Defaults to DBManager().
             node_types (NodeTypes,optional): The node types object. Defaults to NodeTypes().
             from_scratch (bool,optional): If True, deletes the graph database and recreates it from scratch.
+            skip_main_init (bool,optional): If True, skips the initialization of the main nodes and relationships.
 
         """
 
@@ -77,8 +80,9 @@ class GraphGenerator:
         os.makedirs(self.main_relationship_dir,exist_ok=True)
 
         # Initialize the main nodes
-        self.initialize_nodes(node_dir=self.main_node_dir)
-        self.initialize_relationships(node_dir=self.main_node_dir,relationship_dir=self.main_relationship_dir)
+        if not skip_main_init:
+            self.initialize_nodes(node_dir=self.main_node_dir)
+            self.initialize_relationships(node_dir=self.main_node_dir,relationship_dir=self.main_relationship_dir)
 
     def get_node_id_maps(self,node_dir=None,graph_dir=None):
         """
@@ -559,3 +563,196 @@ class GraphGenerator:
 
         self.initialize_relationships(node_dir=node_dir,relationship_dir=relationship_dir)
 
+    def write_graphml(self,graph_dirname,node_files=None,relationship_files=None,from_scratch=False):
+        """
+        Write a graphml file from the graph.
+
+        Args:
+            filepath (str,optional): The path to the file where the graphml file will be saved. Defaults to None.
+
+        Returns:
+            None
+        """
+        graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
+        neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        filepath=os.path.join(graph_dir,'graph.graphml')
+        if not os.path.exists(graph_dir):
+            raise Exception("Graph directory does not exist.")
+        if os.listdir(os.path.join(neo4j_graph_dir,'nodes'))==0:
+            raise Exception("No nodes found in graph directory.")
+
+        if from_scratch and os.path.exists(filepath):
+            LOGGER.info(f'Starting from scratch. Deleting graph directory {filepath}')
+            os.remove(filepath)
+    
+        generator=NetworkXGraphGenerator(graph_dir=graph_dir)
+        generator.parse_node_files(node_files=node_files)
+        generator.parse_relationship_files(relationship_files=relationship_files)
+        generator.export_graph(filepath=filepath,method='graphml')
+        return None
+
+class NetworkXGraphGenerator:
+    def __init__(self,graph_dir=None,from_scratch=False):
+        """
+        Initializes the NetworkXGraphGenerator object.
+
+        Args:
+            graph_dir (str,optional): The directory where the graph database is stored. Defaults to None.
+            from_scratch (bool,optional): If True, deletes the graph database and recreates it from scratch. Defaults to False.
+
+        """
+        self.graph_dir=graph_dir
+        self.graph_name=self.graph_dir.split(os.sep)[-1]
+        self.graphml_file=os.path.join(self.graph_dir,f'{self.graph_name}.graphml')
+        self.node_files=glob(os.path.join(self.graph_dir,'neo4j_csv','nodes','*.csv'))
+        self.relationship_files=glob(os.path.join(self.graph_dir,'neo4j_csv','relationships','*.csv'))
+        self.from_scratch=from_scratch
+        self.graph=nx.Graph()
+        self.neo4j_node_id_maps={}
+        self.parse_node_files()
+
+
+    def parse_node_file(self,file):
+        """
+        Parses a node csv file and returns a dictionary containing the node data.
+
+        Args:
+            file (str): The path to the node csv file.
+
+        Returns:
+            dict: A dictionary containing the node data.
+        """
+        df=pd.read_csv(file)
+        column_names=list(df.columns)
+        node_id_name=column_names[0].strip(')').split('(')[-1]
+        self.neo4j_node_id_maps[node_id_name]={}
+        node_list = df.to_dict(orient='records')
+        return node_list
+    
+    def parse_node_files(self, node_files=None):
+        """
+        Parses all node csv files in the graph directory and returns a dictionary containing the node data.
+
+        Returns:
+            dict: A dictionary containing the node data.
+        """
+        files=None
+        if node_files:
+            files=node_files
+        else:
+            files=self.node_files
+            
+        node_dict={}
+        tmp_node_list=[]
+        node_list=[]
+        for file in files:
+            tmp_node_list.extend(self.parse_node_file(file))
+        for i,node_dict in enumerate(tmp_node_list):
+            neo4j_node_id_name, neo4j_node_id=list(node_dict.items())[0]
+            neo4j_node_id_name=neo4j_node_id_name.strip(')').split('(')[-1]
+            self.neo4j_node_id_maps[neo4j_node_id_name][neo4j_node_id]=i
+
+            node_list.append((i,node_dict))
+        self.graph.add_nodes_from(node_list)
+        return node_list
+    
+    def parse_relationship_file(self,file,return_list=False):
+        """
+        Parses a relationship csv file and returns a dictionary containing the relationship data.
+
+        Args:
+            file (str): The path to the relationship csv file.
+            return_list (bool,optional): If True, returns a list of tuples containing the relationship data. Defaults to False.
+
+        Returns:
+            dict: A dictionary containing the relationship data.
+        """
+
+        df=pd.read_csv(file)
+        column_headers=list(df.columns)
+        start_id_name=column_headers[0].strip(')').split('(')[-1]
+        end_id_name=column_headers[1].strip(')').split('(')[-1]
+        relationship_list=[]
+
+
+        # Extract node identifiers
+        start_id_name = column_headers[0].strip(')').split('(')[-1]
+        end_id_name = column_headers[1].strip(')').split('(')[-1]
+
+        # Prepare the node ID columns using precomputed maps
+        df['start_id'] = df[column_headers[0]].map(self.neo4j_node_id_maps[start_id_name])
+        df['end_id'] = df[column_headers[1]].map(self.neo4j_node_id_maps[end_id_name])
+
+        # Collect other properties
+        property_columns = column_headers[2:]  # assuming the first two are node ID columns
+        
+        if return_list:
+            relationship_list = []
+            for index, row in df.iterrows():
+                relationship_list.append((row['start_id'], row['end_id'], row[property_columns].to_dict()))
+            return relationship_list
+        else:
+            for index, row in df.iterrows():
+                self.graph.add_edge(row['start_id'], row['end_id'], **row[property_columns].to_dict())
+            return None
+
+    def parse_relationship_files(self,relationship_files=None):
+        """
+        Parses all relationship csv files in the graph directory and returns a dictionary containing the relationship data.
+
+        Returns:
+            dict: A dictionary containing the relationship data.
+        """
+        if self.neo4j_node_id_maps == {}:
+            raise Exception("Node ID maps do not exist. Please call parse_node_files() first.")
+
+        files=None
+        if relationship_files:
+            files=relationship_files
+        else:
+            files=self.relationship_files
+        for file in files:
+            self.parse_relationship_file(file)
+        return None
+
+    def export_graph(self,filepath,method='graphml'):
+        """
+        Exports the graph to a file in the specified format.
+
+        Args:
+            filepath (str,optional): The path to the file where the graph will be exported. Defaults to None.
+            method (str,optional): The method to use for exporting the graph. Defaults to 'graphml'.
+
+        Returns:
+            None
+        """
+        if method=='graphml':
+            nx.write_graphml(self.graph,filepath)
+        return None
+
+if __name__=='__main__':
+
+    graph=GraphGenerator()
+    graph.write_graphml(graph_dirname='nelements-2-2')
+
+    # import sys
+    # converter = NetworkXGraphGenerator(graph_dir="data/production/materials_project/graph_database/nelements-2-2")
+    # node_files=converter.node_files
+    # relationship_files=converter.relationship_files
+
+
+    # # size = sys.getsizeof(converter.node_list)
+    # # Convert byts to GB
+
+    # print(converter.graph)
+    # for i, (key,id_map) in enumerate(converter.neo4j_node_id_maps.items()):
+    #     if i < 2:
+    #         id_map_list=list(id_map.items())
+    #         print(key,id_map_list[:5])
+    #         print(key,id_map_list[-5:])
+
+    # for i, file in enumerate(relationship_files):
+    #     print(i,os.path.basename(file))
+
+    # converter.parse_relationship_file(relationship_files[12])
+    # print(converter.graph)
