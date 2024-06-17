@@ -1,7 +1,7 @@
 from matgraphdb.graph.graph_generator import GraphGenerator
 
 def main():
-    generator=GraphGenerator(from_scratch=False)
+    generator=GraphGenerator(from_scratch=False,skip_main_init=False)
 
     generator.screen_graph_database('nelements-2-2',nelements=(2,2), from_scratch=True)
     generator.screen_graph_database('nelements-3-3',nelements=(3,3), from_scratch=True)
