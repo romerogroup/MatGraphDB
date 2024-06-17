@@ -151,14 +151,14 @@ db.create_material(structure="BaTe")
 ```
 
 ### Creating Graph Databases
-To create graph databases, you can use the `GraphGenerator` class. This class takes in a `from_scratch` parameter, which determines whether to start from scratch or use an existing graph database. The default value is `False`.
+To create graph databases, you can use the `GraphGenerator` class. This class takes in a `from_scratch` parameter, which determines whether to start from scratch or use an existing graph database. The default value is `False`. This class also takes in a `skip_main_init` parameter, which determines whether to skip the initial node and relationship creation. The default value is `True`.
 
 When the object is created, it will create the main graph database based on the json files in the `MatGraphDB/data/production/json_database` directory. The main graph database will contain the initial material nodes and relationships. The file can be found at `MatGraphDB/data/production/graph_database/main/neo4j_csv` 
 
 ```python
 from matgraphdb.graph.graph_generator import GraphGenerator
 
-generator=GraphGenerator()
+generator=GraphGenerator(skip_main_init=False)
 ```
 
 Once the initial graph database is created, you can screen the existing materials using the `screen_graph_database` function.
@@ -180,7 +180,12 @@ generator.screen_graph_database('elements-no-Ti-Fe',elements=["Ti","Fe"], from_s
 Here, we are using the `screen_graph_database` function to create a 9 new graph databases. The `nelements` parameter specifies the number of elements to include in the graph database. The `space_groups` parameter specifies the space groups to include in the graph database. The `elements` parameter specifies the elements to include in the graph database. The `from_scratch` parameter determines whether to start from scratch or use an existing graph database. The `include` parameter determines whether to include the specified elements or space groups in the graph database.
 
 
+### Writing GraphML
+To write a graphml file from the graph, you can use the `write_graphml` function. This function takes a graph database name as input and writes the graph to a file in the specified format.
 
+```python
+generator.write_graphml(graph_dirname='nelements-2-2')
+```
 
 
 ### Interacting with the Graph Databse in Neo4j
