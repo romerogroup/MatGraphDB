@@ -10,14 +10,14 @@ np.set_printoptions(linewidth=large_width,precision=precision)
 
 
 def get_cpus_per_node():
-    cpus_per_node = os.getenv('SLURM_JOB_CPUS_PER_NODE')
-    if cpus_per_node is None:
-        cpus_per_node = 1
-    elif '(x' in cpus_per_node:
-        cpu_per_node, num_nodes= cpus_per_node.strip(')').split('(x')
+    cpu_per_node = os.getenv('SLURM_JOB_CPUS_PER_NODE')
+    if cpu_per_node is None:
+        cpus_node_list = 1
+    elif '(x' in cpu_per_node:
+        cpu_per_node, num_nodes= cpu_per_node.strip(')').split('(x')
         cpus_node_list = [int(cpu_per_node) for _ in range(int(num_nodes))]
     else:
-        cpus_node_list = [int(x) for x in cpus_per_node.split(',')]
+        cpus_node_list = [int(x) for x in cpu_per_node.split(',')]
     return cpus_node_list
 
 def get_num_tasks():
@@ -34,11 +34,13 @@ def get_total_cores(cpus_per_node):
     return sum(cpus_per_node)
 
 def get_num_cores(n_cores=None):
+    cpus_per_node = get_cpus_per_node()
     if n_cores:
         return n_cores
-    else:
-        cpus_per_node = get_cpus_per_node()
+    elif isinstance(cpus_per_node,list):
         return get_total_cores(cpus_per_node)
+    else:
+        return cpus_per_node
 
 
 # Important directory paths
