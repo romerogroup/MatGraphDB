@@ -575,7 +575,7 @@ class GraphGenerator:
         """
         graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
         neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
-        filepath=os.path.join(graph_dir,'graph.graphml')
+        filepath=os.path.join(graph_dir,f'{graph_dirname}.graphml')
         if not os.path.exists(graph_dir):
             raise Exception("Graph directory does not exist.")
         if os.listdir(os.path.join(neo4j_graph_dir,'nodes'))==0:
