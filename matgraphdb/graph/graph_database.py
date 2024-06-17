@@ -79,7 +79,7 @@ def format_projection(projections:Union[str,List,dict]):
     return formatted_projections
 
 
-class MatGraphDB:
+class Neo4jGraphDatabase:
 
     def __init__(self,database_path=None,uri=LOCATION, user=USER, password=PASSWORD, from_scratch=False):
         """
@@ -679,12 +679,12 @@ class MatGraphDB:
         return outputs
 
 class Neo4jGDSManager:
-    def __init__(self, matgraphdb:MatGraphDB):
-        self.matgraphdb = matgraphdb
+    def __init__(self, neo4jdb:Neo4jGraphDatabase):
+        self.neo4jdb = neo4jdb
         self.algorithm_modes=['stream','stats','write','mutate']
         self.link_prediction_algorithms=['adamicAdar','commonNeighbors','preferentialAttachment',
                                          'resourceAllocation','sameCommunity','totalNeighbors']
-        if self.matgraphdb.driver is None:
+        if self.neo4jdb.driver is None:
             raise Exception("Graph database is not connected. Please ccreate a driver")
         
     def list_graphs(self,database_name):
@@ -702,7 +702,7 @@ class Neo4jGDSManager:
         YIELD graphName
         RETURN graphName;
         """
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         graph_names=[result['graphName'] for result in results]
         return graph_names
     
@@ -724,7 +724,7 @@ class Neo4jGDSManager:
         YIELD graphName
         RETURN graphName;
         """
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         if len(results)!=0:
             return True
         return False
@@ -743,7 +743,7 @@ class Neo4jGDSManager:
         """
 
         cypher_statement=f"CALL gds.graph.list(\"{graph_name}\")"
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={ key:value for key, value in result.items()}
@@ -765,7 +765,7 @@ class Neo4jGDSManager:
         cypher_statement=f"""
         CALL gds.graph.drop("{graph_name}")
         """
-        self.matgraphdb.query(cypher_statement,database_name=database_name)
+        self.neo4jdb.query(cypher_statement,database_name=database_name)
         return None
 
     def list_graph_data_science_algorithms(self,database_name, save=False):
@@ -784,7 +784,7 @@ class Neo4jGDSManager:
         YIELD name,description
         RETURN  name,description;
         """
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         algorithm_names={result['name']:result['description'] for result in results}
         if save:
             print("Saving algorithms to : ",os.path.join(MP_DIR,'neo4j_graph_data_science_algorithms.txt'))
@@ -847,7 +847,7 @@ class Neo4jGDSManager:
             cypher_statement+=format_dictionary(projections=config)
         cypher_statement+=")"
 
-        self.matgraphdb.query(cypher_statement,database_name=database_name)
+        self.neo4jdb.query(cypher_statement,database_name=database_name)
         return None
     
     def write_graph(self,
@@ -891,7 +891,7 @@ class Neo4jGDSManager:
             cypher_statement+=f"{format_dictionary(config)}"
             cypher_statement+=")"
 
-            results=self.matgraphdb.query(cypher_statement,database_name=database_name)
+            results=self.neo4jdb.query(cypher_statement,database_name=database_name)
             for result in results:
                 node_output={property_name:property_value for property_name,property_value in result.items()}
                 node_outputs.append(node_output)
@@ -905,7 +905,7 @@ class Neo4jGDSManager:
             cypher_statement+=f"{format_dictionary(config)}"
             cypher_statement+=")"
 
-            results=self.matgraphdb.query(cypher_statement,database_name=database_name)
+            results=self.neo4jdb.query(cypher_statement,database_name=database_name)
             for result in results:
                 relationship_output={property_name:property_value for property_name,property_value in result.items()}
                 relationship_outputs.append(relationship_output)
@@ -947,7 +947,7 @@ class Neo4jGDSManager:
         """
         if not self.is_graph_in_memory(database_name=database_name,graph_name=graph_name):
             raise Exception(f"Graph {graph_name} is not in memory")
-        if db_name not in self.matgraphdb.get_databases():
+        if db_name not in self.neo4jdb.get_databases():
             raise Exception(f"Database {db_name} does not exist")
         
         config={}
@@ -965,7 +965,7 @@ class Neo4jGDSManager:
 
         
 
-        results=self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results=self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={property_name:property_value for property_name,property_value in result.items()}
@@ -1031,7 +1031,7 @@ class Neo4jGDSManager:
             cypher_statement+=")"
 
         
-        results=self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results=self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={property_name:property_value for property_name,property_value in result.items()}
@@ -1062,7 +1062,7 @@ class Neo4jGDSManager:
         cypher_statement+=f"{format_string(graph_name)},"
         cypher_statement+=f"{format_dictionary(algorithm_config)}"
         cypher_statement+=")"
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={property_name:property_value for property_name,property_value in result.items()}
@@ -1096,7 +1096,7 @@ class Neo4jGDSManager:
         cypher_statement+=f"{format_string(graph_name)},"
         cypher_statement+=f"{format_dictionary(algorithm_config)}"
         cypher_statement+=")"
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={property_name:property_value for property_name,property_value in result.items()}
@@ -1447,7 +1447,7 @@ class Neo4jGDSManager:
         cypher_statement=f"MATCH (p1:{node_a_type}" + "{name:" + f"{format_string(node_a_name)}" + "})\n"
         cypher_statement=f"MATCH (p1:{node_b_type}" + "{name:" + f"{format_string(node_b_name)}" + "})\n" 
         cypher_statement=f"RETURN gds.alpha.linkprediction.{algorithm_name}(p1,p2,{format_dictionary(config)})"
-        results = self.matgraphdb.query(cypher_statement,database_name=database_name)
+        results = self.neo4jdb.query(cypher_statement,database_name=database_name)
         outputs=[]
         for result in results:
             output={property_name:property_value for property_name,property_value in result.items()}
@@ -3200,7 +3200,7 @@ if __name__ == "__main__":
     # database_path=os.path.join(GRAPH_DIR,'main')
     # db=MatGraphDB(database_path=database_path,from_scratch=True)
     # print(db.get_databases())
-    with MatGraphDB() as matgraphdb:
+    with Neo4jGraphDatabase() as matgraphdb:
         database_name='nelements-1-2'
         manager=Neo4jGDSManager(matgraphdb)
         print(manager.list_graphs(database_name))
@@ -3225,11 +3225,11 @@ if __name__ == "__main__":
                                        node_projections=node_projections,
                                        relationship_projections=relationship_projections)
         print(manager.get_graph_info(database_name=database_name,graph_name=graph_name))
-        # print(manager.list_graphs(database_name))
-        # print(manager.is_graph_in_memory(database_name,graph_name))
-        # print(manager.drop_graph(database_name,graph_name))
-        # print(manager.list_graphs(database_name))
-        # print(manager.is_graph_in_memory(database_name,graph_name))
+        print(manager.list_graphs(database_name))
+        print(manager.is_graph_in_memory(database_name,graph_name))
+        print(manager.drop_graph(database_name,graph_name))
+        print(manager.list_graphs(database_name))
+        print(manager.is_graph_in_memory(database_name,graph_name))
 
 
         # result=manager.estimate_memeory_for_algorithm(database_name=database_name,
@@ -3243,40 +3243,6 @@ if __name__ == "__main__":
         #                                        algorithm_mode='stats',
         #                                        algorithm_config={'embeddingDimension':128})
         # print(result)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
