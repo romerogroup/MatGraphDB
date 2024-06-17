@@ -1,9 +1,6 @@
 # MatGraphDB
 
-
-
-## Introduction
-# Introduction to MatGraphDB
+## Introduction to MatGraphDB
 
 Welcome to **MatGraphDB**, a powerful Python package designed to interface with primary and graph databases for advanced material analysis. MatGraphDB excels in managing vast datasets of materials data, performing complex computational tasks, and encoding material properties and relationships within a graph-based analytical model.
 
@@ -65,10 +62,10 @@ You can install the data here:
 
 
 
-### Setting up Conda environment
-Navigate to the root directory. Then do the following
+### Setting up Conda environment 
 
-
+Navigate to the root directory `MatGraphDB`. Then do the following
+#### Use if you are going to not use graph-tool library
 **Windows**
 ```bash
 conda env create -f env_win.yml
@@ -79,67 +76,48 @@ conda env create -f env_win.yml
 conda env create -f env_linux.yml
 ```
 
-To activeate the enviornment use:
+#### Use if you are going to not use graph-tool library
+This allows you to use the graph-tool library. Currently, we only support the graph-tool library for linux.
+
+**Linux**
+```bash
+conda env create -f env_graph_tool.yml
+```
+
+#### To activeate the enviornment use:
 
 ```bash
 conda activate matgraphdb
 ```
 
-### Neo4jDektop Interface
+### Adjusting configs
+
+Th configurations of the project are stored in the `MatGraphDB/config.yml` file. You can adjust the configurations to your needs. The most important configurations that need to be adjusted are `DB_NAME`, `USER`, `PASSWORD`, `LOCATION`, `NEO4J_DESKTOP_DIR`, and `N_CORES`.
+
+
+
+- `DB_NAME`: The name of the database that will be created. This will search for the database with the same name in the `MatGraphDB/data/production` directory.
+
+- `USER`: The username for the Neo4j database.
+
+- `PASSWORD`: The password for the Neo4j database.
+
+- `LOCATION`: This is the location of the Neo4j DBMS. This is usually `"bolt://localhost:7687"`
+
+- `NEO4J_DESKTOP_DIR`: This is the directory where the Neo4j Desktop is installed. This could be in various locations depending on your system.
+
+    - **Windows** - `C:/Users/{username}/.Neo4jDesktop`
+    - **Linux** - `/home/neo4j` : Might be different depending on your system
+
+- `N_CORES`: The number of cores to be used for parallel processing.
+
+### Neo4jDektop
 To use neo4jdektop, you will need to install the neo4j desktop application. You can download the application from the [neo4j website](https://neo4j.com/docs/operations-manual/current/installation/). Create a project and then create a new database management system (DBMS) , name it `MatGraphDB` and select the `Neo4j Community Edition` as the DBMS.
 
 
-#### Bulk Importing Data
-The best way to put large amounts of data into neo4j is to use the **neo4j-admin** to import csv files when the dbms is not runnning. This allows to put data into the database in a parallel way without having to worry abour ACID operations
-To put nodes and relationships csv's produced into neo 4j follow these steps:
-
-1. Make sure the dbms you want to put the database in is not running.
-2. Open the terminal for the particular dbms.
-3. run the following command
-for neo4j==4.*
-```bash
-.\bin\neo4j-admin.bat import --database test --nodes import\elements.csv --relationships import\Element_Element.csv
-```
-
-for neo4j==5.*
-```bash
-.\bin\neo4j-admin.bat database import full --nodes import\elements.csv --relationships import\Element_Element.csv --overwrite-destination test
-```
-4. Start the dbms. Then create a new databse with same name as in the previous command. "test"
-
-
-#### Creating vector index on an embedding of a material 
-
-```cypher
-CREATE VECTOR INDEX `material-MEGNET-embeddings`
-FOR (n :Material) ON (n.`MEGNet-MP-2018`) 
-OPTIONS {indexConfig:{
-    `vector.dimensions`:160,
-    `vector.similarity_function`:'cosine'}}
-```
-
-Check if vector indexing worked
-
-```cypher
-SHOW VECTOR INDEXES YIELD name, type, labelsOrTypes, properties, options
-```
-
-Example of how to call similar nodes for a given node
-
-```bash
-MATCH (m: Material {`material_id`:'mp-1000'})
-CALL db.index.vector.queryNodes('material-MEGNET-embeddings', 10, m.`MEGNet-MP-2018`)
-YIELD node as similarMaterial, score
-RETURN m,similarMaterial, score
-```
-
-### Adjusting configs
-
-
 ## Usage
-Interacting with the json database:
 
-### PrimaryDatabase
+### Interacting with the json database:
 **Checking properties**
 ```python
 from matgraphdb import DatabaseManager
@@ -172,53 +150,58 @@ db.create_material(structure=structure)
 db.create_material(structure="BaTe")
 ```
 
-### Creating Graphs
+### Creating Graph Databases
+To create graph databases, you can use the `GraphGenerator` class. This class takes in a `from_scratch` parameter, which determines whether to start from scratch or use an existing graph database. The default value is `False`.
+
+When the object is created, it will create the main graph database based on the json files in the `MatGraphDB/data/production/json_database` directory. The main graph database will contain the initial material nodes and relationships. The file can be found at `MatGraphDB/data/production/graph_database/main/neo4j_csv` 
 
 ```python
-from matgraphdb.graph import create_nodes, create_relationships
-from matgraphdb.graph.create_relationship_csv import create_material_element_task
-from matgraphdb.graph.node_types import SPG_NAMES
-from matgraphdb.utils import  NODE_DIR,RELATIONSHIP_DIR
+from matgraphdb.graph.graph_generator import GraphGenerator
 
-save_path = os.path.join(NODE_DIR)
-create_nodes(node_names=SPG_NAMES, 
-            node_type='SpaceGroup', 
-            node_prefix='spg', 
-            filepath=os.path.join(save_path, 'spg.csv'))
-
-# Create relationships between materials and elements
-# mp_task is a function that will open a material json and define the relationships.
-create_relationships(node_a_csv=os.path.join(NODE_DIR,'materials.csv'),
-                    node_b_csv=os.path.join(NODE_DIR,'elements.csv'), 
-                    mp_task=create_material_element_task,
-                    connection_name='COMPOSED_OF',
-                    filepath=os.path.join(save_path,f'materials_elements.csv'))
+generator=GraphGenerator()
 ```
 
+Once the initial graph database is created, you can screen the existing materials using the `screen_graph_database` function.
 
-### Interacting with the Graph Databse
+```python
+generator.screen_graph_database('nelements-2-2',nelements=(2,2), from_scratch=True)
+generator.screen_graph_database('nelements-3-3',nelements=(3,3), from_scratch=True)
+
+generator.screen_graph_database('spg-145',space_groups=[145], from_scratch=True)
+generator.screen_graph_database('spg-145-196',space_groups=[145,196], from_scratch=True)
+generator.screen_graph_database('spg-no-145',space_groups=[145], from_scratch=True, include=False)
+generator.screen_graph_database('spg-no-196',space_groups=[196], from_scratch=True, include=False)
+
+generator.screen_graph_database('elements-no-Ti',elements=["Ti"], from_scratch=True, include=False)
+generator.screen_graph_database('elements-no-Fe',elements=["Fe"], from_scratch=True, include=False)
+generator.screen_graph_database('elements-no-Ti-Fe',elements=["Ti","Fe"], from_scratch=True, include=False)
+```
+
+Here, we are using the `screen_graph_database` function to create a 9 new graph databases. The `nelements` parameter specifies the number of elements to include in the graph database. The `space_groups` parameter specifies the space groups to include in the graph database. The `elements` parameter specifies the elements to include in the graph database. The `from_scratch` parameter determines whether to start from scratch or use an existing graph database. The `include` parameter determines whether to include the specified elements or space groups in the graph database.
+
+
+
+
+
+### Interacting with the Graph Databse in Neo4j
 
 **List Database Schema**
 ```python
-from matgraphdb import GraphDatabase
+from matgraphdb import Neo4jGraphDatabase
 
-with GraphDatabase() as session:
+with Neo4jGraphDatabase() as session:
     schema_list=session.list_schema()
 ```
 
 **Execute Cypher Statement**
 ```python
-from matgraphdb import GraphDatabase
-
-with GraphDatabase() as session:
-    result = matgraphdb.execute_query(query, parameters)
+with Neo4jGraphDatabase() as session:
+    result = matgraphdb.query(query, parameters)
 ```
 
 **Filter properties**
 ```python
-from matgraphdb import GraphDatabase
-
-with MatGraphDB() as session:
+with Neo4jGraphDatabase() as session:
     results=session.read_material(
                             material_ids=['mp-1000','mp-1001'], 
                             elements=['Te','Ba'])
@@ -243,14 +226,154 @@ with MatGraphDB() as session:
                             band_gap=[(1.0,'>')])
 
 success,failed=db.check_property(property_name="band_gap")
+```
 
+
+
+### Interacting with the Neo4j Graph Datascience Library
+
+**Initializing the Neo4jGDSManager**
+
+```python
+from matgraphdb import Neo4jGraphDatabase,Neo4jGDSManager
+
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+```
+
+**Listing the graphs that are loaded into the gds system for a given database**
+
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name=
+    results=manager.list_graphs(database_name='main')
+    print(results)
+
+```
+
+**Check if graph is in memory**
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    results=manager.is_graph_in_memory(database_name='main', graph_name='materials_chemenvElements')
+    print(results)
+```
+**Loading a graph into the gds system**
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    node_projections=['ChemenvElement','Material']
+    relationship_projections={
+                "GEOMETRIC_ELECTRIC_CONNECTS": {
+                "orientation": 'UNDIRECTED',
+                "properties": 'weight'
+                },
+                "COMPOSED_OF": {
+                    "orientation": 'UNDIRECTED',
+                    "properties": 'weight'
+                }
+            }
+    manager.load_graph_into_memory(database_name=database_name,
+                                       graph_name=graph_name,
+                                       node_projections=node_projections,
+                                       relationship_projections=relationship_projections)
+    print(manager.get_graph_info(database_name=database_name,graph_name=graph_name))
+```
+
+**Dropping a graph from memory**
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    reuslts=manager.drop_graph(database_name,graph_name)
+```
+
+**Using graph algorithms**
+Make sure the graph is loaded into memory before running the algorithms.
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    results=manager.run_fastRP_algorithm(database_name=database_name,
+                                  graph_name=graph_name,
+                                  algorithm_name='pageRank',
+                                  algorithm_mode='stream',
+                                  embedding_dimension=128,
+                                  concurrency=4,
+                                  random_seed=42)
+    print(results)
+```
+
+**Write to graph database**
+
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    results=manager.run_fastRP_algorithm(database_name=database_name,
+                                  graph_name=graph_name,
+                                  algorithm_name='pageRank',
+                                  algorithm_mode='write',
+                                  embedding_dimension=128,
+                                  concurrency=4,
+                                  random_seed=42,
+                                  write_property='fastrp-embedding')
+    print(results)
+```
+**or**
+
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    results=manager.run_fastRP_algorithm(database_name=database_name,
+                                  graph_name=graph_name,
+                                  algorithm_name='pageRank',
+                                  algorithm_mode='mutate',
+                                  embedding_dimension=128,
+                                  concurrency=4,
+                                  random_seed=42,
+                                  mutate_property='fastrp-embedding')
+    print(results)
+
+    manager.write_graph(database_name=database_name,
+                        graph_name=graph_name,
+                        node_properties=['fastrp-embedding'],
+                        node_labels=['Materials'],
+                        concurrency=4)
+
+    
+```
+
+**Export graph to csv**
+```python
+with Neo4jGraphDatabase() as session:
+    manager=Neo4jGDSManager(session)
+    database_name='main'
+    graph_name='materials_chemenvElements'
+    results=manager.export_graph_csv(database_name=database_name,
+                                  graph_name=graph_name,
+                                  export_name='materials-chemenvElements.csv',
+                                  concurrency=4,
+                                  default_relationship_type='COMPOSED_OF',
+                                  additional_node_properties=['ChemenvElement','Material'])
+    print(results)
 ```
 
 
 ## Authors
-[List of contributors and maintainers of the project.]
+Logan Lang,
+Aldo Romero,
+Eduardo Hernandez,
 
 
-## Contributing
-[Guidelines for contributing to the project, including coding standards, pull request processes, etc.]
+
 
