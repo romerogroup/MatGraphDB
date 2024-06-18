@@ -4,9 +4,6 @@ from glob import glob
 from typing import List, Tuple, Union
 
 import pandas as pd
-# from graph_tool.all import *
-# from graph_tool.draw import graph_draw
-# from graph_tool import load_graph
 import graph_tool as gt
 
 from matgraphdb import DBManager
