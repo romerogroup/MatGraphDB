@@ -574,19 +574,19 @@ class GraphGenerator:
         LOGGER.info(f"Number of materials after filtering: {len(filtered_df)}")
         return filtered_df
 
-    def screen_graph(self,graph_dir,from_scratch=False,**kwargs):
+    def screen_graph(self,graph_dir, sub_graph_name, from_scratch=False,**kwargs):
         """
         Screen the graph database for materials.
 
         Args:
             graph_dir (str): The directory of the graph database.
+            sub_graph_name (str): The name of the sub graph name.
             from_scratch (bool, optional): If True, deletes the graph database and recreates it from scratch. Defaults to False.
 
         Returns:
             None
         """
         root_graph_dir=os.path.dirname(graph_dir)
-        graph_name=os.path.basename(graph_dir)
 
         # Define main graph directory paths
         main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
@@ -595,7 +595,7 @@ class GraphGenerator:
 
         # Define subgraph directory paths
         sub_graphs_dir=os.path.join(graph_dir,'sub_graphs')
-        sub_graph_dir=os.path.join(sub_graphs_dir,graph_name)
+        sub_graph_dir=os.path.join(sub_graphs_dir,sub_graph_name)
         if from_scratch and os.path.exists(sub_graph_dir):
             LOGGER.info(f'Starting from scratch. Deleting graph directory {sub_graph_dir}')
             shutil.rmtree(sub_graph_dir)
@@ -839,28 +839,5 @@ class NetworkXGraphGenerator:
         return None
 
 # if __name__=='__main__':
-
     # graph=GraphGenerator()
     # graph.write_graphml(graph_dirname='nelements-2-2')
-
-    # import sys
-    # converter = NetworkXGraphGenerator(graph_dir="data/production/materials_project/graph_database/nelements-2-2")
-    # node_files=converter.node_files
-    # relationship_files=converter.relationship_files
-
-
-    # # size = sys.getsizeof(converter.node_list)
-    # # Convert byts to GB
-
-    # print(converter.graph)
-    # for i, (key,id_map) in enumerate(converter.neo4j_node_id_maps.items()):
-    #     if i < 2:
-    #         id_map_list=list(id_map.items())
-    #         print(key,id_map_list[:5])
-    #         print(key,id_map_list[-5:])
-
-    # for i, file in enumerate(relationship_files):
-    #     print(i,os.path.basename(file))
-
-    # converter.parse_relationship_file(relationship_files[12])
-    # print(converter.graph)
