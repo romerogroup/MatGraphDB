@@ -16,6 +16,7 @@ from matgraphdb.graph.node_types import NodeTypes
 
 # TODO Move is_in_range and is_in_list to utils
 # TODO Create docstrings for screen materials
+# Give unique connection names to the relationships
 
 def is_in_range(val:Union[float, int],min_val:Union[float, int],max_val:Union[float, int], negation:bool=True):
     """
@@ -122,33 +123,33 @@ class GraphGenerator:
             node_dir (str): The directory where the node csv files are stored.
 
         """
-        # Materials
-        if not os.path.exists(os.path.join(node_dir,'materials.csv')):
+        # Material
+        if not os.path.exists(os.path.join(node_dir,'material.csv')):
             LOGGER.info("Creating material nodes")
             materials,materials_properties,material_id_map=self.node_types.get_material_nodes()
             create_nodes(node_names=materials,
                         node_type='Material',
                         node_prefix='material',
                         node_properties=materials_properties,
-                        filepath=os.path.join(node_dir, 'materials.csv'))
-        # Elements
-        if not os.path.exists(os.path.join(node_dir,'elements.csv')):
+                        filepath=os.path.join(node_dir, 'material.csv'))
+        # Element
+        if not os.path.exists(os.path.join(node_dir,'element.csv')):
             LOGGER.info("Creating element nodes")
             elements,elements_properties,element_id_map=self.node_types.get_element_nodes()
             create_nodes(node_names=elements,
                         node_type='Element',
                         node_prefix='element',
                         node_properties=elements_properties,
-                        filepath=os.path.join(node_dir, 'elements.csv'))
-        # Crystal Systems
-        if not os.path.exists(os.path.join(node_dir,'crystal_systems.csv')):
+                        filepath=os.path.join(node_dir, 'element.csv'))
+        # Crystal System
+        if not os.path.exists(os.path.join(node_dir,'crystal_system.csv')):
             LOGGER.info("Creating crystal system nodes")
             crystal_systems,crystal_systems_properties,crystal_system_id_map=self.node_types.get_crystal_system_nodes()
             create_nodes(node_names=crystal_systems, 
                         node_type='CrystalSystem', 
                         node_prefix='crystalSystem', 
                         # node_properties=crystal_systems_properties,
-                        filepath=os.path.join(node_dir, 'crystal_systems.csv'))
+                        filepath=os.path.join(node_dir, 'crystal_system.csv'))
         # Chemenv
         if not os.path.exists(os.path.join(node_dir,'chemenv.csv')):
             LOGGER.info("Creating chemenv nodes")
@@ -166,14 +167,14 @@ class GraphGenerator:
                         node_type='ChemenvElement', 
                         node_prefix='chemenvElement', 
                         filepath=os.path.join(node_dir, 'chemenv_element.csv'))
-        # Magnetic States
-        if not os.path.exists(os.path.join(node_dir,'magnetic_states.csv')):
+        # Magnetic State
+        if not os.path.exists(os.path.join(node_dir,'magnetic_state.csv')):
             LOGGER.info("Creating magnetic state nodes")
             magnetic_states,magnetic_states_properties,magnetic_state_id_map=self.node_types.get_magnetic_states_nodes()
             create_nodes(node_names=magnetic_states, 
                         node_type='MagneticState', 
                         node_prefix='magState', 
-                        filepath=os.path.join(node_dir, 'magnetic_states.csv'))
+                        filepath=os.path.join(node_dir, 'magnetic_state.csv'))
         # Space Groups
         if not os.path.exists(os.path.join(node_dir,'spg.csv')):
             LOGGER.info("Creating space group nodes")
@@ -183,13 +184,13 @@ class GraphGenerator:
                         node_prefix='spg', 
                         filepath=os.path.join(node_dir, 'spg.csv'))
         # Oxidation States
-        if not os.path.exists(os.path.join(node_dir,'oxidation_states.csv')):
+        if not os.path.exists(os.path.join(node_dir,'oxidation_state.csv')):
             LOGGER.info("Creating oxidation state nodes")
             oxidation_states,oxidation_states_names,oxidation_state_id_map=self.node_types.get_oxidation_states_nodes()
             create_nodes(node_names=oxidation_states, 
                         node_type='OxidationState', 
                         node_prefix='oxiState', 
-                        filepath=os.path.join(node_dir, 'oxidation_states.csv'))
+                        filepath=os.path.join(node_dir, 'oxidation_state.csv'))
         
         # SPG_WYCKOFFS
         if not os.path.exists(os.path.join(node_dir,'spg_wyckoff.csv')):
@@ -213,9 +214,9 @@ class GraphGenerator:
         """
         # Element - Element Connections
         LOGGER.info("Attemping to create element-element geometric-electric relationship")
-        create_relationships(node_a_csv=os.path.join(node_dir,'elements.csv'),
-                            node_b_csv=os.path.join(node_dir,'elements.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'element.csv'),
+                            node_b_csv=os.path.join(node_dir,'element.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric_electric'},
                             connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
@@ -223,18 +224,18 @@ class GraphGenerator:
                             )
         
         LOGGER.info("Attemping to create element-element geometric relationship")
-        create_relationships(node_a_csv=os.path.join(node_dir,'elements.csv'),
-                            node_b_csv=os.path.join(node_dir,'elements.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'element.csv'),
+                            node_b_csv=os.path.join(node_dir,'element.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric'},
                             connection_name='GEOMETRIC_CONNECTS',
                             relationship_dir=relationship_dir)
 
         LOGGER.info("Attempting to create element-element electric relationship")
-        create_relationships(node_a_csv=os.path.join(node_dir,'elements.csv'),
-                            node_b_csv=os.path.join(node_dir,'elements.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'), 
+        create_relationships(node_a_csv=os.path.join(node_dir,'element.csv'),
+                            node_b_csv=os.path.join(node_dir,'element.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'), 
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'electric'}, 
                             connection_name='ELECTRIC_CONNECTS',
@@ -244,7 +245,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create Chemenv - Chemenv Geometric-Electric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv.csv'), 
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric_electric'},
                             connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
@@ -253,7 +254,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create Chemenv - Chemenv Geometric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric'}, 
                             connection_name='GEOMETRIC_CONNECTS',
@@ -262,7 +263,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create Chemenv - Chemenv Electric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'electric'},
                             connection_name='ELECTRIC_CONNECTS',
@@ -272,7 +273,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create ChemenvElement - ChemenvElement Geometric-Electric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv_element.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv_element.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric_electric'},
                             connection_name='GEOMETRIC_ELECTRIC_CONNECTS',
@@ -281,7 +282,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create ChemenvElement - ChemenvElement Geometric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv_element.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv_element.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'geometric'},
                             connection_name='GEOMETRIC_CONNECTS',
@@ -290,7 +291,7 @@ class GraphGenerator:
         LOGGER.info("Attempting to create ChemenvElement - ChemenvElement Electric Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv_element.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv_element.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_bonding_task,
                             mp_task_params={'bonding_method':'electric'},
                             connection_name='ELECTRIC_CONNECTS',
@@ -299,55 +300,55 @@ class GraphGenerator:
         # Chemenv - Element Connections
         LOGGER.info("Attempting to create Chemenv - Element Connections")
         create_relationships(node_a_csv=os.path.join(node_dir,'chemenv.csv'),
-                            node_b_csv=os.path.join(node_dir,'elements.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'), 
+                            node_b_csv=os.path.join(node_dir,'element.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'), 
                             mp_task=create_chemenv_element_task,
                             connection_name='CAN_OCCUR',
                             relationship_dir=relationship_dir)
         
         # Material - Element Connections
         LOGGER.info("Attempting to create Material - Element Connections")
-        create_relationships(node_a_csv=os.path.join(node_dir,'materials.csv'),
-                            node_b_csv=os.path.join(node_dir,'elements.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'material.csv'),
+                            node_b_csv=os.path.join(node_dir,'element.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_material_element_task,
-                            connection_name='COMPOSED_OF',
+                            connection_name='HAS',
                             relationship_dir=relationship_dir)
         
         # Material - Chemenv Connections
         LOGGER.info("Attempting to create Material - Chemenv Connections")
-        create_relationships(node_a_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'material.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_material_chemenv_task,
-                            connection_name='COMPOSED_OF',
+                            connection_name='HAS',
                             relationship_dir=relationship_dir)
     
         # Material - ChemenvElement Connections
         LOGGER.info("Attempting to create Material - ChemenvElement Connections")
-        create_relationships(node_a_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'material.csv'),
                             node_b_csv=os.path.join(node_dir,'chemenv_element.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_material_chemenvElement_task,
-                            connection_name='COMPOSED_OF',
+                            connection_name='HAS',
                             relationship_dir=relationship_dir)
             
         # Material - spg Connections
         LOGGER.info("Attempting to create Material - spg Connections")
-        create_relationships(node_a_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'material.csv'),
                             node_b_csv=os.path.join(node_dir,'spg.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_material_spg_task,
-                            connection_name='HAS_SPACE_GROUP_SYMMETRY',
+                            connection_name='HAS',
                             relationship_dir=relationship_dir)
 
         # Material - crystal_system Connections
         LOGGER.info("Attempting to create Material - crystal_system Connections")
-        create_relationships(node_a_csv=os.path.join(node_dir,'materials.csv'),
-                            node_b_csv=os.path.join(node_dir,'crystal_systems.csv'),
-                            material_csv=os.path.join(node_dir,'materials.csv'),
+        create_relationships(node_a_csv=os.path.join(node_dir,'material.csv'),
+                            node_b_csv=os.path.join(node_dir,'crystal_system.csv'),
+                            material_csv=os.path.join(node_dir,'material.csv'),
                             mp_task=create_material_crystal_system_task,
-                            connection_name='HAS_CRYSTAL_SYSTEM',
+                            connection_name='HAS',
                             relationship_dir=relationship_dir)
 
     def list_sub_graphs(self,graph_dir=None):

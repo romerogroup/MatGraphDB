@@ -9,14 +9,12 @@ import pandas as pd
 import pymatgen.core as pmat
 
 from matgraphdb.utils import  GLOBAL_PROP_FILE, N_CORES, LOGGER, timeit
-
 from matgraphdb.utils.math_utils import cosine_similarity
 from matgraphdb.utils.general import chunk_list
 from matgraphdb.data.manager import DBManager
 
-############################################################
-# Below is for is for creating relationships between nodes
-############################################################
+# TODO: Need a better way to handle the creation of relationship between nodes
+
 def get_name_id_map(df):
     """
     Get a dictionary mapping material names to their IDs.
@@ -540,7 +538,7 @@ def create_relationships(node_a_csv, node_b_csv, material_csv,  mp_task,
 
     node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
     node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
-
+    connection_name=f"{node_a_name.upper()}--{connection_name.lower()}-{node_b_name.upper()}"
     filepath=None
     if relationship_dir:
         filename=f"{node_a_name}-{node_b_name}-{connection_name.lower()}.csv"
