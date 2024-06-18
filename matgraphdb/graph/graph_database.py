@@ -2,16 +2,19 @@ import os
 import json
 from typing import List, Tuple, Union
 from glob import glob
-import requests
-import textwrap
-from neo4j import GraphDatabase
 
+from neo4j import GraphDatabase
 import pandas as pd
 
-
-from matgraphdb.utils import PASSWORD,USER,LOCATION,GRAPH_DB_NAME,DBMSS_DIR,MAIN_GRAPH_DIR,GRAPH_DIR, LOGGER,MP_DIR
+from matgraphdb import DBManager
+from matgraphdb.utils import (PASSWORD,USER,LOCATION,DBMSS_DIR, GRAPH_DIR, LOGGER,MP_DIR)
 from matgraphdb.utils.general import get_os
 from matgraphdb.graph.similarity_chat import get_similarity_query
+
+# TODO: Find a better place to put the formatting functions
+# TODO: Think of way to store new node and relationship properties. 
+# TODO: For material nodes, we can use DB Manager to store properties back into json database
+# TODO: Created method to export node and relationship properties to csv file it does not have the exact same format as the original file
 
 
 def format_list(prop_list):
@@ -81,12 +84,12 @@ def format_projection(projections:Union[str,List,dict]):
 
 class Neo4jGraphDatabase:
 
-    def __init__(self,database_path=None,uri=LOCATION, user=USER, password=PASSWORD, from_scratch=False):
+    def __init__(self, graph_dir=None, db_manager=DBManager(), uri=LOCATION, user=USER, password=PASSWORD, from_scratch=False):
         """
         Initializes a MatGraphDB object.
 
         Args:
-            database_path (str): The path to the database.
+            graph_dir (str): The directory where the graph is located.
             uri (str): The URI of the graph database.
             user (str): The username for authentication.
             password (str): The password for authentication.
@@ -99,13 +102,16 @@ class Neo4jGraphDatabase:
         self.driver = None
         self.dbms_dir = None
         self.dbms_json = None
+        self.db_manager = db_manager
+        self.graph_dir=graph_dir
         self.from_scratch=from_scratch
         self.get_dbms_dir()
         self.neo4j_admin_path=None
         self.neo4j_cypher_shell_path=None
         self.get_neo4j_tools_path()
-        if database_path:
-            self.load_graph_database_into_neo4j(database_path)
+        if graph_dir:
+            self.load_graph_database_into_neo4j(graph_dir)
+
 
     def __enter__(self):
             """
@@ -295,7 +301,7 @@ class Neo4jGraphDatabase:
         statement=node_statement+relationship_statement
         return statement
     
-    def get_databases(self):
+    def list_databases(self):
         """
         Returns a list of databases in the graph database.
 
@@ -308,17 +314,6 @@ class Neo4jGraphDatabase:
         names=[result['name'] for result in results]
         return names
 
-    def remove_database(self,database_name):
-        """
-        Removes a database from the graph database.
-
-        Args:
-            database_name (str): The name of the database to remove.
-        """
-        if self.driver is None:
-            raise Exception("Graph database is not connected. Please connect to the database first.")
-        self.execute_query(f"DROP DATABASE `{database_name}`",database_name='system')
-
     def create_database(self,database_name):
         """
         Creates a new database in the graph database.
@@ -330,6 +325,61 @@ class Neo4jGraphDatabase:
             raise Exception("Graph database is not connected. Please connect to the database first.")
         self.execute_query(f"CREATE DATABASE `{database_name}`",database_name='system')
 
+    def remove_database(self,database_name):
+        """
+        Removes a database from the graph database.
+
+        Args:
+            database_name (str): The name of the database to remove.
+        """
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
+        self.execute_query(f"DROP DATABASE `{database_name}`",database_name='system')
+
+    def remove_node(self,database_name,node_type,node_properties=None):
+        """
+        Removes a node from the graph database.
+
+        Args:
+            node_type (str): The type of the node to remove.
+            node_properties (dict, optional): The properties of the node to remove. Defaults to None.
+        """
+
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
+        
+        if node_properties is None:
+            node_properties=""
+        else:
+            node_properties=format_dictionary(node_properties)
+
+        cypher_statement=f"MATCH (n:{node_type} {node_properties}) "
+        cypher_statement+=f"DETACH DELETE n"
+        results=self.query(cypher_statement,database_name=database_name)
+        return results
+
+    def remove_relationship(self,database_name,relationship_type,relationship_properties=None):
+        """
+        Removes a relationship from the graph database.
+
+        Args:
+            relationship_type (str): The type of the relationship to remove.
+            relationship_properties (dict, optional): The properties of the relationship to remove. Defaults to None.
+        """
+
+        if self.driver is None:
+            raise Exception("Graph database is not connected. Please connect to the database first.")
+        
+        if relationship_properties is None:
+            relationship_properties=""
+        else:
+            relationship_properties=format_dictionary(relationship_properties)
+
+        cypher_statement=f"MATCH ()-[r:{relationship_type} {relationship_properties}]-() "
+        cypher_statement+=f"DETACH DELETE r"
+        results=self.query(cypher_statement,database_name=database_name)
+        return results
+    
     def load_graph_database_into_neo4j(self,database_path):
         """
         Loads a graph database into Neo4j.
@@ -338,10 +388,10 @@ class Neo4jGraphDatabase:
             graph_datbase_path (str): The path to the graph database to load.
         """
         database_name=os.path.basename(database_path)
-        db_names=self.get_databases()
+        db_names=self.list_databases()
         if self.from_scratch and database_name in db_names:
             self.remove_database(database_name)
-        db_names=self.get_databases()
+        db_names=self.list_databases()
 
         if database_name in db_names:
             raise Exception(f"Graph database {database_name} already exists. " 
@@ -678,6 +728,157 @@ class Neo4jGraphDatabase:
             outputs.append(output)
         return outputs
 
+    def format_exported_node_file(self,file):
+        """
+        Formats an exported node file.
+
+        Args:
+            file (str): The file to format.
+
+        Returns:
+            str: The formatted file.
+        """
+        df=pd.read_csv(file)
+        # df.drop(df.columns[0], axis=1, inplace=True)
+        # column_names=list(df.columns)
+        # id_col_index=0
+        # label_index=0
+        # for i,col_name in enumerate(column_names):
+        #     if "Id" in col_name:
+        #         id_col_index=i
+        #     if ':LABEL' in col_name:
+        #         label_index=i
+
+        # # Move the id column to the first position and the label to the second position in the dataframe
+        # # Get the 'Id' and ':LABEL' columns
+        # id_col = df.pop(column_names[id_col_index])
+        # label_col = df.pop(column_names[label_index])  # Adjusting index because we've already popped id_col
+        # # Insert 'Id' column at the first position
+        # df.insert(0, column_names[id_col_index], id_col)
+        # # Insert ':LABEL' column at the second position
+        # df.insert(1, column_names[label_index], label_col)
+        # # Rename id column to 'id'
+        # node_name=column_names[id_col_index].split('Id')[0]
+        # df.rename(columns={column_names[id_col_index]:f'{column_names[id_col_index]}:ID({node_name}-ID)'}, inplace=True)
+        
+        return df
+
+    def format_exported_relationship_file(self,file):
+        """
+        Formats an exported relationship file.
+
+        Args:
+            file (str): The file to format.
+
+        Returns:
+            str: The formatted file.
+        """
+        df=pd.read_csv(file)
+        # df.drop(df.columns[0], axis=1, inplace=True)
+        # column_names=list(df.columns)
+        # id_col_index=0
+        # label_index=0
+        # for i,col_name in enumerate(column_names):
+        #     if "Id" in col_name:
+        #         id_col_index=i
+        #     if ':LABEL' in col_name:
+        #         label_index=i
+
+        return df
+    
+    def export_database(self,
+                    graph_dir:str,
+                    database_name:str,
+                    batch_size:int=20000,
+                    delimiter:str=',',
+                    array_delimiter:str=';',
+                    quotes:str="always",
+                    ):
+        """
+        Exports a database to a file.
+        https://neo4j.com/docs/apoc/current/export/csv/
+
+        Args:
+            graph_dir (str): The directory of the original graph.
+            database_name (str): The name of the database.
+            batch_size (int, optional): The batch size. Defaults to 20000.
+            delimiter (str, optional): The delimiter. Defaults to ','.
+            array_delimiter (str, optional): The array delimiter. Defaults to ';'.
+            quotes (str, optional): The quotes. Defaults to 'always'.
+
+        Returns:
+            None
+        """
+        mutated_graphs_dir=os.path.join(graph_dir,'mutated_neo4j_graphs')
+        mutated_graph_dir=os.path.join(mutated_graphs_dir,database_name,'neo4j_csv')
+        node_dir=os.path.join(mutated_graph_dir,'nodes')
+        relationship_dir=os.path.join(mutated_graph_dir,'relationships')
+        os.makedirs(node_dir,exist_ok=True)
+        os.makedirs(relationship_dir,exist_ok=True)
+
+        config={}
+        config['bulkImport']=True
+        config['useTypes']=True
+        config['batchSize']=batch_size
+        config['delimiter']=delimiter
+        config['arrayDelimiter']=array_delimiter
+        config['quotes']=quotes
+
+        cypher_statement=f"""CALL apoc.export.csv.all("tmp.csv", {format_dictionary(config)})"""
+        results=self.query(cypher_statement,database_name=database_name)
+
+        import_dir=os.path.join(self.dbms_dir,"import")
+        files=glob(os.path.join(import_dir,'*.csv'))
+        for file in files:
+            filename=os.path.basename(file)
+            _, graph_element, element_type,_=filename.split('.')
+            element_type=element_type.lower()
+            if 'nodes' == graph_element:
+                df=self.format_exported_node_file(file)
+                new_file=os.path.join(node_dir,f'{graph_element}.csv')
+                df.to_csv(new_file)
+            elif 'relationships' == graph_element:
+                df=self.format_exported_node_file(file)
+                new_file=os.path.join(node_dir,f'{graph_element}.csv')
+                df.to_csv(new_file)
+
+        for file in files:
+            os.remove(file)
+            
+        return results
+
+    def set_apoc_environment_variables(self,settings:dict=None, overwrite:bool=False):
+        """
+        Sets the apoc export file.
+        https://neo4j.com/docs/apoc/current/export/csv/
+
+        Args:
+            database_name (str): The name of the database.
+
+        Returns:
+            None
+        """
+        
+        conf_file=os.path.join(self.dbms_dir,'conf','apoc.conf')
+        # Reading the existing config
+        with open(conf_file, 'r') as file:
+            lines = file.readlines()
+        
+        # Modifying the config
+        with open(conf_file, 'w') as file:
+            for key, value in settings.items():
+                new_line = f'{key}={value}\n'
+                for line in lines:
+                    if key in line and overwrite:
+                        new_line = f'{key}={value}\n'
+                    else:
+                        new_line = line
+                    
+                file.write(new_line)
+        return None
+
+        
+
 class Neo4jGDSManager:
     def __init__(self, neo4jdb:Neo4jGraphDatabase):
         self.neo4jdb = neo4jdb
@@ -947,7 +1148,7 @@ class Neo4jGDSManager:
         """
         if not self.is_graph_in_memory(database_name=database_name,graph_name=graph_name):
             raise Exception(f"Graph {graph_name} is not in memory")
-        if db_name not in self.neo4jdb.get_databases():
+        if db_name not in self.neo4jdb.list_databases():
             raise Exception(f"Database {db_name} does not exist")
         
         config={}
@@ -3197,39 +3398,45 @@ class Neo4jGDSManager:
 
 if __name__ == "__main__":
 
-    # database_path=os.path.join(GRAPH_DIR,'main')
-    # db=MatGraphDB(database_path=database_path,from_scratch=True)
-    # print(db.get_databases())
+
+
+
     with Neo4jGraphDatabase() as matgraphdb:
         database_name='nelements-1-2'
-        manager=Neo4jGDSManager(matgraphdb)
-        print(manager.list_graphs(database_name))
-        print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
-        # print(manager.list_graph_data_science_algorithms(database_name))
-        graph_name='materials_chemenvElements'
-        node_projections=['ChemenvElement','Material']
-        relationship_projections={
-                    "GEOMETRIC_ELECTRIC_CONNECTS": {
-                    "orientation": 'UNDIRECTED',
-                    "properties": 'weight'
-                    },
-                    "COMPOSED_OF": {
-                        "orientation": 'UNDIRECTED',
-                        "properties": 'weight'
-                    }
-                }
+        graph_dir=os.path.join('data','production','materials_project','graph_database')
+        # settings={'apoc.export.file.enabled':'true'}
+        # matgraphdb.set_apoc_environment_variables(settings=settings)
+        matgraphdb.export_database(graph_dir,database_name=database_name)
+    # with Neo4jGraphDatabase() as matgraphdb:
+    #     database_name='nelements-1-2'
+    #     manager=Neo4jGDSManager(matgraphdb)
+    #     print(manager.list_graphs(database_name))
+    #     print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
+    #     # print(manager.list_graph_data_science_algorithms(database_name))
+    #     graph_name='materials_chemenvElements'
+    #     node_projections=['ChemenvElement','Material']
+    #     relationship_projections={
+    #                 "GEOMETRIC_ELECTRIC_CONNECTS": {
+    #                 "orientation": 'UNDIRECTED',
+    #                 "properties": 'weight'
+    #                 },
+    #                 "COMPOSED_OF": {
+    #                     "orientation": 'UNDIRECTED',
+    #                     "properties": 'weight'
+    #                 }
+    #             }
         
-        # print(format_dictionary(relationship_projections))
-        manager.load_graph_into_memory(database_name=database_name,
-                                       graph_name=graph_name,
-                                       node_projections=node_projections,
-                                       relationship_projections=relationship_projections)
-        print(manager.get_graph_info(database_name=database_name,graph_name=graph_name))
-        print(manager.list_graphs(database_name))
-        print(manager.is_graph_in_memory(database_name,graph_name))
-        print(manager.drop_graph(database_name,graph_name))
-        print(manager.list_graphs(database_name))
-        print(manager.is_graph_in_memory(database_name,graph_name))
+    #     # print(format_dictionary(relationship_projections))
+    #     manager.load_graph_into_memory(database_name=database_name,
+    #                                    graph_name=graph_name,
+    #                                    node_projections=node_projections,
+    #                                    relationship_projections=relationship_projections)
+    #     print(manager.get_graph_info(database_name=database_name,graph_name=graph_name))
+    #     print(manager.list_graphs(database_name))
+    #     print(manager.is_graph_in_memory(database_name,graph_name))
+    #     print(manager.drop_graph(database_name,graph_name))
+    #     print(manager.list_graphs(database_name))
+    #     print(manager.is_graph_in_memory(database_name,graph_name))
 
 
         # result=manager.estimate_memeory_for_algorithm(database_name=database_name,
