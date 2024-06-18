@@ -7,14 +7,15 @@ import pandas as pd
 import networkx as nx
 
 from matgraphdb import DBManager
-from matgraphdb.utils import (DB_DIR, DB_CALC_DIR, N_CORES, GLOBAL_PROP_FILE, 
-                              ENCODING_DIR, MAIN_GRAPH_DIR, GRAPH_DIR,LOGGER)
+from matgraphdb.utils import  MAIN_GRAPH_DIR, LOGGER
 from matgraphdb.graph.create_node_csv import create_nodes
 from matgraphdb.graph.create_relationship_csv import (create_relationships,create_bonding_task, create_chemenv_element_task, create_material_element_task, 
                                                       create_material_chemenv_task, create_material_chemenvElement_task, create_material_spg_task,
                                                       create_material_crystal_system_task)
 from matgraphdb.graph.node_types import NodeTypes
 
+# TODO Move is_in_range and is_in_list to utils
+# TODO Create docstrings for screen materials
 
 def is_in_range(val:Union[float, int],min_val:Union[float, int],max_val:Union[float, int], negation:bool=True):
     """
@@ -61,6 +62,7 @@ class GraphGenerator:
         Args:
             db_manager (DBManager,optional): The database manager object. Defaults to DBManager().
             node_types (NodeTypes,optional): The node types object. Defaults to NodeTypes().
+            main_graph_dir (str,optional): The directory where the main graph is stored. Defaults to MAIN_GRAPH_DIR.
             from_scratch (bool,optional): If True, deletes the graph database and recreates it from scratch.
             skip_main_init (bool,optional): If True, skips the initialization of the main nodes and relationships.
 
@@ -361,7 +363,7 @@ class GraphGenerator:
         if graph_dir is None:
             print("No graph directory provided. Using main graph directory.")
             graph_dir=self.main_graph_dir
-            
+
         sub_graph_dir=os.path.join(graph_dir,'sub_graphs')
         if not os.path.exists(sub_graph_dir):
             raise Exception("No subgraphs found in graph directory.")
@@ -836,10 +838,10 @@ class NetworkXGraphGenerator:
             nx.write_graphml(self.graph,filepath)
         return None
 
-if __name__=='__main__':
+# if __name__=='__main__':
 
-    graph=GraphGenerator()
-    graph.write_graphml(graph_dirname='nelements-2-2')
+    # graph=GraphGenerator()
+    # graph.write_graphml(graph_dirname='nelements-2-2')
 
     # import sys
     # converter = NetworkXGraphGenerator(graph_dir="data/production/materials_project/graph_database/nelements-2-2")
