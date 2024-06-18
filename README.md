@@ -60,8 +60,6 @@ MatGraphDB seamlessly integrates materials data management with advanced graph d
 You can install the data here:
 
 
-
-
 ### Setting up Conda environment 
 
 Navigate to the root directory `MatGraphDB`. Then do the following
@@ -112,7 +110,21 @@ Th configurations of the project are stored in the `MatGraphDB/config.yml` file.
 - `N_CORES`: The number of cores to be used for parallel processing.
 
 ### Neo4jDektop
-To use neo4jdektop, you will need to install the neo4j desktop application. You can download the application from the [neo4j website](https://neo4j.com/docs/operations-manual/current/installation/). Create a project and then create a new database management system (DBMS) , name it `MatGraphDB` and select the `Neo4j Community Edition` as the DBMS.
+To use neo4j, you will need to install the neo4j desktop application. You can download the application from the [neo4j website](https://neo4j.com/docs/operations-manual/current/installation/). Create a project and then create a new database management system (DBMS) , name it `MatGraphDB` and select the `Neo4j Community Edition` as the DBMS.
+
+You will also need to install the APOC library and Graph Data Science Library. You can do this by click on you DBMS name and the on the right clicking `Plugins`, then click on the libraries and install them.
+
+You will also need to set an apoc environment variable. You can do this by running the following code:
+
+```python
+with Neo4jGraphDatabase() as manager:
+    settings={'apoc.export.file.enabled':'true'}
+    manager.set_apoc_environment_variables(settings=settings)
+```
+
+After running this code, you will need to stop the dbms and restart it.
+
+
 
 
 ## Usage
