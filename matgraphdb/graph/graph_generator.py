@@ -54,7 +54,7 @@ def is_in_list(val, string_list: List, negation: bool = True) -> bool:
 
 class GraphGenerator:
 
-    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), from_scratch=False, skip_main_init=True):
+    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), main_graph_dir=MAIN_GRAPH_DIR, from_scratch=False, skip_main_init=True):
         """
         Initializes the GraphGenerator object.
 
@@ -70,8 +70,9 @@ class GraphGenerator:
         self.node_types=node_types
         self.db_manager = db_manager
 
-        self.main_node_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','nodes')
-        self.main_relationship_dir=os.path.join(MAIN_GRAPH_DIR,'neo4j_csv','relationships')
+        self.main_graph_dir=main_graph_dir
+        self.main_node_dir=os.path.join(self.main_graph_dir,'neo4j_csv','nodes')
+        self.main_relationship_dir=os.path.join(self.main_graph_dir,'neo4j_csv','relationships')
         
         if from_scratch and os.path.exists(self.main_node_dir):
             LOGGER.info('Starting from scratch. Deleting main graph directory')
@@ -347,17 +348,7 @@ class GraphGenerator:
                             connection_name='HAS_CRYSTAL_SYSTEM',
                             relationship_dir=relationship_dir)
 
-    def list_graph_databases(self):
-        """
-        List the graph databases in the graph directory.
-
-        Returns:
-            list: A list of the graph databases in the graph directory.
-        """
-        graph_dirs = glob(os.path.join(GRAPH_DIR, '*'))
-        return [os.path.basename(d) for d in graph_dirs]
-    
-    def list_subgraphs(self,graph_dir):
+    def list_sub_graphs(self,graph_dir=None):
         """
         List the subgraphs in the graph directory.
 
@@ -367,8 +358,11 @@ class GraphGenerator:
         Returns:
             list: A list of the subgraphs in the graph directory.
         """
+        if graph_dir is None:
+            print("No graph directory provided. Using main graph directory.")
+            graph_dir=self.main_graph_dir
+            
         sub_graph_dir=os.path.join(graph_dir,'sub_graphs')
-
         if not os.path.exists(sub_graph_dir):
             raise Exception("No subgraphs found in graph directory.")
 
@@ -578,7 +572,7 @@ class GraphGenerator:
         LOGGER.info(f"Number of materials after filtering: {len(filtered_df)}")
         return filtered_df
 
-    def screen_graph_database(self,graph_dir,from_scratch=False,**kwargs):
+    def screen_graph(self,graph_dir,from_scratch=False,**kwargs):
         """
         Screen the graph database for materials.
 
@@ -627,7 +621,7 @@ class GraphGenerator:
 
         self.initialize_relationships(node_dir=node_dir,relationship_dir=relationship_dir)
 
-    def create_subgraph(self,graph_dir, sub_graph_name, node_files, relationship_files, from_scratch=False):
+    def create_sub_graph(self,graph_dir, sub_graph_name, node_files, relationship_files, from_scratch=False):
         """
         Create subgraphs from the graph.
 
