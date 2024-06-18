@@ -7,7 +7,7 @@ import pandas as pd
 import networkx as nx
 
 from matgraphdb import DBManager
-from matgraphdb.utils import  MAIN_GRAPH_DIR, LOGGER
+from matgraphdb.utils import  GRAPH_DIR, LOGGER
 from matgraphdb.graph.create_node_csv import create_nodes
 from matgraphdb.graph.create_relationship_csv import (create_relationships,create_bonding_task, create_chemenv_element_task, create_material_element_task, 
                                                       create_material_chemenv_task, create_material_chemenvElement_task, create_material_spg_task,
@@ -55,7 +55,7 @@ def is_in_list(val, string_list: List, negation: bool = True) -> bool:
 
 class GraphGenerator:
 
-    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), main_graph_dir=MAIN_GRAPH_DIR, from_scratch=False, skip_main_init=True):
+    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), main_graph_dir=GRAPH_DIR, from_scratch=False, skip_main_init=True):
         """
         Initializes the GraphGenerator object.
 
