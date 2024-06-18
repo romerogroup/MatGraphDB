@@ -538,7 +538,7 @@ def create_relationships(node_a_csv, node_b_csv, material_csv,  mp_task,
 
     node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
     node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
-    connection_name=f"{node_a_name.upper()}--{connection_name.lower()}-{node_b_name.upper()}"
+    connection_name=f"{node_a_name.upper()}--{connection_name.upper()}-{node_b_name.upper()}"
     filepath=None
     if relationship_dir:
         filename=f"{node_a_name}-{node_b_name}-{connection_name.lower()}.csv"
