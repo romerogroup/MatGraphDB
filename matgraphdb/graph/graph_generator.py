@@ -357,6 +357,62 @@ class GraphGenerator:
         graph_dirs = glob(os.path.join(GRAPH_DIR, '*'))
         return [os.path.basename(d) for d in graph_dirs]
     
+    def list_subgraphs(self,graph_dir):
+        """
+        List the subgraphs in the graph directory.
+
+        Args:
+            graph_dir (str): The directory of the graph.
+
+        Returns:
+            list: A list of the subgraphs in the graph directory.
+        """
+        sub_graph_dir=os.path.join(graph_dir,'sub_graphs')
+
+        if not os.path.exists(sub_graph_dir):
+            raise Exception("No subgraphs found in graph directory.")
+
+        graph_dirs = glob(os.path.join(sub_graph_dir, '*'))
+        return [os.path.basename(d) for d in graph_dirs]
+    
+    def list_graph_nodes(self,graph_dir):
+        """
+        List the graph nodes in the graph directory.
+
+        Args:
+            graph_dirname (str): The name of the graph database directory.
+
+        Returns:
+            list: A list of the graph nodes in the graph directory.
+        """
+        main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        main_node_dir=os.path.join(main_graph_dir,'nodes')
+
+        if not os.path.exists(main_node_dir):
+            raise Exception("No nodes found in graph directory.")
+        
+        node_files = glob(os.path.join(main_node_dir, '*.csv'))
+        return node_files
+    
+    def list_graph_relationships(self,graph_dir):
+        """
+        List the graph relationships in the graph directory.
+
+        Args:
+            graph_dirname (str): The name of the graph database directory.
+
+        Returns:
+            list: A list of the graph relationships in the graph directory.
+        """
+        main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        main_relationship_dir=os.path.join(main_graph_dir,'relationships')
+
+        if not os.path.exists(main_relationship_dir):
+            raise Exception("No relationships found in graph directory.")
+
+        relationship_files = glob(os.path.join(main_relationship_dir, '*.csv'))
+        return relationship_files
+    
     def screen_material_nodes(self,
                         material_csv:str,
                         include:bool=True,
@@ -522,58 +578,112 @@ class GraphGenerator:
         LOGGER.info(f"Number of materials after filtering: {len(filtered_df)}")
         return filtered_df
 
-    def screen_graph_database(self,graph_dirname,from_scratch=False,**kwargs):
+    def screen_graph_database(self,graph_dir,from_scratch=False,**kwargs):
         """
         Screen the graph database for materials.
 
         Args:
-            graph_dirname (str): The name of the graph database directory.
+            graph_dir (str): The directory of the graph database.
             from_scratch (bool, optional): If True, deletes the graph database and recreates it from scratch. Defaults to False.
 
         Returns:
             None
         """
-        graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
-        neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
-        if from_scratch and os.path.exists(graph_dir):
-            LOGGER.info(f'Starting from scratch. Deleting graph directory {graph_dir}')
-            shutil.rmtree(graph_dir)
+        root_graph_dir=os.path.dirname(graph_dir)
+        graph_name=os.path.basename(graph_dir)
 
-        LOGGER.info('Screening the graph database')
-        node_dir=os.path.join(neo4j_graph_dir,'nodes')
-        relationship_dir=os.path.join(neo4j_graph_dir,'relationships')
+        # Define main graph directory paths
+        main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        main_node_dir=os.path.join(main_graph_dir,'nodes')
+        main_relationship_dir=os.path.join(main_graph_dir,'relationships')
 
+        # Define subgraph directory paths
+        sub_graphs_dir=os.path.join(graph_dir,'sub_graphs')
+        sub_graph_dir=os.path.join(sub_graphs_dir,graph_name)
+        if from_scratch and os.path.exists(sub_graph_dir):
+            LOGGER.info(f'Starting from scratch. Deleting graph directory {sub_graph_dir}')
+            shutil.rmtree(sub_graph_dir)
+
+        node_dir=os.path.join(sub_graph_dir,'nodes')
+        relationship_dir=os.path.join(sub_graph_dir,'relationships')
         os.makedirs(node_dir,exist_ok=True)
         os.makedirs(relationship_dir,exist_ok=True)
 
+        LOGGER.info('Screening the graph database')
         # Copy all the nodes besides the material node to the graph directory
-        node_files=glob(self.main_node_dir+ os.sep +'*.csv')
+        node_files=glob(main_node_dir+ os.sep +'*.csv')
         for file_paths in node_files:
             filename=os.path.basename(file_paths)
             if filename == "materials.csv":
                 continue
             LOGGER.info(f"Copying {filename} to {node_dir}")
-            shutil.copy(os.path.join(self.main_node_dir,filename),os.path.join(node_dir,filename))
+            shutil.copy(os.path.join(main_node_dir,filename),os.path.join(node_dir,filename))
 
         LOGGER.info(f"Creating new materials.csv")
-        original_materials_file=os.path.join(self.main_node_dir,'materials.csv')
+        original_materials_file=os.path.join(main_node_dir,'materials.csv')
         new_materials_file=os.path.join(node_dir,'materials.csv')
         materials_df=self.screen_material_nodes(material_csv=original_materials_file,**kwargs)
         materials_df.to_csv(new_materials_file,index=True)
 
         self.initialize_relationships(node_dir=node_dir,relationship_dir=relationship_dir)
 
-    def write_graphml(self,graph_dirname,node_files=None,relationship_files=None,from_scratch=False):
+    def create_subgraph(self,graph_dir, sub_graph_name, node_files, relationship_files, from_scratch=False):
+        """
+        Create subgraphs from the graph.
+
+        Args:
+            graph_dir (str): The directory of the graph.
+            sub_graph_name (str): The name of the subgraph directory.
+            node_files (list): A list of node csv files to be included in the subgraph. Use list_graph_nodes(graph_dirname) to get the list of node files.
+            relationship_files (list): A list of relationship csv files to be included in the subgraph. Use list_graph_relationships(graph_dirname) to get the list of relationship files.
+            from_scratch (bool, optional): If True, deletes the graph database and recreates it from scratch. Defaults to False.
+
+        Returns:
+            None
+        """
+
+        # Define main graph directory
+        main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        main_node_dir=os.path.join(main_graph_dir,'nodes')
+        main_relationship_dir=os.path.join(main_graph_dir,'relationships')
+
+        # Define subgraph directory
+        sub_graphs_dir=os.path.join(graph_dir,'sub_graphs')
+        sub_graph_dir=os.path.join(sub_graphs_dir,sub_graph_name)
+        if from_scratch and os.path.exists(sub_graph_dir):
+            LOGGER.info(f'Starting from scratch. Deleting graph directory {sub_graph_dir}')
+            shutil.rmtree(sub_graph_dir)
+        node_dir=os.path.join(sub_graph_dir,'neo4j_csv','nodes')
+        relationship_dir=os.path.join(sub_graph_dir,'neo4j_csv','relationships')
+        os.makedirs(node_dir,exist_ok=True)
+        os.makedirs(relationship_dir,exist_ok=True)
+
+        # Copy node files from the main graph to the subgraph
+        for file_paths in node_files:
+            filename=os.path.basename(file_paths)
+            LOGGER.info(f"Copying {filename} to {node_dir}")
+            shutil.copy(os.path.join(main_node_dir,filename),os.path.join(node_dir,filename))
+
+        # Copy relationship files from the main graph to the subgraph
+        for file_paths in relationship_files:
+            filename=os.path.basename(file_paths)
+            LOGGER.info(f"Copying {filename} to {relationship_dir}")
+            shutil.copy(os.path.join(main_relationship_dir,filename),os.path.join(relationship_dir,filename))
+
+        return None
+
+    def write_graphml(self,graph_dir,from_scratch=False):
         """
         Write a graphml file from the graph.
 
         Args:
+            graph_dir (str): The directory of the graph.
             filepath (str,optional): The path to the file where the graphml file will be saved. Defaults to None.
 
         Returns:
             None
         """
-        graph_dir=os.path.join(GRAPH_DIR,graph_dirname)
+        graph_dirname=os.path.basename(graph_dir)
         neo4j_graph_dir=os.path.join(graph_dir,'neo4j_csv')
         filepath=os.path.join(graph_dir,f'{graph_dirname}.graphml')
         if not os.path.exists(graph_dir):
@@ -584,7 +694,10 @@ class GraphGenerator:
         if from_scratch and os.path.exists(filepath):
             LOGGER.info(f'Starting from scratch. Deleting graph directory {filepath}')
             os.remove(filepath)
-    
+        node_files=self.list_graph_nodes(graph_dirname=graph_dirname)
+        relationship_files=self.list_graph_relationships(graph_dirname=graph_dirname)
+
+
         generator=NetworkXGraphGenerator(graph_dir=graph_dir)
         generator.parse_node_files(node_files=node_files)
         generator.parse_relationship_files(relationship_files=relationship_files)
@@ -610,7 +723,6 @@ class NetworkXGraphGenerator:
         self.graph=nx.Graph()
         self.neo4j_node_id_maps={}
         self.parse_node_files()
-
 
     def parse_node_file(self,file):
         """
