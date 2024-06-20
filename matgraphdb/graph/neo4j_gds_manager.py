@@ -2702,13 +2702,13 @@ if __name__ == "__main__":
     ##################################################################################################
     # # Loading and unloading graphs into GDS
     ##################################################################################################
-    with Neo4jGraphDatabase() as matgraphdb:
+    with Neo4jManager() as matgraphdb:
         database_name='elements-no-fe'
-    #     graph_name='materials_chemenvElements'
-    #     manager=Neo4jGDSManager(matgraphdb)
-    #     print(manager.list_graphs(database_name))
-    #     print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
-    #     print(manager.drop_graph(database_name,graph_name))
+        graph_name='materials_chemenvElements'
+        manager=Neo4jGDSManager(matgraphdb)
+        print(manager.list_graphs(database_name))
+        print(manager.is_graph_in_memory(database_name,'materials_chemenvElements'))
+        print(manager.drop_graph(database_name,graph_name))
     #     graph_name='materials_chemenvElements'
     #     node_projections={
     #             "ChemenvElement":{

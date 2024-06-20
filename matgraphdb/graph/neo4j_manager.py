@@ -250,7 +250,7 @@ class Neo4jManager:
         for result in results:
             graph_name=result['name']
             if graph_name not in ['neo4j','system']:
-                names.append(graph_name)
+                names.append(graph_name.lower())
         return names
 
     def create_database(self,database_name):
@@ -349,6 +349,63 @@ class Neo4jManager:
         os.system(import_statment)
 
         self.create_database(database_name)
+        return None
+
+    def does_property_exist(self,database_name,property_name,node_type=None,relationship_type=None):
+        """
+        Checks if a property exists in a graph database.
+
+        Args:
+            database_name (str): The name of the database.
+            node_type (str): The type of the node.
+            property_name (str): The name of the property.
+
+        Returns:
+            bool: True if the property exists, False otherwise.
+        """
+        if node_type and relationship_type:
+            raise Exception("Both node_type and relationship_type cannot be provided at the same time")
+        if node_type is None and relationship_type is None:
+            raise Exception("Either node_type or relationship_type must be provided")
+        if node_type:
+            cypher_statement=f"MATCH (n:{node_type})\n"
+            cypher_statement+=f"WHERE n.`{property_name}` IS NOT NULL\n"
+            cypher_statement+=f"RETURN n LIMIT 1"
+        if relationship_type:
+            cypher_statement=f"MATCH ()-[r:{relationship_type}]-()\n"
+            cypher_statement+=f"WHERE r.`{property_name}` IS NOT NULL\n"
+            cypher_statement+=f"RETURN r LIMIT 1"
+        results=self.query(cypher_statement,database_name=database_name)
+        if len(results)==0:
+            return False
+        return True
+
+    def remove_property(self,database_name,property_name,node_type=None,relationship_type=None):
+        """
+        Removes a property from a graph database.
+
+        Args:
+            database_name (str): The name of the database.
+            node_type (str): The type of the node.
+            property_name (str): The name of the property.
+
+        Returns:
+            None
+        """
+        if node_type and relationship_type:
+            raise Exception("Both node_type and relationship_type cannot be provided at the same time")
+        if node_type is None and relationship_type is None:
+            raise Exception("Either node_type or relationship_type must be provided")
+
+        if node_type:
+            cypher_statement=f"MATCH (n:{node_type})"
+            cypher_statement+=f"DETACH DELETE n.`{property_name}`"
+            cypher_statement+=f"RETURN n"
+        if relationship_type:
+            cypher_statement=f"MATCH ()-[r:{relationship_type}]-()"
+            cypher_statement+=f"DETACH DELETE r.`{property_name}`"
+            cypher_statement+=f"RETURN r"
+        self.query(cypher_statement,database_name=database_name)
         return None
 
     def execute_query(self, query, database_name, parameters=None):
@@ -817,3 +874,9 @@ class Neo4jManager:
                     
                 file.write(new_line)
         return None
+    
+
+if __name__=='__main__':
+    with Neo4jManager() as manager:
+        results=manager.does_property_exist('elements-no-fe','Material','fastrp-embedding')
+        print(results)

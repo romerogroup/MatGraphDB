@@ -1,0 +1,303 @@
+{
+    "nsites": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.4328638497652582,
+            "precision": 0.41371345440419316,
+            "recall": 0.4328638497652582,
+            "f1": 0.401186726652017,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "nelements": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "volume": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 285064.66885335016,
+            "r2": 0.24520952612139812
+        },
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "density": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "density_atomic": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "composition_reduced": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "formula_prettye_electronic": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "e_ionic": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "e_total": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "energy_per_atom": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "energy_above_hull": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "formation_energy_per_atom": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "band_gap": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "vbm": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "cbm": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "efermi": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "crystal_system": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "space_group": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "point_group": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "hall_symbolis_gap_direct": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "is_metal": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "is_magnetic": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "is_stable": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "ordering": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "total_magnetization": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "total_magnetization_normalized_vol": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "num_magnetic_sites": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "num_unique_magnetic_sitesg_ruess": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "g_voigt": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "g_vrh": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "k_reuss": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "k_voigt": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "k_vrh": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "homogeneous_poisson": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    },
+    "universal_anisotropy": {
+        "fastrp-embedding-gc-chemenvElement": {},
+        "fastrp-embedding-ec-chemenvElement": {},
+        "fastrp-embedding-gec-chemenvElement": {},
+        "fastrp-embedding-gc-element-chemenv": {},
+        "fastrp-embedding-ec-element-chemenv": {},
+        "fastrp-embedding-gec-element-chemenv": {}
+    }
+}
