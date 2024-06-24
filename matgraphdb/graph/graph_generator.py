@@ -73,9 +73,9 @@ class GraphGenerator:
         self.node_types=node_types
         self.db_manager = db_manager
 
-        self.main_graph_dir=main_graph_dir
-        self.main_node_dir=os.path.join(self.main_graph_dir,'neo4j_csv','nodes')
-        self.main_relationship_dir=os.path.join(self.main_graph_dir,'neo4j_csv','relationships')
+        self.main_graph_dir=os.path.join(main_graph_dir,'main')
+        self.main_node_dir=os.path.join(self.main_graph_dir,'nodes')
+        self.main_relationship_dir=os.path.join(self.main_graph_dir,'relationships')
         
         if from_scratch and os.path.exists(self.main_node_dir):
             LOGGER.info('Starting from scratch. Deleting main graph directory')
@@ -590,12 +590,12 @@ class GraphGenerator:
         root_graph_dir=os.path.dirname(graph_dir)
 
         # Define main graph directory paths
-        main_graph_dir=os.path.join(graph_dir,'neo4j_csv')
+        main_graph_dir=graph_dir
         main_node_dir=os.path.join(main_graph_dir,'nodes')
         main_relationship_dir=os.path.join(main_graph_dir,'relationships')
 
         # Define subgraph directory paths
-        sub_graphs_dir=os.path.join(graph_dir,'sub_graphs')
+        sub_graphs_dir=os.path.join(main_graph_dir,'sub_graphs')
         sub_graph_dir=os.path.join(sub_graphs_dir,sub_graph_name)
         if from_scratch and os.path.exists(sub_graph_dir):
             LOGGER.info(f'Starting from scratch. Deleting graph directory {sub_graph_dir}')
@@ -611,14 +611,14 @@ class GraphGenerator:
         node_files=glob(main_node_dir+ os.sep +'*.csv')
         for file_paths in node_files:
             filename=os.path.basename(file_paths)
-            if filename == "materials.csv":
+            if filename == "material.csv":
                 continue
             LOGGER.info(f"Copying {filename} to {node_dir}")
             shutil.copy(os.path.join(main_node_dir,filename),os.path.join(node_dir,filename))
 
-        LOGGER.info(f"Creating new materials.csv")
-        original_materials_file=os.path.join(main_node_dir,'materials.csv')
-        new_materials_file=os.path.join(node_dir,'materials.csv')
+        LOGGER.info(f"Creating new material.csv")
+        original_materials_file=os.path.join(main_node_dir,'material.csv')
+        new_materials_file=os.path.join(node_dir,'material.csv')
         materials_df=self.screen_material_nodes(material_csv=original_materials_file,**kwargs)
         materials_df.to_csv(new_materials_file,index=True)
 

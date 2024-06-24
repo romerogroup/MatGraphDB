@@ -79,7 +79,7 @@ def create_bonding_task(material_file, node_a_name, node_b_name, node_a_id_map, 
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0]
     node_type=node_a_name
-    id_maps = {'elements': node_a_id_map if node_a_name == 'elements' else node_b_id_map,
+    id_maps = {'element': node_a_id_map if node_a_name == 'element' else node_b_id_map,
                'chemenv': node_a_id_map if node_a_name == 'chemenv' else node_b_id_map,
                'chemenv_element': node_a_id_map if node_a_name == 'chemenv_element' else node_b_id_map}
     id_map=id_maps[node_type]
@@ -95,13 +95,13 @@ def create_bonding_task(material_file, node_a_name, node_b_name, node_a_id_map, 
         if node_a_name=='chemenv' or node_a_name=='chemenv_element' or node_b_name=='chemenv' or node_b_name=='chemenv_element':
             coord_env_names = [coord_env[0]['ce_symbol'].replace(':','_') for coord_env in db['coordination_environments_multi_weight']]
         
-        names_map = {'elements': element_names,'chemenv': coord_env_names}
+        names_map = {'element': element_names,'chemenv': coord_env_names}
 
         
         coord_connections = db[method_map[bonding_method]]
         for i_site, site_connections in enumerate(coord_connections):
             if node_type=='chemenv_element':
-                element_name = names_map['elements'][i_site]
+                element_name = names_map['element'][i_site]
                 chemenv_name = names_map['chemenv'][i_site]
                 site_name = element_name+'_'+chemenv_name
             else:
@@ -110,7 +110,7 @@ def create_bonding_task(material_file, node_a_name, node_b_name, node_a_id_map, 
 
             for i_neighbor in site_connections:
                 if node_type=='chemenv_element':
-                    element_name = names_map['elements'][i_neighbor]
+                    element_name = names_map['element'][i_neighbor]
                     chemenv_name = names_map['chemenv'][i_neighbor]
                     neighbor_name = element_name+'_'+chemenv_name
                 else:
@@ -157,7 +157,7 @@ def create_chemenv_element_task(material_file,node_a_name,node_b_name,node_a_id_
     
     # Map names to ID maps
     chemenv_name_id_map = node_a_id_map if node_a_name == 'chemenv' else node_b_id_map
-    element_name_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
+    element_name_id_map = node_a_id_map if node_a_name == 'element' else node_b_id_map
 
     try:
         # Extract coordination environments, connections, and site element names from the material data
@@ -174,7 +174,7 @@ def create_chemenv_element_task(material_file,node_a_name,node_b_name,node_a_id_
             site_chemenv_id=chemenv_name_id_map[site_coord_env_name]
             site_element_id=element_name_id_map[site_element_name]
 
-            if  node_a_name == 'elements':
+            if  node_a_name == 'element':
                 data = (site_element_id,site_chemenv_id)
             else:
                 data = (site_chemenv_id,site_element_id)
@@ -215,8 +215,8 @@ def create_material_element_task(material_file,node_a_name,node_b_name,node_a_id
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
     
     # Map names to ID maps
-    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
-    element_name_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
+    materials_id_map = node_a_id_map if node_a_name == 'material' else node_b_id_map
+    element_name_id_map = node_a_id_map if node_a_name == 'element' else node_b_id_map
 
     material_id=materials_id_map[mpid]
     try:
@@ -229,7 +229,7 @@ def create_material_element_task(material_file,node_a_name,node_b_name,node_a_id
             site_element_name = site_element_names[i_site]
             site_element_id=element_name_id_map[site_element_name]
 
-            if  node_a_name == 'elements':
+            if  node_a_name == 'element':
                 data = (site_element_id,material_id)
             else:
                 data = (material_id,site_element_id)
@@ -271,7 +271,7 @@ def create_material_chemenv_task(material_file,node_a_name,node_b_name,node_a_id
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
     # Map names to ID maps
-    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    materials_id_map = node_a_id_map if node_a_name == 'material' else node_b_id_map
     chemenv_name_id_map = node_a_id_map if node_a_name == 'chemenv' else node_b_id_map
 
     material_id=materials_id_map[mpid]
@@ -332,7 +332,7 @@ def create_material_chemenvElement_task(material_file,node_a_name,node_b_name,no
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
     # Map names to ID maps
-    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    materials_id_map = node_a_id_map if node_a_name == 'material' else node_b_id_map
     chemenv_element_name_id_map = node_a_id_map if node_a_name == 'chemenv_element' else node_b_id_map
     
     material_id=materials_id_map[mpid]
@@ -392,7 +392,7 @@ def create_material_spg_task(material_file,node_a_name,node_b_name,node_a_id_map
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
     # Map names to ID maps
-    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    materials_id_map = node_a_id_map if node_a_name == 'material' else node_b_id_map
     spg_id_map = node_a_id_map if node_a_name == 'spg' else node_b_id_map
 
     material_id=materials_id_map[mpid]
@@ -442,7 +442,7 @@ def create_material_crystal_system_task(material_file,node_a_name,node_b_name,no
     mpid = material_file.split(os.sep)[-1].split('.')[0].replace('-','_')
 
     # Map names to ID maps
-    materials_id_map = node_a_id_map if node_a_name == 'materials' else node_b_id_map
+    materials_id_map = node_a_id_map if node_a_name == 'material' else node_b_id_map
     crystal_system_id_map = node_a_id_map if node_a_name == 'crystal_system' else node_b_id_map
 
 
@@ -488,8 +488,8 @@ def create_oxi_state_element_task(material_file,node_a_name,node_b_name,node_a_i
     # Extract material project ID from file name
     mpid = material_file.split(os.sep)[-1].split('.')[0]
 
-    element_id_map = node_a_id_map if node_a_name == 'elements' else node_b_id_map
-    oxidation_state_id_map = node_a_id_map if node_a_name == 'oxidation_states' else node_b_id_map
+    element_id_map = node_a_id_map if node_a_name == 'element' else node_b_id_map
+    oxidation_state_id_map = node_a_id_map if node_a_name == 'oxidation_state' else node_b_id_map
 
     try:
 
@@ -503,7 +503,7 @@ def create_oxi_state_element_task(material_file,node_a_name,node_b_name,node_a_i
             site_element_id=element_id_map[element_name]
             oxi_id= oxidation_state_id_map[oxi_state]
 
-            if node_a_name == 'elements':
+            if node_a_name == 'element':
                 data = (site_element_id,oxi_id)
             else:
                 data = (oxi_id,site_element_id)
@@ -538,10 +538,10 @@ def create_relationships(node_a_csv, node_b_csv, material_csv,  mp_task,
 
     node_a_name=node_a_csv.split(os.sep)[-1].split('.')[0]
     node_b_name=node_b_csv.split(os.sep)[-1].split('.')[0]
-    connection_name=f"{node_a_name.upper()}--{connection_name.upper()}-{node_b_name.upper()}"
+    connection_name=f"{node_a_name.upper()}-{connection_name.upper()}-{node_b_name.upper()}"
     filepath=None
     if relationship_dir:
-        filename=f"{node_a_name}-{node_b_name}-{connection_name.lower()}.csv"
+        filename=f"{connection_name}.csv"
         filepath=os.path.join(relationship_dir,filename)
 
         if os.path.exists(filepath):
