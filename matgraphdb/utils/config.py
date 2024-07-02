@@ -76,12 +76,16 @@ OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
 
 # MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
 MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
+ML_DIR=os.path.join(MP_DIR,'ML')
+ML_SCRATCH_RUNS_DIR=os.path.join(ML_DIR,'scratch_runs')
+
 TMP_DIR=os.path.join(MP_DIR,"tmp")
 DB_DIR=os.path.join(MP_DIR,'json_database')
 DATASETS_DIR=os.path.join(MP_DIR,'datasets')
 
 GRAPH_DIR=os.path.join(MP_DIR,'graph_database')
 MAIN_GRAPH_DIR=os.path.join(GRAPH_DIR,'main')
+
 
 ENCODING_DIR=os.path.join(MP_DIR,'encodings')
 SIMILARITY_DIR=os.path.join(MP_DIR,'similarities')

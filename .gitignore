@@ -172,3 +172,10 @@ tmp
 /logs/
 
 /figures/
+
+/examples/scripts/testing/
+/examples/scripts/plots/
+/examples/scripts/databases/
+/examples/scripts/main-06242024.json
+/examples/scripts/main.json
+/examples/scripts/nelements-2-2.json

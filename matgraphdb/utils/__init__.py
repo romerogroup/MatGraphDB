@@ -12,6 +12,9 @@ from matgraphdb.utils.config import (MP_DIR, DB_DIR, DATASETS_DIR, GRAPH_DIR, NO
 from matgraphdb.utils.config import (USER, PASSWORD, LOCATION, GRAPH_DB_NAME, DBMSS_DIR,
                                      MAIN_GRAPH_DIR, GRAPH_DIR)
 
+# ML variables
+from matgraphdb.utils.config import (ML_DIR,ML_SCRATCH_RUNS_DIR)
+
 # Other important variables
 from matgraphdb.utils.log_config import setup_logging
 from matgraphdb.utils.timing import Timer, timeit

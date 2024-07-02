@@ -319,15 +319,18 @@ class Neo4jManager:
         results=self.query(cypher_statement,database_name=database_name)
         return results
     
-    def load_graph_database_into_neo4j(self,database_path):
+    def load_graph_database_into_neo4j(self,database_path,new_database_name=None):
         """
         Loads a graph database into Neo4j.
 
         Args:
             graph_datbase_path (str): The path to the graph database to load.
         """
-        database_name=os.path.basename(database_path)
-        database_path=os.path.join(database_path,'neo4j_csv')
+        if new_database_name:
+            database_name=new_database_name
+        else:
+            database_name=os.path.basename(database_path)
+        database_path=os.path.join(database_path)
         db_names=self.list_databases()
         database_name=database_name.lower()
         if self.from_scratch and database_name in db_names:
@@ -368,11 +371,11 @@ class Neo4jManager:
         if node_type is None and relationship_type is None:
             raise Exception("Either node_type or relationship_type must be provided")
         if node_type:
-            cypher_statement=f"MATCH (n:{node_type})\n"
+            cypher_statement=f"MATCH (n:`{node_type}`)\n"
             cypher_statement+=f"WHERE n.`{property_name}` IS NOT NULL\n"
             cypher_statement+=f"RETURN n LIMIT 1"
         if relationship_type:
-            cypher_statement=f"MATCH ()-[r:{relationship_type}]-()\n"
+            cypher_statement=f"MATCH ()-[r:`{relationship_type}`]-()\n"
             cypher_statement+=f"WHERE r.`{property_name}` IS NOT NULL\n"
             cypher_statement+=f"RETURN r LIMIT 1"
         results=self.query(cypher_statement,database_name=database_name)
@@ -876,7 +879,11 @@ class Neo4jManager:
         return None
     
 
-if __name__=='__main__':
-    with Neo4jManager() as manager:
-        results=manager.does_property_exist('elements-no-fe','Material','fastrp-embedding')
-        print(results)
+# if __name__=='__main__':
+    # with Neo4jManager() as manager:
+    #     results=manager.does_property_exist('elements-no-fe','Material','fastrp-embedding')
+    #     print(results)
+
+    # with Neo4jManager() as manager:
+    #     results=manager.does_property_exist('elements-no-fe','Material','fastrp-embedding')
+    #     print(results)
