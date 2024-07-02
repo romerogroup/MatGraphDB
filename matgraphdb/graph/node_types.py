@@ -158,10 +158,49 @@ class NodeTypes:
             for chemenv_name in chemenv_names:
                 class_name = element_name + '_' + chemenv_name
                 chemenv_element_names.append(class_name)
+
         chemenv_element_name_id_map = {name: i for i, name in enumerate(chemenv_element_names)}
+
         chemenv_element_names_properties = []
         for i, chemenv_element_name in enumerate(chemenv_element_names):
-            chemenv_element_names_properties.append({"chemenv_element_name:string": chemenv_element_name})
+            element_name=chemenv_element_name.split('_')[0]
+            pmat_element = Element(element_name)
+
+            # Handling None and nan value cases
+            if str(pmat_element.Z) != 'nan':
+                atomic_number = pmat_element.Z
+            else:
+                atomic_number = None
+            if str(pmat_element.X) != 'nan':
+                x = pmat_element.X
+            else:
+                x = None
+            if str(pmat_element.atomic_radius) != 'nan' and str(pmat_element.atomic_radius) != 'None':
+                atomic_radius = float(pmat_element.atomic_radius)
+            else:
+                atomic_radius = None
+            if str(pmat_element.group) != 'nan':
+                group = pmat_element.group
+            else:
+                group = None
+            if str(pmat_element.row) != 'nan':
+                row = pmat_element.row
+            else:
+                row = None
+            if str(pmat_element.atomic_mass) != 'nan':
+                atomic_mass = float(pmat_element.atomic_mass)
+            else:
+                atomic_mass = None
+
+            chemenv_element_names_properties.append({
+                                    "chemenv_element_name:string": chemenv_element_name,
+                                    "atomic_number:float": atomic_number,
+                                    "X:float": x,
+                                    "atomic_radius:float": atomic_radius,
+                                    "group:int": group,
+                                    "row:int": row,
+                                    "atomic_mass:float": atomic_mass
+                                    })
         return chemenv_element_names, chemenv_element_names_properties, chemenv_element_name_id_map
     
     def get_wyckoff_positions_nodes(self):
@@ -321,3 +360,12 @@ class NodeTypes:
             
         material_id_map = {name: i for i, name in enumerate(material_ids)}
         return material_ids, material_properties, material_id_map
+
+
+
+
+if __name__=='__main__':
+    nodes=NodeTypes()
+    names,properties,id_map=nodes.get_chemenv_element_nodes()
+    print(properties[:10])
+    # print(names[:10])
