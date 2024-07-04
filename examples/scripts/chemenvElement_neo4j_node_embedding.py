@@ -33,28 +33,18 @@ import time
 # torch.manual_seed(0)
 # np.random.seed(0)
 
-
 def load_graphs_into_neo4j(from_scratch=False):
     generator=GraphGenerator(from_scratch=False)
     main_graph_dir=generator.main_graph_dir
     sub_graph_names=generator.list_sub_graphs()
     print(sub_graph_names)
     sub_graph_paths=[os.path.join(main_graph_dir,'sub_graphs',sub_graph_name) for sub_graph_name in sub_graph_names]
-    with Neo4jManager(from_scratch=True) as manager:
-        for path in sub_graph_paths:
-            if not from_scratch:
-                continue
-            results=manager.load_graph_database_into_neo4j(path)
-            print(results)
+    for path in sub_graph_paths:
+        load_graph_into_neo4j(graph_path=path, from_scratch=False)
 
-
-def load_graph_into_neo4j(from_scratch=False):
-    generator=GraphGenerator(from_scratch=False)
-    main_graph_dir=generator.main_graph_dir
-    print(main_graph_dir)
+def load_graph_into_neo4j(graph_path, graph_name=None, from_scratch=False):
     with Neo4jManager(from_scratch=True) as manager:
-        results=manager.load_graph_database_into_neo4j(database_path=main_graph_dir,new_database_name='main-06242024')
-        print(results)
+        results=manager.load_graph_database_into_neo4j(database_path=graph_path,new_database_name=graph_name)
 
 def train_node_embedding_pipeline(database_name,
                             graph_name, 

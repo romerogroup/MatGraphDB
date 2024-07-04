@@ -62,8 +62,6 @@ class LinearRegressor(nn.Module):
     def forward(self, x):
         return self.linear(x)
 
-
-
 class WeightedRandomClassifier(nn.Module):
     def __init__(self, class_counts):
         super().__init__()
@@ -121,16 +119,21 @@ def test_baseline_classifiers():
     print("Majority Class Predictions:", majority_class_predictions)
 
 
-    # Calculate the accuracy of the predictions
-    # accuracy = ClassificationMetrics.accuracy(y_true=y_test, y_pred=weighted_random_predictions)
-    # print("Accuracy:", accuracy)
-
+def pytorch_geometric_test():
+    # Check to see if pytorch geometric gpu is available
+    if torch.cuda.is_available():
+        print("GPU is available")
+        device = torch.device("cuda")
+    else:
+        print("GPU is not available")
+        device = torch.device("cpu")
 
 
 
 if __name__ == "__main__":
     
     test_baseline_classifiers()
+    pytorch_geometric_test()
 
 
 

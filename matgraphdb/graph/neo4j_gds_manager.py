@@ -721,7 +721,7 @@ class Neo4jGDSManager:
         if mutate_property:
             algorithm_config['mutateProperty']=mutate_property
         
-        results=self.run_algorithm(self,
+        results=self.run_algorithm(
                         database_name=database_name,
                         graph_name=graph_name,
                         algorithm_name='hashgnn',
