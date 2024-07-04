@@ -117,7 +117,7 @@ class NodeEncoders:
     OXIDATION_STATE_NODE='oxidation_state'
     MATERIAL_NODE='material'
 
-    def get_encoder(self,node_path ,**kwargs):
+    def get_encoder(self,node_path,**kwargs):
 
         node_name=os.path.basename(node_path).split('.')[0]
 
@@ -248,6 +248,7 @@ class NodeEncoders:
                 }
         if skip_columns==[]:
             skip_columns=['name','type','material_id',
+                          'nsites','nelements','volume','density','density_atomic',
                         'elements','composition','composition_reduced','formula_pretty',
                         'crystal_system','hall_symbol','space_group','point_group',
                         'energy_per_atom','formation_energy_per_atom','energy_above_hull',
