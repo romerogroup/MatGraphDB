@@ -246,17 +246,17 @@ class NodeEncoders:
                 'point_group:string':StringEncoder(),
                 'hall_symbol:string':StringEncoder()
                 }
-        if skip_columns==[]:
-            skip_columns=['name','type','material_id',
-                          'nsites','nelements','volume','density','density_atomic',
-                        'elements','composition','composition_reduced','formula_pretty',
-                        'crystal_system','hall_symbol','space_group','point_group',
-                        'energy_per_atom','formation_energy_per_atom','energy_above_hull',
-                        'is_stable','band_gap','cbm','vbm','efermi',
-                        'is_gap_direct','is_metal','is_magnetic','ordering','total_magnetization',
-                        'total_magnetization_normalized_vol','num_magnetic_sites','num_unique_magnetic_sites',
-                        'k_voigt','k_reuss','k_vrh','g_voigt','g_reuss','g_vrh','universal_anisotropy',
-                        'homogeneous_poisson','e_total','e_ionic','e_electronic','wyckoffs']
+        # if skip_columns==[]:
+            # skip_columns=['name','type','material_id',
+            #               'nsites','nelements','volume','density','density_atomic',
+            #             'elements','composition','composition_reduced','formula_pretty',
+            #             'crystal_system','hall_symbol','space_group','point_group',
+            #             'energy_per_atom','formation_energy_per_atom','energy_above_hull',
+            #             'is_stable','band_gap','cbm','vbm','efermi',
+            #             'is_gap_direct','is_metal','is_magnetic','ordering','total_magnetization',
+            #             'total_magnetization_normalized_vol','num_magnetic_sites','num_unique_magnetic_sites',
+            #             'k_voigt','k_reuss','k_vrh','g_voigt','g_reuss','g_vrh','universal_anisotropy',
+            #             'homogeneous_poisson','e_total','e_ionic','e_electronic','wyckoffs']
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=skip_columns,
                                                 column_encoders=column_encoders)

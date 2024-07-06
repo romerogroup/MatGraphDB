@@ -38,12 +38,13 @@ class PyTorchGeometricDataset(Dataset):
 
 
 # load node csv file and map index to continuous index
-def load_node_csv(path, index_col, encoders={}, dropna=True, **kwargs):
+def load_node_csv(path, index_col,  encoders={}, target_encoders={}, dropna=True, **kwargs):
     """Load a node csv file and map the index to a continuous index.
 
     Args:
         path (str): The path to the node csv file.
         index_col (str): The name of the index column.
+        target_col (str, optional): The name of the target column.
         encoders (dict, optional): A dictionary mapping column names 
                                 to encoders. Defaults to None.
 
@@ -53,14 +54,22 @@ def load_node_csv(path, index_col, encoders={}, dropna=True, **kwargs):
     df = pd.read_csv(path, index_col=index_col, **kwargs)#.drop(axis=1, index=0)
     if dropna:
         df=df.dropna()
+    
     mapping = {index: i for i, index in enumerate(df.index.unique())}
-
+    
     x = None
     if encoders != {}:
         xs = [encoder(df[col]) for col, encoder in encoders.items()]
         x = torch.cat(xs, dim=-1)
 
-    return x, mapping
+    target = None
+    if target_encoders != None:
+        ys = [encoder(df[col]) for col, encoder in target_encoders.items()]
+        # Checks if target_property exists in the dataframe
+        if ys:
+            target = torch.cat(ys, dim=-1)
+
+    return x, mapping, target
 
 def load_edge_csv(path, src_index_col, dst_index_col, encoders={}, dropna=False,
                   src_mapping=None, dst_mapping=None,**kwargs):
@@ -82,21 +91,27 @@ class PyTorchGeometricHeteroDataGenerator:
     def __init__(self,):
         self.data = HeteroData()
 
-    def add_node(self,node_path, encoder_mapping={}, dropna=True, **kwargs):
+    def add_node(self, node_path, encoder_mapping={}, target_encoder_mapping={}, dropna=True, **kwargs):
 
         node_name=os.path.basename(node_path).split('.')[0]
 
-        x, mapping = load_node_csv(node_path, 
-                                    index_col="name:string", 
-                                    encoders=encoder_mapping, 
+        x, mapping, target = load_node_csv(node_path, 
+                                    index_col="name:string",
+                                    encoders=encoder_mapping,
+                                    target_encoders=target_encoder_mapping,
                                     dropna=dropna, 
                                     **kwargs)
         
         self.data[node_name].node_id=torch.arange(len(mapping))
         if x is not None:
             self.data[node_name].x = x
+            self.data[node_name].property_names=[key.split(':')[0] for key in list(encoder_mapping.keys())]
         else:
             self.data[node_name].num_nodes=len(mapping)
+
+        if target is not None:
+            self.data[node_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
+            self.data[node_name].y=target
 
     def add_edge(self,edge_path, encoder_mapping={}, undirected=True, **kwargs):
         
@@ -158,6 +173,7 @@ class MaterialGraphDataset:
                                 use_weights=True, 
                                 use_node_properties=True, 
                                 properties:Union[List,dict]=[],
+                                target_property:str=None,
                                 undirected=True):
         
         if sub_graph_path is None:
@@ -178,7 +194,7 @@ class MaterialGraphDataset:
 
         generator=PyTorchGeometricHeteroDataGenerator()
 
-        cls.add_nodes(generator, node_paths,  use_node_properties, properties, dropnas)
+        cls.add_nodes(generator, node_paths,  use_node_properties, properties, dropnas, target_property)
         cls.add_relationships(generator, relationship_paths, use_weights, undirected)
 
         # if undirected:
@@ -262,7 +278,8 @@ class MaterialGraphDataset:
                 node_paths, 
                 use_node_properties, 
                 properties:Union[List,dict], 
-                dropnas:List[bool]):
+                dropnas:List[bool],
+                target_property:str=None):
         node_encoders=NodeEncoders()
         for i,node_path in enumerate(node_paths):
             node_name=os.path.basename(node_path).split('.')[0]
@@ -281,7 +298,18 @@ class MaterialGraphDataset:
                     property_name=key.split(':')[0]
                     if property_name not in properties_to_keep and properties_to_keep!=[]:
                         encoder_mapping.pop(key)
-            generator.add_node(node_path,encoder_mapping=encoder_mapping, dropna=dropnas[i])
+
+            if target_property is not None:
+                target_encoder_mapping,_,_=node_encoders.get_encoder(node_path)
+                keys=list(target_encoder_mapping.keys())
+                for key in keys:
+                    property_name=key.split(':')[0]
+                    if property_name != target_property and target_property:
+                        target_encoder_mapping.pop(key)
+
+                
+                
+            generator.add_node(node_path, encoder_mapping=encoder_mapping, target_encoder_mapping=target_encoder_mapping, dropna=dropnas[i])
         return None
     
     @staticmethod
@@ -319,17 +347,19 @@ if __name__ == "__main__":
     # node_encoders=NodeEncoders()
     # generator=PyTorchGeometricHeteroDataGenerator()
     # encoder_mapping,_,_=node_encoders.get_element_encoder(element_node_path)
-    # generator.add_node(element_node_path,encoder_mapping=encoder_mapping)
-    # generator.add_edge(material_crystal_system_path)
+    # generator.add_node(element_node_path,encoder_mapping=encoder_mapping )
+    # # generator.add_edge(material_crystal_system_path)
     # print(generator.data)
 
     # Example of using MaterialGraphDataset
     graph_dataset=MaterialGraphDataset.ec_element_chemenv(
-                                                        use_weights=True,
+                                                        use_weights=False,
                                                         use_node_properties=True,
                                                         undirected=True,
-                                                        #,properties=['group','atomic_number'])
+                                                        properties=['atomic_number','group','row','atomic_mass'],
+                                                        target_property='formation_energy_per_atom'
                                                         )
+                                                        
     print(graph_dataset.data)
     print(dir(graph_dataset.data))
 
