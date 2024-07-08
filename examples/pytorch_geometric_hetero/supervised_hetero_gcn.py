@@ -3,35 +3,32 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import  SAGEConv, to_hetero
+from torch_geometric.nn import  SAGEConv, GCNConv, GraphConv, to_hetero
 
 
 from matgraphdb.mlcore.models import MultiLayerPerceptron
 from matgraphdb.mlcore.datasets import MaterialGraphDataset
 from matgraphdb.mlcore.metrics import ClassificationMetrics,RegressionMetrics
 
-
-
-class StackedSAGELayers(nn.Module):
-    def __init__(self, in_channels, hidden_channels, num_layers):
-        super(StackedSAGELayers, self).__init__()
-        self.ln_in=nn.LayerNorm(in_channels)
-        self.ln_hidden=nn.LayerNorm(hidden_channels)
-        self.conv1 = SAGEConv(in_channels, hidden_channels)
+class StackedGraphConvLayers(nn.Module):
+    def __init__(self, in_channels, hidden_channels, num_layers,normalize=False, dropout=0.2 ):
+        super(StackedGraphConvLayers, self).__init__()
+        self.dropout=dropout
+        self.conv1 = GraphConv(in_channels, hidden_channels)
         self.convs = nn.ModuleList([
-            SAGEConv(hidden_channels, hidden_channels)
+            GraphConv(hidden_channels, hidden_channels)
             for _ in range(num_layers - 2)
         ])
         
 
     def forward(self, x: torch.Tensor, edge_index:  torch.Tensor,training=False):
-
-        x = F.leaky_relu(self.conv1(x, edge_index))
+        x = F.relu(self.conv1(x, edge_index))
+        # x = F.dropout(x, p=self.dropout,training=training)
         for conv in self.convs:
-            x = F.leaky_relu(conv(x, edge_index))
-   
+            x = F.relu(conv(x, edge_index))
+            # x = F.dropout(x, p=self.dropout,training=training)
+        
         return x
-
 
 class SupervisedHeteroSAGEModel(nn.Module):
     def __init__(self, data,
@@ -56,13 +53,14 @@ class SupervisedHeteroSAGEModel(nn.Module):
         #                                 num_layers=1,
         #                                 n_embd=hidden_channels)
         self.output_layer = nn.Linear(hidden_channels, out_channels)
-        self.ln_out=nn.LayerNorm(hidden_channels)
+        
         # Initialize and convert GraphSAGE to heterogeneous
-        self.graph_sage = StackedSAGELayers(hidden_channels,hidden_channels,num_layers)
+        self.graph_sage = StackedGraphConvLayers(hidden_channels,hidden_channels,num_layers)
         self.graph_sage = to_hetero(self.graph_sage, metadata=data.metadata())
 
     def forward(self, data):
         x_dict={}
+        edge_attr_dict={}
         for node_type, emb_layer in self.embs.items():
             # Handling nodes based on feature availability
             if node_type in self.data_lins:
@@ -70,13 +68,38 @@ class SupervisedHeteroSAGEModel(nn.Module):
             else:
                 x_dict[node_type] = emb_layer(data[node_type].node_id)
 
-        x_dict=self.graph_sage(x_dict, data.edge_index_dict)
 
-        # out=self.output_layer(self.ln_out(x_dict[self.prediction_node_type]))
-        # out=self.output_layer(x_dict[self.prediction_node_type] + self.data_lins[self.prediction_node_type](data[self.prediction_node_type].x))
-        out=self.output_layer(x_dict[self.prediction_node_type])
+        edge_attr_dict[node_type] = data[node_type].edge_attr
+
+        x_dict=self.graph_sage(x_dict, edge_attr_dict)
+
+        out=self.output_layer(x_dict[self.prediction_node_type] + self.data_lins[self.prediction_node_type](data[self.prediction_node_type].x))
         return out
     
+
+
+
+
+# rev_edge_types=[]
+# edge_types=[]
+# for edge_type in graph_dataset.data.edge_types:
+#     rel_type=edge_type[1]
+#     if 'rev' in rel_type:
+#         rev_edge_types.append(edge_type)
+#     else:
+#         edge_types.append(edge_type)
+# transform = T.RandomLinkSplit(
+#         num_val=0.1,
+#         num_test=0.1,
+#         disjoint_train_ratio=0.3,
+#         neg_sampling_ratio=2.0,
+#         add_negative_train_samples=False,
+#         edge_types=edge_types,
+#         rev_edge_types=rev_edge_types, 
+#     )
+
+# transform = T.RandomNodeSplit(split="random")  # Or another appropriate method
+
 
 def get_node_dataloaders(data,node_type,shuffle=False):
     data[node_type].node_id
@@ -148,109 +171,73 @@ TARGET_PROPERTY='k_vrh'
 
 CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
 # CONNECTION_TYPE='GEOMETRIC_CONNECTS'
-# CONNECTION_TYPE='ELECTRIC_CONNECTS
+# CONNECTION_TYPE='ELECTRIC_CONNECTS'
 
 # Training params
 TRAIN_PROPORTION = 0.8
 TEST_PROPORTION = 0.1
 VAL_PROPORTION = 0.1
 LEARNING_RATE = 0.001
-N_EPCOHS = 2000
+N_EPCOHS = 1000
 
 # model params
 
 NUM_LAYERS = 2
 HIDDEN_CHANNELS = 128
 EVAL_INTERVAL = 10
-EARLY_STOPPING_PATIENCE = 100
-USE_EARLY_STOPPING=False
 
-
-node_filtering={
-    'material':{
-        'k_vrh':(0,300),
-        },
-    }
-
-
-node_properties={
-'element':
-    {
-    'properties' :[
-            'atomic_number',
-            'group',
-            'row',
-            'atomic_mass'
-            ],
-    'scale': {
-            # 'robust_scale': True,
-            # 'standardize': True,
-            'normalize': True
-        }
-    },
-'material':
-        {   
-    'properties':[
-        'nelements',
-        'nsites',
+properties_per_node_type={
+    'element':['atomic_number','group','row','atomic_mass'],
+    'material':[
+        'composition',
+        # 'space_group',
+        # 'nelements',
+        # 'nsites',
         # 'crystal_system',
-        'volume',
-        'density',
-        'density_atomic',
+        # 'density',
+        # 'density_atomic',
+        # 'volume',
+        # 'g_vrh',
         ],
-    'scale': {
-            # 'robust_scale': True,
-            # 'standardize': True,
-            'normalize': True
-        }
-        }
-    }
-
-edge_properties={
-    # 'weight':
-    #     {
-    #     'properties':[
-    #         'weight'
-    #         ],
-    #     'scale': {
-    #         # 'robust_scale': True,
-    #         # 'standardize': True,
-    #         # 'normalize': True
-    #     }
-    # }
-    }
-
+}
+properties=[]
+for node_type in properties_per_node_type.keys():
+    properties.extend(properties_per_node_type[node_type])
 
 if CONNECTION_TYPE=='GEOMETRIC_CONNECTS':
     graph_dataset=MaterialGraphDataset.gc_element_chemenv(
-                                            node_properties=node_properties,
-                                            node_filtering=node_filtering,
-                                            edge_properties=edge_properties,
-                                            node_target_property=TARGET_PROPERTY,
-                                            edge_target_property=None,
-
+                                            use_weights=True,
+                                            use_node_properties=True,
+                                            properties=properties,
+                                            target_property=TARGET_PROPERTY
                                             )
 elif CONNECTION_TYPE=='ELECTRIC_CONNECTS':
     graph_dataset=MaterialGraphDataset.ec_element_chemenv(
-                                            node_properties=node_properties,
-                                            node_filtering=node_filtering,
-                                            edge_properties=edge_properties,
-                                            node_target_property=TARGET_PROPERTY,
-                                            edge_target_property=None,
+                                            use_weights=True,
+                                            use_node_properties=True,
+                                            properties=properties,
+                                            target_property=TARGET_PROPERTY
                                             )
 elif CONNECTION_TYPE=='GEOMETRIC_ELECTRIC_CONNECTS':
     graph_dataset=MaterialGraphDataset.gec_element_chemenv(
-                                            node_properties=node_properties,
-                                            node_filtering=node_filtering,
-                                            edge_properties=edge_properties,
-                                            node_target_property=TARGET_PROPERTY,
-                                            edge_target_property=None,
+                                            use_weights=True,
+                                            use_node_properties=True,
+                                            properties=properties,
+                                            target_property=TARGET_PROPERTY
                                             )
-
 
 data=graph_dataset.data
 OUT_CHANNELS=data[NODE_TYPE].out_channels
 
+
+# transform = T.RandomNodeSplit(
+#                         split="random",
+#                         num_splits=1,
+#                         split="random",
+#                         )
+# train_mask=torch.zeros(graph_dataset.data.num_nodes,dtype=torch.bool)
+# test_mask=torch.zeros(graph_dataset.data.num_nodes,dtype=torch.bool)
+# val_mask=torch.zeros(graph_dataset.data.num_nodes,dtype=torch.bool)
 
 device =  "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
 data=split_data_on_node_type(data,
@@ -260,7 +247,7 @@ data=split_data_on_node_type(data,
                             val_proportion=VAL_PROPORTION)
 
 print(data)
-
+print(data.edge_types)
 
 
 model = SupervisedHeteroSAGEModel(data,

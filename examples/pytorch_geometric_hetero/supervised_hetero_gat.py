@@ -1,68 +1,160 @@
 # Creating a GraphSAGE model
+
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import  SAGEConv, to_hetero
+from torch_geometric.nn import  SAGEConv, GCNConv, GraphConv,GAT,GATConv, GATv2Conv, to_hetero
 
 
-from matgraphdb.mlcore.models import MultiLayerPerceptron
+from matgraphdb.mlcore.models import MultiLayerPerceptron, MajorityClassClassifier, WeightedRandomClassifier
 from matgraphdb.mlcore.datasets import MaterialGraphDataset
 from matgraphdb.mlcore.metrics import ClassificationMetrics,RegressionMetrics
 
 
+from matgraphdb.mlcore.callbacks import EarlyStopping
 
-class StackedSAGELayers(nn.Module):
-    def __init__(self, in_channels, hidden_channels, num_layers):
-        super(StackedSAGELayers, self).__init__()
-        self.ln_in=nn.LayerNorm(in_channels)
-        self.ln_hidden=nn.LayerNorm(hidden_channels)
-        self.conv1 = SAGEConv(in_channels, hidden_channels)
-        self.convs = nn.ModuleList([
-            SAGEConv(hidden_channels, hidden_channels)
-            for _ in range(num_layers - 2)
-        ])
+
+
+random.seed(42)
+np.random.seed(42)
+
+torch.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)  #
+    
+
+# class StackedGATLayers(nn.Module):
+#     def __init__(self, in_channels, hidden_channels, num_layers, edge_dim, **kwargs):
+#         super(StackedGATLayers, self).__init__()
+ 
+#         self.conv1 = GATv2Conv(in_channels, hidden_channels ,add_self_loops = False, edge_dim=edge_dim, **kwargs)
+#         self.convs = nn.ModuleList([
+#             GATv2Conv(hidden_channels, hidden_channels,add_self_loops = False, edge_dim=edge_dim, **kwargs)
+#             for _ in range(num_layers - 2)
+#         ])
         
+#     def forward(self, x: torch.Tensor, edge_index:  torch.Tensor, edge_attr: torch.Tensor):
+#         # x = F.leaky_relu(self.conv1(x, edge_index, edge_attr))
+#         # for conv in self.convs:
+#         #     x = F.leaky_relu(conv(x, edge_index, edge_attr))
 
-    def forward(self, x: torch.Tensor, edge_index:  torch.Tensor,training=False):
+#         x = self.conv1(x, edge_index, edge_attr)
+#         for conv in self.convs:
+#             x = conv(x, edge_index, edge_attr)
+#         return x
 
-        x = F.leaky_relu(self.conv1(x, edge_index))
-        for conv in self.convs:
-            x = F.leaky_relu(conv(x, edge_index))
-   
-        return x
+# class SupervisedHeteroGATModel(nn.Module):
+#     def __init__(self, data,
+#                  hidden_channels:int, 
+#                  out_channels:int,
+#                  prediction_node_type:str,
+#                  num_layers,
+#                  device='cuda:0',
+#                  **kwargs):
+#         super(SupervisedHeteroGATModel, self).__init__()
+#         self.embs = nn.ModuleDict()
+#         self.data_lins = nn.ModuleDict()
+#         self.prediction_node_type=prediction_node_type
+#         for node_type in data.node_types:
+#             num_nodes = data[node_type].num_nodes
+#             num_features = data[node_type].num_node_features
+#             self.embs[node_type]=nn.Embedding(num_nodes,hidden_channels,device=device)
+#             if num_features != 0:
+#                 self.data_lins[node_type]=nn.Linear(num_features, hidden_channels,device=device)
+#         # self.output_layer = MultiLayerPerceptron(input_dim=hidden_channels,
+#         #                                 output_dim=out_channels,
+#         #                                 num_layers=1,
+#         #                                 n_embd=hidden_channels)
+#         self.output_layer = nn.Linear(hidden_channels, out_channels)
+        
+#         # Initialize and convert GraphSAGE to heterogeneous
+#         self.conv_layers = StackedGATLayers(hidden_channels,hidden_channels,num_layers,edge_dim=1,**kwargs)
+#         self.conv_layers = to_hetero(self.conv_layers, metadata=data.metadata())
+
+#     def forward(self, data):
+#         x_dict={}
+
+#         for node_type, emb_layer in self.embs.items():
+#             # Handling nodes based on feature availability
+#             if node_type in self.data_lins:
+#                 x_dict[node_type] = self.data_lins[node_type](data[node_type].x) + emb_layer(data[node_type].node_id)
+#             else:
+#                 x_dict[node_type] = emb_layer(data[node_type].node_id)
 
 
-class SupervisedHeteroSAGEModel(nn.Module):
+#         x_dict=self.conv_layers(x_dict, data.edge_index_dict, data.edge_attr_dict)
+
+#         # out=self.output_layer(x_dict[self.prediction_node_type] + self.data_lins[self.prediction_node_type](data[self.prediction_node_type].x))
+#         out=self.output_layer(x_dict[self.prediction_node_type])
+#         return out
+
+
+# def get_class_counts(train_labels,number_of_classes):
+#         class_counts = torch.zeros(number_of_classes)  # Replace `number_of_classes` with your actual number of classes
+
+#         for label in train_labels:
+#             class_counts[label] += 1
+
+
+#         # Prevent division by zero in case some class is not present at all
+#         class_weights = 1. / (class_counts + 1e-5)  
+#         # Normalize weights so that the smallest weight is 1.0
+#         class_weights = class_weights / class_weights.min()
+#         return class_counts
+
+# class_counts = get_class_counts(data['material'].y[train_mask],len(data['material'].y.unique()))
+# majority_class = torch.argmax(class_counts)
+
+# weighted_random_classifier = WeightedRandomClassifier(class_counts)
+# majority_class_classifier = MajorityClassClassifier(majority_class, len(class_counts))
+
+# weighted_random_classifier.to(device)
+# majority_class_classifier.to(device)
+
+    
+class SupervisedHeteroGATModel(nn.Module):
     def __init__(self, data,
-                 hidden_channels:int, 
+                 embd_dim:int,
                  out_channels:int,
+                 heads:int,
                  prediction_node_type:str,
                  num_layers,
-                 device='cuda:0'):
-        super(SupervisedHeteroSAGEModel, self).__init__()
+                 device='cuda:0',
+                 **kwargs):
+        super(SupervisedHeteroGATModel, self).__init__()
         self.embs = nn.ModuleDict()
         self.data_lins = nn.ModuleDict()
         self.prediction_node_type=prediction_node_type
         for node_type in data.node_types:
             num_nodes = data[node_type].num_nodes
             num_features = data[node_type].num_node_features
-            self.embs[node_type]=nn.Embedding(num_nodes,hidden_channels,device=device)
+            self.embs[node_type]=nn.Embedding(num_nodes,embd_dim,device=device)
             if num_features != 0:
-                self.data_lins[node_type]=nn.Linear(num_features, hidden_channels,device=device)
+                self.data_lins[node_type]=nn.Linear(num_features, embd_dim,device=device)
 
-        # self.output_layer = MultiLayerPerceptron(input_dim=hidden_channels,
-        #                                 output_dim=out_channels,
-        #                                 num_layers=1,
-        #                                 n_embd=hidden_channels)
-        self.output_layer = nn.Linear(hidden_channels, out_channels)
-        self.ln_out=nn.LayerNorm(hidden_channels)
+        self.output_layer = nn.Linear(embd_dim, out_channels)
+        
         # Initialize and convert GraphSAGE to heterogeneous
-        self.graph_sage = StackedSAGELayers(hidden_channels,hidden_channels,num_layers)
-        self.graph_sage = to_hetero(self.graph_sage, metadata=data.metadata())
+        self.conv_layers = GAT(
+                            in_channels=embd_dim, 
+                            hidden_channels=embd_dim, 
+                            num_layers=num_layers,
+                            # out_channels=embd_dim,
+                            v2=True,
+                            act='leaky_relu',
+                            act_first=True,
+                            add_self_loops=False, 
+                            edge_dim=1,
+                            heads=heads,
+                            **kwargs)
+        self.conv_layers = to_hetero(self.conv_layers, metadata=data.metadata())
 
     def forward(self, data):
         x_dict={}
+
         for node_type, emb_layer in self.embs.items():
             # Handling nodes based on feature availability
             if node_type in self.data_lins:
@@ -70,14 +162,14 @@ class SupervisedHeteroSAGEModel(nn.Module):
             else:
                 x_dict[node_type] = emb_layer(data[node_type].node_id)
 
-        x_dict=self.graph_sage(x_dict, data.edge_index_dict)
 
-        # out=self.output_layer(self.ln_out(x_dict[self.prediction_node_type]))
+        x_dict=self.conv_layers(x_dict, data.edge_index_dict, data.edge_attr_dict)
+
         # out=self.output_layer(x_dict[self.prediction_node_type] + self.data_lins[self.prediction_node_type](data[self.prediction_node_type].x))
         out=self.output_layer(x_dict[self.prediction_node_type])
         return out
     
-
+    
 def get_node_dataloaders(data,node_type,shuffle=False):
     data[node_type].node_id
     input_nodes=('material',data[node_type].node_id)
@@ -130,7 +222,6 @@ def split_data_on_node_type(data,node_type,train_proportion=0.8,test_proportion=
 
 
 
-
 NODE_TYPE='material'
 # 
 # TARGET_PROPERTY='energy_above_hull'
@@ -146,24 +237,30 @@ TARGET_PROPERTY='k_vrh'
 # TARGET_PROPERTY='nelements'
 # TARGET_PROPERTY='elements'
 
-CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
+# CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
 # CONNECTION_TYPE='GEOMETRIC_CONNECTS'
-# CONNECTION_TYPE='ELECTRIC_CONNECTS
+CONNECTION_TYPE='ELECTRIC_CONNECTS'
 
 # Training params
 TRAIN_PROPORTION = 0.8
 TEST_PROPORTION = 0.1
 VAL_PROPORTION = 0.1
 LEARNING_RATE = 0.001
-N_EPCOHS = 2000
+N_EPCOHS = 3000
 
 # model params
-
+HEADS = 4
 NUM_LAYERS = 2
-HIDDEN_CHANNELS = 128
+HIDDEN_CHANNELS = 32
 EVAL_INTERVAL = 10
+
+USE_EARLY_STOPPING=True
 EARLY_STOPPING_PATIENCE = 100
-USE_EARLY_STOPPING=False
+
+
+USE_LEARNING_RATE_SCHEDULER=False
+STEP_SIZE=500
+GAMMA=0.1
 
 
 node_filtering={
@@ -191,9 +288,15 @@ node_properties={
 'material':
         {   
     'properties':[
+        'composition',
+        # 'space_group',
         'nelements',
         'nsites',
-        # 'crystal_system',
+        'crystal_system',
+        'band_gap',
+        'formation_energy_per_atom',
+        'energy_per_atom',
+        'is_stable',
         'volume',
         'density',
         'density_atomic',
@@ -207,17 +310,17 @@ node_properties={
     }
 
 edge_properties={
-    # 'weight':
-    #     {
-    #     'properties':[
-    #         'weight'
-    #         ],
-    #     'scale': {
-    #         # 'robust_scale': True,
-    #         # 'standardize': True,
-    #         # 'normalize': True
-    #     }
-    # }
+    'weight':
+        {
+        'properties':[
+            'weight'
+            ],
+        'scale': {
+            # 'robust_scale': True,
+            # 'standardize': True,
+            # 'normalize': True
+        }
+    }
     }
 
 
@@ -247,7 +350,6 @@ elif CONNECTION_TYPE=='GEOMETRIC_ELECTRIC_CONNECTS':
                                             edge_target_property=None,
                                             )
 
-
 data=graph_dataset.data
 OUT_CHANNELS=data[NODE_TYPE].out_channels
 
@@ -259,24 +361,38 @@ data=split_data_on_node_type(data,
                             test_proportion=TEST_PROPORTION,
                             val_proportion=VAL_PROPORTION)
 
-print(data)
 
 
 
-model = SupervisedHeteroSAGEModel(data,
-                            hidden_channels=HIDDEN_CHANNELS, 
+
+model = SupervisedHeteroGATModel(data,
+                            embd_dim=HIDDEN_CHANNELS, 
                             out_channels=OUT_CHANNELS,
                             prediction_node_type=NODE_TYPE,
                             num_layers=NUM_LAYERS,
+                            heads=HEADS,
                             device=device)
+
+print(model)
 model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
+if USE_LEARNING_RATE_SCHEDULER:
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+
+es = None
+if USE_EARLY_STOPPING:
+    es = EarlyStopping(patience = EARLY_STOPPING_PATIENCE)
+# model(data)
+
 if OUT_CHANNELS==1:
+    print("Using MSE Loss")
     loss_fn=nn.MSELoss()
 else:
+    print("Using Cross Entropy Loss")
     loss_fn=nn.CrossEntropyLoss()
+
 
 
 def train(model, optimizer, data, loss_fn):
@@ -325,6 +441,8 @@ def evaluate(model, data):
 
         for split in ['val_mask', 'test_mask']:
             mask=data[NODE_TYPE][split]
+            logits=logits.to(device)
+            
             masked_logits=logits[mask]
             ground_truth=data[NODE_TYPE].y[mask]
 
@@ -372,8 +490,15 @@ def evaluate(model, data):
 
 
 
+
 for epoch in range(N_EPCOHS):
     train_loss = train(model, optimizer, data, loss_fn=loss_fn)
+    if epoch%EVAL_INTERVAL==0:
+        losses,metrics = evaluate(model, data)
+
+        # print(f"Epoch: {epoch:03d},Train Loss: {train_loss:.4f}, Val Loss: {losses[0]:.4f}, Test Loss: {losses[1]:.4f}")
+
+
     if epoch%EVAL_INTERVAL==0:
         losses,metrics = evaluate(model, data)
 
@@ -389,3 +514,16 @@ for epoch in range(N_EPCOHS):
                 else:
                     metrics_str+=f", {split}-{key}: {value[0]:.2f}"
         print(metrics_str)
+
+    if es is not None:
+        if es(model=model, val_loss=losses[1]):
+            best_loss=losses[1]
+
+            print("Early stopping")
+            print('_______________________')
+            print(f'Stopping : {epoch - es.counter}')
+            print(f'Best loss: {es.best_loss}')
+            break
+    
+    if USE_LEARNING_RATE_SCHEDULER:
+        scheduler.step()
