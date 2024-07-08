@@ -1,5 +1,5 @@
 import torch
-
+import torcheval.metrics.functional as FEVAL
 class RegressionMetrics():
     def mean_absolute_error(y_pred, y_true):
         """
@@ -166,6 +166,24 @@ class ClassificationMetrics():
         predicted_positives = y_pred.sum().float()
         return true_positives / predicted_positives if predicted_positives != 0 else 0.0
     
+    def multi_class_accuracy(confusion_matrix=None,y_pred=None, y_true=None, num_classes=None):
+        """ Computes the accuracy of the classifier for multi-class classification. """
+        # Precision: Diagonal elements / sum of respective column elements
+        if confusion_matrix is None:
+            conf_matrix=ClassificationMetrics.confusion_matrix(y_pred, y_true, num_classes)
+        else:
+            conf_matrix=confusion_matrix
+
+        # Calculate correct predictions per class
+        correct_predictions = torch.diag(conf_matrix)
+
+        # Total actual instances for each class (sum over each row)
+        total_true = conf_matrix.sum(dim=1)
+        per_class_acc = correct_predictions / total_true
+
+        return per_class_acc
+
+
     def multiclass_precision(confusion_matrix=None,y_pred=None, y_true=None, num_classes=None):
         """ Computes the precision of the classifier for multi-class classification. """
         # Precision: Diagonal elements / sum of respective column elements
@@ -213,15 +231,9 @@ class ClassificationMetrics():
         return 2 * (prec * rec) / (prec + rec) if (prec + rec) != 0 else 0.0
 
     def confusion_matrix(y_pred, y_true, num_classes):
-        # """ Computes the confusion matrix. """
-        # conf_matrix = torch.zeros(num_classes, num_classes, dtype=torch.int64)
-        # for t, p in zip(y_true.view(-1), y_pred.view(-1)):
-        #     conf_matrix[t.long(), p.long()] += 1
-        # return conf_matrix
-        with torch.no_grad():
-            k = (y_true >= 0) & (y_true < num_classes)
-            return torch.bincount(num_classes * y_true[k] + y_true[k], minlength=num_classes ** 2).view(num_classes, num_classes)
-
+  
+        return FEVAL.multiclass_confusion_matrix(y_pred, y_true, num_classes)
+       
 
     def roc_auc_score(y_pred, y_true):
         """ Computes ROC AUC score for binary classification. """

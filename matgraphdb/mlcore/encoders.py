@@ -5,6 +5,8 @@ import torch
 import numpy as np
 import pandas as pd
 
+from matgraphdb.mlcore.transforms import min_max_normalize, standardize_tensor, robust_scale
+
 class CategoricalEncoder:
     def __init__(self, sep='|'):
         self.sep = sep
@@ -19,8 +21,8 @@ class CategoricalEncoder:
                 x[i, mapping[genre]] = 1
         return x
 
-class StringEncoder:
-    """Converts a column of strings into a torch tensor."""
+class ClassificationEncoder:
+    """Converts a column of of unique itentities into a torch tensor. One hot encoding"""
     def __init__(self, dtype=None):
         self.dtype = dtype
 
@@ -47,12 +49,29 @@ class BooleanEncoder:
         return torch.from_numpy(boolean_integers.values).view(-1, 1).type(self.dtype)
     
 class IdentityEncoder:
-    """Converts a column of numbers intoa torch tensor."""
-    def __init__(self, dtype=None):
+    """Converts a column of numbers into torch tensor."""
+    def __init__(self, dtype=torch.float32, standardize=False, normalize=False, robust_scale=False, normalization_range=(0,1)):
         self.dtype = dtype
+        self.standardize = standardize
+        self.normalize = normalize
+        self.robust_scale = robust_scale
+        self.normalization_range = normalization_range
+        if self.standardize and self.normalize and self.robust_scale:
+            raise Exception("Cannot standardize, normalize, and robust_scale at the same time")
 
     def __call__(self, df):
-        return torch.from_numpy(df.values).view(-1, 1).to(self.dtype)
+        tensor=torch.from_numpy(df.values).view(-1, 1).to(self.dtype)
+        if self.standardize:
+            tensor, mean, std = standardize_tensor(tensor)
+            return tensor.to(self.dtype)
+        elif self.robust_scale:
+            tensor, median, iqr = robust_scale(tensor,q_min=0.25,q_max=0.75)
+            return tensor.to(self.dtype)
+        elif self.normalize:
+            tensor, min, max = min_max_normalize(tensor,normalization_range=self.normalization_range)
+            return tensor.to(self.dtype)
+        else:
+            return tensor
     
 class ListIdentityEncoder:
     """Converts a column of list of numbers into torch tensor."""
@@ -117,36 +136,35 @@ class NodeEncoders:
     OXIDATION_STATE_NODE='oxidation_state'
     MATERIAL_NODE='material'
 
-    def get_encoder(self,node_path,**kwargs):
-
+    def get_encoder(self,node_path, **kwargs):
         node_name=os.path.basename(node_path).split('.')[0]
 
         if node_name==self.ELEMENT_NODE:
-            encoder_info =self.get_element_encoder(node_path)
+            encoder_info =self.get_element_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.CHEMENV_NODE:
-            encoder_info =self.get_chemenv_encoder(node_path)
+            encoder_info =self.get_chemenv_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.CRYSTAL_SYSTEM_NODE:
-            encoder_info =self.get_crystal_system_encoder(node_path)
+            encoder_info =self.get_crystal_system_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.MAGNETIC_STATE_NODE:
-            encoder_info =self.get_magnetic_states_encoder(node_path)
+            encoder_info =self.get_magnetic_states_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.SPACE_GROUP_NODE:
-            encoder_info =self.get_space_group_encoder(node_path)
+            encoder_info =self.get_space_group_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.OXIDATION_STATE_NODE:
-            encoder_info =self.get_oxidation_states_encoder(node_path)
+            encoder_info =self.get_oxidation_states_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         if node_name==self.MATERIAL_NODE:
-            encoder_info =self.get_material_encoder(node_path,**kwargs)
+            encoder_info =self.get_material_encoder(node_path, **kwargs)
             encoder_mapping, name_id_map, id_name_map = encoder_info
 
         return encoder_mapping, name_id_map, id_name_map
@@ -169,20 +187,23 @@ class NodeEncoders:
             # Skip columns
             if col_name in skip_columns:
                 continue
-
+            
             # Special encoders for specific columns
-            if col_name in column_encoders.keys():
-                encoder_mapping[col]=column_encoders[col_name]
+            if col in column_encoders.keys():
+                # print(f"Using column encoder for {col_name}")
+                # print(column_encoders.keys())
+                encoder_mapping[col]=column_encoders[col]
+                continue
 
             # Defualt encoders based on column type that are not array types
             if col_type=='float' and not is_array_type:
                 encoder_mapping[col]=IdentityEncoder(dtype=torch.float32)
             elif col_type=='int':
-                encoder_mapping[col]=IdentityEncoder(dtype=torch.int64)
+                encoder_mapping[col]=IdentityEncoder(dtype=torch.float32)
             elif col_type=='boolean':
                 encoder_mapping[col]=BooleanEncoder(dtype=torch.int64)
             elif col_type=='string':
-                encoder_mapping[col]=StringEncoder(dtype=torch.int64)
+                encoder_mapping[col]=ClassificationEncoder(dtype=torch.int64)
             
             # Default encoders based on column type that are array types
             if col_type=='float' and is_array_type:
@@ -192,71 +213,165 @@ class NodeEncoders:
 
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_element_encoder(self,node_path):
+    def get_element_encoder(self,node_path, column_encoders={}, **kwargs):
+        if column_encoders=={}:
+            # column_encoders={
+            #     'atomic_number:float':IdentityEncoder(normalize=do_scaling),
+            #     'X:float':IdentityEncoder(normalize=do_scaling),
+            #     'atomic_radius:float':IdentityEncoder(normalize=do_scaling),
+            #     'group:int':IdentityEncoder(normalize=do_scaling),
+            #     'row:int':IdentityEncoder(normalize=do_scaling),
+            #     'atomic_mass:float':IdentityEncoder(normalize=do_scaling),
+            #     }
+            column_encoders={
+                'atomic_number:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'X:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'atomic_radius:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'group:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'row:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'atomic_mass:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                }
         encoder_mapping,name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
-                                                skip_columns=['name','type','element_name'])
+                                                skip_columns=['name','type','element_name'],
+                                                column_encoders=column_encoders)
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_chemenv_encoder(self,node_path):
+    def get_chemenv_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
 
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_chemenv_element_encoder(self,node_path):
+    def get_chemenv_element_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type','chemenv_name'])
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_crystal_system_encoder(self,node_path):
+    def get_crystal_system_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
 
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_crystal_system_encoder(self,node_path):
+    def get_crystal_system_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
 
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_magnetic_states_encoder(self,node_path):
+    def get_magnetic_states_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_space_group_encoder(self,node_path):
+    def get_space_group_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
 
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_oxidation_states_encoder(self,node_path):
+    def get_oxidation_states_encoder(self,node_path, column_encoders={}, **kwargs):
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=['name','type'])
         return encoder_mapping, name_id_map, id_name_map
     
-    def get_material_encoder(self,node_path,skip_columns=[],column_encoders={}):
+    def get_material_encoder(self,node_path,skip_columns=[],column_encoders={}, **kwargs):
         if column_encoders=={}:
+            # column_encoders={
+            #     'composition:string':CompositionEncoder(),
+            #     'elements:string[]':ElementsEncoder(),
+            #     'crystal_system:string':ClassificationEncoder(),
+            #     'space_group:int':SpaceGroupOneHotEncoder(),
+            #     'point_group:string':ClassificationEncoder(),
+            #     'hall_symbol:string':ClassificationEncoder(),
+            #     'is_gap_direct:boolean':ClassificationEncoder(),
+            #     'is_metal:boolean':ClassificationEncoder(),
+            #     'is_magnetic:boolean':ClassificationEncoder(),
+            #     'ordering:string':ClassificationEncoder(),
+            #     'is_stable:boolean':ClassificationEncoder(),
+                
+            #     # 'nelements:int':ClassificationEncoder(),
+            #     'nelements:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'nsites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'volume:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'density:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'density_atomic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'energy_per_atom:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'formation_energy_per_atom:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'energy_above_hull:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'band_gap:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+
+            #     'cbm:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'vbm:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+
+            #     'efermi:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'total_magnetization:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'total_magnetization_normalized_vol:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'num_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'num_unique_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+
+            #     'k_voigt:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'k_reuss:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'k_vrh:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+
+            #     'g_voigt:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'g_reuss:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'g_vrh:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+
+            #     'universal_anisotropy:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'homogeneous_poisson:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'e_total:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
+            #     'e_ionic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     'e_electronic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
+            #     }
+            
             column_encoders={
                 'composition:string':CompositionEncoder(),
                 'elements:string[]':ElementsEncoder(),
-                'crystal_system:string':StringEncoder(),
+                'crystal_system:string':ClassificationEncoder(),
                 'space_group:int':SpaceGroupOneHotEncoder(),
-                'point_group:string':StringEncoder(),
-                'hall_symbol:string':StringEncoder()
+                'point_group:string':ClassificationEncoder(),
+                'hall_symbol:string':ClassificationEncoder(),
+                'is_gap_direct:boolean':ClassificationEncoder(),
+                'is_metal:boolean':ClassificationEncoder(),
+                'is_magnetic:boolean':ClassificationEncoder(),
+                'ordering:string':ClassificationEncoder(),
+                'is_stable:boolean':ClassificationEncoder(),
+                
+                # 'nelements:int':ClassificationEncoder(),
+                'nelements:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'nsites:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'volume:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'density:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'density_atomic:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'energy_per_atom:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'formation_energy_per_atom:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'energy_above_hull:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'band_gap:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'cbm:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'vbm:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'efermi:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'total_magnetization:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'total_magnetization_normalized_vol:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'num_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'num_unique_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'k_voigt:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'k_reuss:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'k_vrh:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'g_voigt:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'g_reuss:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'g_vrh:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'universal_anisotropy:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'homogeneous_poisson:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'e_total:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'e_ionic:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                'e_electronic:float':IdentityEncoder(dtype=torch.float32,**kwargs),
                 }
-        # if skip_columns==[]:
-            # skip_columns=['name','type','material_id',
-            #               'nsites','nelements','volume','density','density_atomic',
-            #             'elements','composition','composition_reduced','formula_pretty',
-            #             'crystal_system','hall_symbol','space_group','point_group',
-            #             'energy_per_atom','formation_energy_per_atom','energy_above_hull',
-            #             'is_stable','band_gap','cbm','vbm','efermi',
-            #             'is_gap_direct','is_metal','is_magnetic','ordering','total_magnetization',
-            #             'total_magnetization_normalized_vol','num_magnetic_sites','num_unique_magnetic_sites',
-            #             'k_voigt','k_reuss','k_vrh','g_voigt','g_reuss','g_vrh','universal_anisotropy',
-            #             'homogeneous_poisson','e_total','e_ionic','e_electronic','wyckoffs']
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=skip_columns,
                                                 column_encoders=column_encoders)
@@ -265,6 +380,7 @@ class NodeEncoders:
     
     
 class EdgeEncoders:
+
     def get_encoder_mapping(self,edge_path, skip_columns=[], column_encoders={}):
         df=pd.read_csv(edge_path)
 
@@ -291,20 +407,22 @@ class EdgeEncoders:
             # Skip columns
             if col_name in skip_columns:
                 continue
-
+            
             # Special encoders for specific columns
-            if col_name in column_encoders.keys():
-                encoder_mapping[col]=column_encoders[col_name]
+            if col in column_encoders.keys():
+                encoder_mapping[col]=column_encoders[col]
+                continue
+
 
             # Defualt encoders based on column type that are not array types
             if col_type=='float' and not is_array_type:
                 encoder_mapping[col]=IdentityEncoder(dtype=torch.float32)
             elif col_type=='int':
-                encoder_mapping[col]=IdentityEncoder(dtype=torch.int64)
+                encoder_mapping[col]=IdentityEncoder(dtype=torch.float32)
             elif col_type=='boolean':
                 encoder_mapping[col]=BooleanEncoder(dtype=torch.int64)
             elif col_type=='string':
-                encoder_mapping[col]=StringEncoder(dtype=torch.int64)
+                encoder_mapping[col]=ClassificationEncoder(dtype=torch.int64)
             
             # Default encoders based on column type that are array types
             if col_type=='float' and is_array_type:
@@ -314,8 +432,12 @@ class EdgeEncoders:
 
         return encoder_mapping
     
-    def get_weight_edge_encoder(self,edge_path):
-        encoder_mapping=self.get_encoder_mapping(edge_path=edge_path)
+    def get_weight_edge_encoder(self,edge_path,column_encoders={}, **kwargs):
+        if column_encoders=={}:
+            column_encoders={
+                'weight:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+                }
+        encoder_mapping=self.get_encoder_mapping(edge_path=edge_path,column_encoders=column_encoders)
         return encoder_mapping
 
 
@@ -323,7 +445,9 @@ class EdgeEncoders:
 if __name__ == "__main__":
     import pandas as pd
     import os
+    import matplotlib.pyplot as plt
     from matgraphdb import GraphGenerator
+    from matgraphdb.mlcore.transforms import min_max_normalize, standardize_tensor
     main_graph_dir = GraphGenerator().main_graph_dir
     main_nodes_dir = os.path.join(main_graph_dir,'nodes') 
     print(main_graph_dir)
@@ -336,8 +460,11 @@ if __name__ == "__main__":
     chemenv_df=pd.read_csv(chemenv_node_path,index_col=0)
     material_df=pd.read_csv(material_node_path,index_col=0)
 
-    # Example usage of encoders
-    # identity_encoder=IdentityEncoder()
+
+
+
+    # # Example usage of encoders
+    # identity_encoder=IdentityEncoder(normalization_func=min_max_normalize)
     # atomic_numbers=identity_encoder(element_df['atomic_number:float'])
     # x=identity_encoder(element_df['X:float'])
 
@@ -370,14 +497,14 @@ if __name__ == "__main__":
 
 
     # Example of using NodeEncoders
-    node_encoders=NodeEncoders()
-    encoders,_,_=node_encoders.get_chemenv_encoder(chemenv_node_path)
-    x = None
-    if encoders != {}:
-        print(encoders)
-        xs = [encoder(chemenv_df[col]) for col, encoder in encoders.items()]
-        x = torch.cat(xs, dim=-1)
-        print(x.shape)
+    # node_encoders=NodeEncoders()
+    # encoders,_,_=node_encoders.get_chemenv_encoder(chemenv_node_path)
+    # x = None
+    # if encoders != {}:
+    #     print(encoders)
+    #     xs = [encoder(chemenv_df[col]) for col, encoder in encoders.items()]
+    #     x = torch.cat(xs, dim=-1)
+    #     print(x.shape)
 
     
     # main_graph_dir = GraphGenerator.main_graph_dir

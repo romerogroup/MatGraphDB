@@ -15,7 +15,7 @@ from matgraphdb.utils import LOGGER, ENCODING_DIR
 from matgraphdb.data.manager import DBManager
 
 # TODO: Need a better way to define node types and their properties.
-
+# TODO: Use built-in periodic_table module for element properties
 PROPERTIES = [
     ("material_id", "string"),
     ("nsites", "int"),

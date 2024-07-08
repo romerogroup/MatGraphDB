@@ -1,5 +1,8 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 def plot_points(plotter, points, color='green', size=15):
     """
@@ -119,3 +122,55 @@ def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None, loss
         plt.savefig(filename)
     else:
         plt.show()
+
+
+def plot_dataframe_distributions(df, save_dir=None, col_names=None):
+    """Plots the distributions of the columns in a dataframe."""
+
+    if col_names is None:
+        numeric_columns = df.select_dtypes(include=['number']).columns
+    else:
+        numeric_columns = col_names
+
+    num_cols = len(numeric_columns)
+    
+    if num_cols == 0:
+        print("No numeric columns to plot.")
+        return
+
+    os.makedirs(save_dir,exist_ok=True)
+    
+    for i, col in enumerate(numeric_columns):
+        property_name=col.split(':')[0]
+        fig, axes = plt.subplots(1, 4, figsize=(20, 5))  # Create a subplot for each type of plot
+
+        # Histogram
+        sns.histplot(df[col], kde=False, ax=axes[0])
+        axes[0].set_title(f'Histogram of {col}')
+        axes[0].set_xlabel(col)
+        axes[0].set_ylabel('Frequency')
+
+        # Density Plot
+        sns.kdeplot(df[col], ax=axes[1], fill=True)
+        axes[1].set_title(f'Density Plot of {col}')
+        axes[1].set_xlabel(col)
+        axes[1].set_ylabel('Density')
+
+        # Box Plot
+        sns.boxplot(x=df[col], ax=axes[2])
+        axes[2].set_title(f'Box Plot of {col}')
+        axes[2].set_xlabel(col)
+        axes[2].set_ylabel('Value')
+
+        # Violin Plot
+        sns.violinplot(x=df[col], ax=axes[3])
+        axes[3].set_title(f'Violin Plot of {col}')
+        axes[3].set_xlabel(col)
+        axes[3].set_ylabel('Value')
+
+        plt.tight_layout()
+
+        if save_dir:
+            plt.savefig(os.path.join(save_dir,f'{property_name}.png'))
+        else:
+            plt.show()

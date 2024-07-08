@@ -701,6 +701,30 @@ class GraphGenerator:
         generator.export_graph(filepath=filepath,method='graphml')
         return None
 
+    def plot_property_distributions(self,graph_dir):
+        from matgraphdb.utils.plotting import plot_dataframe_distributions
+
+
+        node_dir=os.path.join(graph_dir,'nodes')
+        relationship_dir=os.path.join(graph_dir,'relationships')
+
+        node_files=glob(os.path.join(node_dir,'*.csv'))
+        relationship_files=glob(os.path.join(relationship_dir,'*.csv'))
+
+        distribution_dir=os.path.join(graph_dir,'distributions')
+
+        # for file in node_files:
+        #     save_dir=os.path.join(distribution_dir,'nodes',os.path.basename(file).split('.')[0])
+
+        #     df=pd.read_csv(file)
+        #     plot_dataframe_distributions(df,save_dir)
+
+        for file in relationship_files:
+            save_dir=os.path.join(distribution_dir,'relationships',os.path.basename(file).split('.')[0])
+
+            df=pd.read_csv(file)
+            plot_dataframe_distributions(df,save_dir)
+
 class NetworkXGraphGenerator:
     def __init__(self,graph_dir=None,from_scratch=False):
         """
@@ -839,6 +863,14 @@ class NetworkXGraphGenerator:
             nx.write_graphml(self.graph,filepath)
         return None
 
-# if __name__=='__main__':
-    # graph=GraphGenerator()
+if __name__=='__main__':
+    generator=GraphGenerator()
     # graph.write_graphml(graph_dirname='nelements-2-2')
+
+
+    main_graph_dir=generator.main_graph_dir
+
+    generator.plot_property_distributions(graph_dir=main_graph_dir)
+
+
+

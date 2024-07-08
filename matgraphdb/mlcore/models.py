@@ -71,6 +71,7 @@ class WeightedRandomClassifier(nn.Module):
         # Generate random guesses according to the class weights for each example in the batch
         random_guesses = torch.multinomial(self.class_counts, x.size(0), replacement=True)
         # Convert indices to one-hot encoding
+        
         return F.one_hot(random_guesses, num_classes=len(self.class_counts)).to(torch.float32)
 
     
