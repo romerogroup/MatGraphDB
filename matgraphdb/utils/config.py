@@ -75,6 +75,8 @@ MP_API_KEY=PRIVATE_CONFIG['MP_API_KEY']
 OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
 
 # MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
+EXTERNAL_DATA_DIR=os.path.join(ROOT,'data','external')
+
 MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
 ML_DIR=os.path.join(MP_DIR,'ML')
 ML_SCRATCH_RUNS_DIR=os.path.join(ML_DIR,'scratch_runs')
