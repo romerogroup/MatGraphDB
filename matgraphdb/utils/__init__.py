@@ -1,5 +1,5 @@
 # Important directory paths
-from matgraphdb.utils.config import FILE, PKG_DIR, ROOT, LOG_DIR, DATA_DIR
+from matgraphdb.utils.config import FILE, PKG_DIR, ROOT, LOG_DIR, DATA_DIR, EXTERNAL_DATA_DIR
 
 # Impot config settings
 from matgraphdb.utils.config import CONFIG, MP_API_KEY, N_CORES, OPENAI_API_KEY
