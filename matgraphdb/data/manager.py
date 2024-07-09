@@ -721,6 +721,64 @@ class DBManager:
         LOGGER.info("Finished processing database")
         return None
 
+    def merge_external_json_task(self, json_file):
+        """
+        Merges external tasks into the database.
+
+        This function merges external tasks into the database. It iterates over the database files and checks if the
+        corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
+        been completed, the task is merged into the database.
+
+        Returns:
+            None
+        """
+
+        mpid = data['material_id']
+        main_json_file = os.path.join(self.directory_path,f'{mpid}.json')
+
+        # Check if main json file exists
+        if os.path.exists(main_json_file):
+            with open(main_json_file) as f:
+                main_data = json.load(f)
+        else:
+            main_data={}
+
+        with open(json_file) as f:
+            new_data = json.load(f)
+
+        
+        for new_key, new_value in new_data.items():
+            if new_key in main_data.keys():
+                main_data[new_key].update(new_value)
+            else:
+                main_data[new_key] = new_value
+
+        with open(main_json_file,'w') as f:
+            json.dump(main_data, f, indent=4)
+
+        LOGGER.info("Finished processing database")
+
+        return None
+    
+    def merge_external_database(self, json_dir):
+        """
+        Merges external tasks into the database.
+
+        This function merges external tasks into the database. It iterates over the database files and checks if the
+        corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
+        been completed, the task is merged into the database.
+
+        Returns:
+            None
+        """
+        LOGGER.info("Starting merging external database")
+        json_files=glob(os.path.join(json_dir,'*.json'))
+
+        results=self.process_task(self.merge_external_json_task, json_files)
+
+        LOGGER.info("Finished merging external database")
+        return None
+
 
 if __name__=='__main__':
 
