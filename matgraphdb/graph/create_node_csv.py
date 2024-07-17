@@ -47,7 +47,8 @@ def create_nodes(node_names, node_type, node_prefix, node_properties=None, filep
         if node_properties:
             for property_name, property_value in node_properties[i].items():
                 if isinstance(property_value, List ):
-                    property_value=";".join(property_value)
+                    property_value = ";".join([str(item) for item in property_value])
+
                 node_dict[property_name].append(property_value)
 
     df = pd.DataFrame(node_dict)

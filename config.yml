@@ -1,7 +1,7 @@
 DB_NAME:  'materials_project'
 N_CORES: 
 
-APPLY_LOG_FILTER: True
+APPLY_LOG_FILTER: False
 
 USER: "neo4j"
 PASSWORD: "password"

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import numpy as np
 import yaml
-import yaml
+
 # numpy options
 large_width = 400
 precision=3
