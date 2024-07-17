@@ -1,7 +1,8 @@
 import os
 from glob import glob
 import json
-from typing import List,Tuple
+from abc import ABC, abstractmethod
+from typing import List, Tuple, Dict, Any
 import numpy as np
 from pymatgen.core.periodic_table import Element
 
@@ -16,48 +17,6 @@ from matgraphdb.data.manager import DBManager
 
 # TODO: Need a better way to define node types and their properties.
 # TODO: Use built-in periodic_table module for element properties
-PROPERTIES = [
-    ("material_id", "string"),
-    ("nsites", "int"),
-    ("elements", "string[]"),
-    ("nelements", "int"),
-    ("composition", "string"),
-    ("composition_reduced", "string"),
-    ("formula_pretty", "string"),
-    ("volume", "float"),
-    ("density", "float"),
-    ("density_atomic", "float"),
-    ("symmetry", "string"),
-    ("energy_per_atom", "float"),
-    ("formation_energy_per_atom", "float"),
-    ("energy_above_hull", "float"),
-    ("is_stable", "boolean"),
-    ("band_gap", "float"),
-    ("cbm", "float"),
-    ("vbm", "float"),
-    ("efermi", "string"),
-    ("is_gap_direct", "boolean"),
-    ("is_metal", "boolean"),
-    ("is_magnetic", "boolean"),
-    ("ordering", "string"),
-    ("total_magnetization", "float"),
-    ("total_magnetization_normalized_vol", "float"),
-    ("num_magnetic_sites", "int"),
-    ("num_unique_magnetic_sites", "int"),
-    ("k_voigt", "float"),
-    ("k_reuss", "float"),
-    ("k_vrh", "float"),
-    ("g_voigt", "float"),
-    ("g_reuss", "float"),
-    ("g_vrh", "float"),
-    ("universal_anisotropy", "float"),
-    ("homogeneous_poisson", "float"),
-    ("e_total", "float"),
-    ("e_ionic", "float"),
-    ("e_electronic", "float"),
-    ("wyckoffs", "string[]"),
-]
-
 
 class NodeTypes:
     def __init__(self):
@@ -147,7 +106,8 @@ class NodeTypes:
         chemenv_name_id_map = {name: i for i, name in enumerate(chemenv_names)}
         chemenv_names_properties = []
         for i, chemenv_name in enumerate(chemenv_names):
-            chemenv_names_properties.append({"chemenv_name:string": chemenv_name})
+            coordination = int(chemenv_name.split(':')[1])
+            chemenv_names_properties.append({"chemenv_name:string": chemenv_name, "coordination:int": coordination})
         return chemenv_names, chemenv_names_properties, chemenv_name_id_map
     
     def get_chemenv_element_nodes(self):
@@ -156,6 +116,7 @@ class NodeTypes:
         chemenv_element_names = []
         for element_name in elements:
             for chemenv_name in chemenv_names:
+                
                 class_name = element_name + '_' + chemenv_name
                 chemenv_element_names.append(class_name)
 
@@ -191,7 +152,7 @@ class NodeTypes:
                 atomic_mass = float(pmat_element.atomic_mass)
             else:
                 atomic_mass = None
-
+            coordination = int(chemenv_element_name.split(':')[1])
             chemenv_element_names_properties.append({
                                     "chemenv_element_name:string": chemenv_element_name,
                                     "atomic_number:float": atomic_number,
@@ -199,7 +160,8 @@ class NodeTypes:
                                     "atomic_radius:float": atomic_radius,
                                     "group:int": group,
                                     "row:int": row,
-                                    "atomic_mass:float": atomic_mass
+                                    "atomic_mass:float": atomic_mass,
+                                    "coordination:int": coordination
                                     })
         return chemenv_element_names, chemenv_element_names_properties, chemenv_element_name_id_map
     
@@ -265,9 +227,8 @@ class NodeTypes:
                 data = json.load(f)
                 structure = Structure.from_dict(data['structure'])
         except Exception as e:
-            print(f"Error processing file {json_file}: {e}")
-            return None, None, None,None
-
+            LOGGER.error(f"Error processing file {json_file}: {e}")
+            return None, None, None, None
 
         mpid_name = json_file.split(os.sep)[-1].split('.')[0]
         mpid_name = mpid_name.replace('-', '_')
@@ -281,66 +242,126 @@ class NodeTypes:
         
 
         material_property_dict = {}
-        for property in PROPERTIES:
 
-            if property[0] == 'symmetry':
-                try:
-                    symmetry_dict = data[property[0]]
-                    for sym_property_name, sym_property_value in symmetry_dict.items():
+        material_property_dict['material_id:string']=data.get('material_id')
+        material_property_dict['nsites:int']=data.get('nsites')
+        material_property_dict['nelements:int']=data.get('nelements')
+        material_property_dict['elements:string[]']=data.get('elements')
+        material_property_dict['composition:string']=data.get('composition')
+        material_property_dict['composition_reduced:string']=data.get('composition_reduced')
+        material_property_dict['formula_pretty:string']=data.get('formula_pretty')
+        material_property_dict['volume:float']=data.get('volume')
+        material_property_dict['density:float']=data.get('density')
+        material_property_dict['density_atomic:float']=data.get('density_atomic')
+        
+        material_property_dict['crystal_system:string']=data.get('symmetry').get('crystal_system')
+        material_property_dict['space_group:int']=data.get('symmetry').get('number')
+        material_property_dict['point_group:string']=data.get('symmetry').get('point_group')
+        material_property_dict['hall_symbol:string']=data.get('symmetry').get('symbol')
 
-                        if sym_property_name == 'crystal_system':
-                            property_type = 'string'
-                            property_name = 'crystal_system'
-                            property_value = sym_property_value.lower()
-                        elif sym_property_name == 'number':
-                            property_type = 'int'
-                            property_name = 'space_group'
-                            property_value = sym_property_value
-                        elif sym_property_name == 'point_group':
-                            property_type = 'string'
-                            property_name = 'point_group'
-                            property_value = sym_property_value
-                        elif sym_property_name == 'symbol':
-                            property_type = 'string'
-                            property_name = 'hall_symbol'
-                            property_value = sym_property_value
-                        else:
-                            property_name = None
-                            property_type = None
-                            property_value = None
+        # material_property_dict['structure:string']=data.get('structure')
 
-                        if property_name is not None:
-                            node_key = property_name + ':' + property_type
-                            material_property_dict.update(
-                                {node_key: property_value})
-                except Exception as e:
-                    material_property_dict.update({'crystal_system:string': None,
-                                                'space_group:int': None,
-                                                'point_group:string': None,
-                                                'hall_symbol:string': None})
-                    
+        material_property_dict['energy_per_atom:float']=data.get('energy_per_atom')
+        material_property_dict['formation_energy_per_atom:float']=data.get('formation_energy_per_atom')
+        material_property_dict['energy_above_hull:float']=data.get('energy_above_hull')
+        material_property_dict['is_stable:boolean']=data.get('is_stable')
+        material_property_dict['band_gap:float']=data.get('band_gap')
+        material_property_dict['cbm:float']=data.get('cbm')
+        material_property_dict['vbm:float']=data.get('vbm')
+        material_property_dict['efermi:float']=data.get('efermi')
+        material_property_dict['is_gap_direct:boolean']=data.get('is_gap_direct')
+        material_property_dict['is_metal:boolean']=data.get('is_metal')
+        material_property_dict['is_magnetic:boolean']=data.get('is_magnetic')
+        material_property_dict['ordering:string']=data.get('ordering')
+        material_property_dict['total_magnetization:float']=data.get('total_magnetization')
+        material_property_dict['total_magnetization_normalized_vol:float']=data.get('total_magnetization_normalized_vol')
+        material_property_dict['num_magnetic_sites:int']=data.get('num_magnetic_sites')
+
+        material_property_dict['e_total:float']=data.get('e_total')
+        material_property_dict['e_ionic:float']=data.get('e_ionic')
+        material_property_dict['e_electronic:float']=data.get('e_electronic')
+
+        elasticity_dict = data.get('elasticity')
+        elastic_properties=[
+            'k_voigt:float',
+            'k_reuss:float',
+            'k_vrh:float',
+            'g_voigt:float',
+            'g_reuss:float',
+            'g_vrh:float',
+            'sound_velocity_transverse:float',
+            'sound_velocity_longitudinal:float',
+            'sound_velocity_total:float',
+            'sound_velocity_acoustic:float',
+            'sound_velocity_optical:float',
+            'thermal_conductivity_clarke:float',
+            'thermal_conductivity_cahill:float',
+            'youngs_modulus:float',
+            'universal_anisotropy:float',
+            'homogeneous_poisson:float',
+            'debye_temperature:float',
+            'state:string']
+        for elastic_property in elastic_properties:
+            elastic_property_name=elastic_property.split(':')[0]
+            if elasticity_dict is not None:
+                material_property_dict[elastic_property]=elasticity_dict.get(elastic_property_name)
             else:
-                property_name = property[0]
-                property_type = property[1]
-                node_key = property_name + ':' + property_type
-                property_value = data[property_name]
+                material_property_dict[elastic_property]=None
 
-                material_property_dict.update({node_key: property_value})
+        oxidation_states_dict = data.get('oxidation_states')
+        oxidation_stats_properties=[
+            'possible_species:string[]',
+            'possible_valences:int[]',
+            'average_oxidation_state:string']
+        for oxidation_stat_property in oxidation_stats_properties:
+            oxidation_stat_property_name=oxidation_stat_property.split(':')[0]
+            if oxidation_states_dict is not None:
+                material_property_dict[oxidation_stat_property]=oxidation_states_dict.get(oxidation_stat_property_name)
+            else:
+                material_property_dict[oxidation_stat_property]=None
 
-        if os.path.exists(ENCODING_DIR):
-            encoding_file=os.path.join(ENCODING_DIR,mpid_name.replace('_', '-')+'.json')
-            with open(encoding_file) as f:
-                encoding_dict = json.load(f)
 
-            for encoding_name,encoding in encoding_dict.items():
-                tmp_encoding_list=[str(i) for i in encoding]
-                encoding=';'.join(tmp_encoding_list)
+        material_property_dict['uncorrected_energy_per_atom:float']=data.get('uncorrected_energy_per_atom')
+        material_property_dict['equilibrium_reaction_energy_per_atom:float']=data.get('equilibrium_reaction_energy_per_atom')
+        material_property_dict['n:float']=data.get('n')
+        material_property_dict['e_ij_max:float']=data.get('e_ij_max')
+        material_property_dict['weighted_surface_energy_EV_PER_ANG2:float']=data.get('weighted_surface_energy_EV_PER_ANG2')
+        material_property_dict['weighted_surface_energy:float']=data.get('weighted_surface_energy')
+        material_property_dict['weighted_work_function:float']=data.get('weighted_work_function')
+        material_property_dict['surface_anisotropy:float']=data.get('surface_anisotropy')
+        material_property_dict['shape_factor:float']=data.get('shape_factor')
 
-                material_property_dict.update({f'{encoding_name}:float[]':encoding})
+        feature_vectors_dict = data.get('feature_vectors')
+        feature_vectors=[
+            'sine_coulomb_matrix:float[]',
+            'element_fraction:float[]',
+            'element_property:float[]',
+            'xrd_pattern:float[]',
+        ]
+        
+        for feature_vector in feature_vectors:
+            feature_vector_property_name=feature_vector.split(':')[0]
+            if feature_vectors_dict is not None:
+                tmp_dict=feature_vectors_dict.get(feature_vector_property_name)
+                if tmp_dict is not None:
+                    material_property_dict[feature_vector]=tmp_dict.get('values')
+            else:
+                material_property_dict[feature_vector]=None
 
-            mpid=encoding_file.split(os.sep)[-1].split('.')[0]
+        # if os.path.exists(ENCODING_DIR):
+        #     encoding_file=os.path.join(ENCODING_DIR,mpid_name.replace('_', '-')+'.json')
+        #     with open(encoding_file) as f:
+        #         encoding_dict = json.load(f)
 
-        return mpid_name, material_property_dict, lattice_name,lattice_properties_dict
+        #     for encoding_name,encoding in encoding_dict.items():
+        #         tmp_encoding_list=[str(i) for i in encoding]
+        #         encoding=';'.join(tmp_encoding_list)
+
+        #         material_property_dict.update({f'{encoding_name}:float[]':encoding})
+
+        #     mpid=encoding_file.split(os.sep)[-1].split('.')[0]
+
+        return mpid_name, material_property_dict, lattice_name, lattice_properties_dict
     
     def get_material_nodes(self):
         files=self.db_manager.database_files()
@@ -366,6 +387,13 @@ class NodeTypes:
 
 if __name__=='__main__':
     nodes=NodeTypes()
-    names,properties,id_map=nodes.get_chemenv_element_nodes()
-    print(properties[:10])
+    # names,properties,id_map=nodes.get_chemenv_element_nodes()
+    # print(properties[:10])
+
+
+    # names,properties,id_map=nodes.get_chemenv_nodes()
+    # print(properties[:10])
+
+    names,properties,id_map=nodes.get_material_nodes()
+    # print(properties[:10])
     # print(names[:10])

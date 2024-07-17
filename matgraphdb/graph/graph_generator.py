@@ -1,5 +1,6 @@
 import os
 import shutil
+import copy
 from glob import glob
 from typing import List, Tuple, Union
 
@@ -54,9 +55,15 @@ def is_in_list(val, string_list: List, negation: bool = True) -> bool:
     """
     return (val in string_list) if negation else (val not in string_list)
 
+
 class GraphGenerator:
 
-    def __init__(self,db_manager=DBManager(), node_types=NodeTypes(), main_graph_dir=GRAPH_DIR, from_scratch=False, skip_main_init=True):
+    def __init__(self,
+                db_manager=DBManager(), 
+                node_types=NodeTypes(), 
+                main_graph_dir=os.path.join(GRAPH_DIR,'main'),
+                from_scratch=False, 
+                skip_main_init=True):
         """
         Initializes the GraphGenerator object.
 
@@ -73,13 +80,14 @@ class GraphGenerator:
         self.node_types=node_types
         self.db_manager = db_manager
 
-        self.main_graph_dir=os.path.join(main_graph_dir,'main')
+        self.main_graph_dir=main_graph_dir
         self.main_node_dir=os.path.join(self.main_graph_dir,'nodes')
         self.main_relationship_dir=os.path.join(self.main_graph_dir,'relationships')
         
         if from_scratch and os.path.exists(self.main_node_dir):
             LOGGER.info('Starting from scratch. Deleting main graph directory')
             shutil.rmtree(self.main_node_dir)
+
         os.makedirs(self.main_node_dir,exist_ok=True)
         os.makedirs(self.main_relationship_dir,exist_ok=True)
 
@@ -88,7 +96,7 @@ class GraphGenerator:
             self.initialize_nodes(node_dir=self.main_node_dir)
             self.initialize_relationships(node_dir=self.main_node_dir,relationship_dir=self.main_relationship_dir)
 
-    def get_node_id_maps(self,node_dir=None,graph_dir=None):
+    def get_node_id_maps(self, node_dir=None, graph_dir=None):
         """
         Get the node id maps for the graph database.
 
@@ -350,6 +358,139 @@ class GraphGenerator:
                             mp_task=create_material_crystal_system_task,
                             connection_name='HAS',
                             relationship_dir=relationship_dir)
+
+    # def _create_material_node_variations(self,node_dir, materials,orginal_materials_properties):
+    #     """
+    #     Removes a property from a material node.
+    #     """
+
+    #     feature_vectors = ['sine_coulomb_matrix',
+    #                        'element_fraction',
+    #                        'element_property',
+    #                        'xrd_pattern',
+    #                        'sine_coulomb_matrix-element_fraction',
+    #                        'sine_coulomb_matrix-element_property',
+    #                        'element_property-element_fraction',
+    #                        'sine_coulomb_matrix-element_property-element_fraction']
+    #     feature_vectors_to_remove = [feature_vectors[:i] + feature_vectors[i+1:] for i in range(len(feature_vectors))]
+    #     for i,feature_vectors in enumerate(feature_vectors_to_remove):
+    #         materials_properties=copy.deepcopy(orginal_materials_properties)
+    #         for material_property in materials_properties:
+
+    #             for feature_vector in feature_vectors:
+    #                 material_property[feature_vector]=None
+
+    #             create_nodes(node_names=materials,
+    #                         node_type=f'Material',
+    #                         node_prefix=f'material',
+    #                         node_properties=materials_properties,
+    #                         filepath=os.path.join(node_dir, f'material.csv'))
+
+    #     feature_vectors = ['sine_coulomb_matrix',
+    #                        'element_fraction',
+    #                        'xrd_pattern',
+    #                        'sine_coulomb_matrix-element_fraction',
+    #                        'sine_coulomb_matrix-element_property',
+    #                        'element_property-element_fraction',
+    #                        'sine_coulomb_matrix-element_property-element_fraction']
+    #     materials_properties=copy.deepcopy(orginal_materials_properties)
+    #     for material_property in materials_properties:
+
+    #         for feature_vector in feature_vectors:
+    #             material_property[feature_vector]=None
+
+    #         create_nodes(node_names=materials,
+    #                     node_type='AggretateMaterial',
+    #                     node_prefix=f'material',
+    #                     node_properties=materials_properties,
+    #                     filepath=os.path.join(node_dir, f'material.csv'))
+        
+    #     return None
+    
+    # def create_nodes(self, node_dir):
+    #     """
+    #     Initialize the nodes for the graph database.
+
+    #     Args:
+    #         node_dir (str): The directory where the node csv files are stored.
+
+    #     """
+    #     # Material
+    #     if not os.path.exists(os.path.join(node_dir,'material.csv')):
+    #         LOGGER.info("Creating material nodes")
+    #         materials,orginal_materials_properties,material_id_map=self.node_types.get_material_nodes()
+    #         self._create_material_node_variations(node_dir, materials, orginal_materials_properties)
+
+    #     # Element
+    #     if not os.path.exists(os.path.join(node_dir,'element.csv')):
+    #         LOGGER.info("Creating element nodes")
+    #         elements,elements_properties,element_id_map=self.node_types.get_element_nodes()
+    #         create_nodes(node_names=elements,
+    #                     node_type='Element',
+    #                     node_prefix='element',
+    #                     node_properties=elements_properties,
+    #                     filepath=os.path.join(node_dir, 'element.csv'))
+    #     # Crystal System
+    #     if not os.path.exists(os.path.join(node_dir,'crystal_system.csv')):
+    #         LOGGER.info("Creating crystal system nodes")
+    #         crystal_systems,crystal_systems_properties,crystal_system_id_map=self.node_types.get_crystal_system_nodes()
+    #         create_nodes(node_names=crystal_systems, 
+    #                     node_type='CrystalSystem', 
+    #                     node_prefix='crystalSystem', 
+    #                     # node_properties=crystal_systems_properties,
+    #                     filepath=os.path.join(node_dir, 'crystal_system.csv'))
+    #     # Chemenv
+    #     if not os.path.exists(os.path.join(node_dir,'chemenv.csv')):
+    #         LOGGER.info("Creating chemenv nodes")
+    #         chemenv_names,chemenv_names_properties,chemenv_name_id_map=self.node_types.get_chemenv_nodes()
+    #         create_nodes(node_names=chemenv_names, 
+    #                     node_type='Chemenv', 
+    #                     node_prefix='chemenv', 
+    #                     # node_properties=chemenv_names_properties,
+    #                     filepath=os.path.join(node_dir, 'chemenv.csv'))
+    #     # Chemenv Element
+    #     if not os.path.exists(os.path.join(node_dir,'chemenv_element.csv')):
+    #         LOGGER.info("Creating chemenv element nodes")
+    #         chemenv_element_names,chemenv_element_names_properties,chemenv_element_name_id_map=self.node_types.get_chemenv_element_nodes()
+    #         create_nodes(node_names=chemenv_element_names, 
+    #                     node_type='ChemenvElement', 
+    #                     node_prefix='chemenvElement', 
+    #                     filepath=os.path.join(node_dir, 'chemenv_element.csv'))
+    #     # Magnetic State
+    #     if not os.path.exists(os.path.join(node_dir,'magnetic_state.csv')):
+    #         LOGGER.info("Creating magnetic state nodes")
+    #         magnetic_states,magnetic_states_properties,magnetic_state_id_map=self.node_types.get_magnetic_states_nodes()
+    #         create_nodes(node_names=magnetic_states, 
+    #                     node_type='MagneticState', 
+    #                     node_prefix='magState', 
+    #                     filepath=os.path.join(node_dir, 'magnetic_state.csv'))
+    #     # Space Groups
+    #     if not os.path.exists(os.path.join(node_dir,'spg.csv')):
+    #         LOGGER.info("Creating space group nodes")
+    #         space_groups,space_groups_properties,space_groups_id_map=self.node_types.get_space_group_nodes()
+    #         create_nodes(node_names=space_groups, 
+    #                     node_type='SpaceGroup', 
+    #                     node_prefix='spg', 
+    #                     filepath=os.path.join(node_dir, 'spg.csv'))
+    #     # Oxidation States
+    #     if not os.path.exists(os.path.join(node_dir,'oxidation_state.csv')):
+    #         LOGGER.info("Creating oxidation state nodes")
+    #         oxidation_states,oxidation_states_names,oxidation_state_id_map=self.node_types.get_oxidation_states_nodes()
+    #         create_nodes(node_names=oxidation_states, 
+    #                     node_type='OxidationState', 
+    #                     node_prefix='oxiState', 
+    #                     filepath=os.path.join(node_dir, 'oxidation_state.csv'))
+        
+    #     # SPG_WYCKOFFS
+    #     if not os.path.exists(os.path.join(node_dir,'spg_wyckoff.csv')):
+    #         LOGGER.info("Creating space group wyckoff nodes")
+    #         spg_wyckoffs,spg_wyckoff_properties,spg_wyckoff_id_map=self.node_types.get_wyckoff_positions_nodes()
+    #         create_nodes(node_names=spg_wyckoffs,
+    #                     node_type='SPGWyckoff',
+    #                     node_prefix='spgWyckoff',
+    #                     # node_properties=spg_wyckoff_properties,
+    #                     filepath=os.path.join(node_dir, 'spg_wyckoff.csv'))
+    #     return None
 
     def list_sub_graphs(self,graph_dir=None):
         """

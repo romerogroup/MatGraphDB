@@ -2,7 +2,8 @@ from matgraphdb import DBManager
 
 def main():
     manager=DBManager()
-    manager.bond_orders_stats_calculation()
+    print(len(manager.database_files()))
+    manager.chemenv_calc()
     
 if __name__ == '__main__':
     main()

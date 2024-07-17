@@ -1,17 +1,16 @@
-# import os
-# import json
+import os
+import json
 
-# import openai
-# import tiktoken
-# import pandas as pd
-# import numpy as np
-# from matminer.datasets import load_dataset
-# from matminer.featurizers.base import MultipleFeaturizer
-# from matminer.featurizers.structure import XRDPowderPattern
-# from matminer.featurizers.composition import ElementFraction
-# from pymatgen.core import Structure
 
-# from matgraphdb.utils import OPENAI_API_KEY, LOGGER
+import pandas as pd
+import numpy as np
+from matminer.datasets import load_dataset
+from matminer.featurizers.base import MultipleFeaturizer
+from matminer.featurizers.structure import XRDPowderPattern,SineCoulombMatrix,CoulombMatrix
+from matminer.featurizers.composition import ElementFraction, ElementProperty
+
+from pymatgen.core import Structure
+
 
 
 
@@ -136,20 +135,98 @@
  
     
 
-# def generate_composition_embeddings(compositions,material_ids):
-#     """Generate composition embeddings using Matminer and OpenAI.
+def generate_composition_embeddings(compositions,material_ids):
+    """Generate composition embeddings using Matminer and OpenAI.
 
-#     Args:
-#         compositions (list): A list of compositions.
-#         material_ids (list): A list of material IDs.
+    Args:
+        compositions (list): A list of compositions.
+        material_ids (list): A list of material IDs.
 
-#     Returns:
-#         None
-#     """
-#     composition_data = pd.DataFrame({'composition': compositions}, index=material_ids)
-#     composition_featurizer = MultipleFeaturizer([ElementFraction()])
-#     composition_features = composition_featurizer.featurize_dataframe(composition_data,"composition")
-#     composition_features=composition_features.drop(columns=['composition'])
-#     features=composition_features
-#     return features
+    Returns:
+        None
+    """
+    composition_data = pd.DataFrame({'composition': compositions}, index=material_ids)
+    composition_featurizer = MultipleFeaturizer([ElementFraction()])
+    composition_features = composition_featurizer.featurize_dataframe(composition_data,"composition")
+    composition_features=composition_features.drop(columns=['composition'])
+    features=composition_features
+    return features
+
+
+
+def generate_matminer_embeddings(structures,material_ids,features=[]):
+    """Generate structures embeddings using Matminer and OpenAI.
+
+    Args:
+        structures (list): A list of structures.
+        material_ids (list): A list of material IDs.
+
+    Returns:
+        None
+    """
+    allowed_features=['sine_coulomb_matrix','element_fraction','element_property','xrd_pattern']
+    for feature in features:
+        if feature not in allowed_features:
+            raise ValueError(f"Feature {feature} not allowed")
+        
+    compositions=[structure.composition for structure in structures]
+    data = pd.DataFrame({'structure': structures, 'composition':compositions}, index=material_ids)
+
+    composition_featurizers=[]
+    if 'element_fraction' in features:
+        composition_featurizers.append(ElementFraction())
+    if 'element_property' in features:
+        composition_featurizers.append(ElementProperty.from_preset(preset_name="magpie"))
+
+    if len(composition_featurizers)>0:
+        composition_featurizer = MultipleFeaturizer(composition_featurizers)
+        data = composition_featurizer.featurize_dataframe(data,"composition",pbar=False)
+
+    structure_featurizers=[]
+    if 'xrd_pattern' in features:
+        structure_featurizers.append(XRDPowderPattern())
+    if 'sine_coulomb_matrix' in features:
+        columb_matrix=SineCoulombMatrix()
+        columb_matrix.fit(structures)
+        structure_featurizers.append(columb_matrix)
+
+    if len(structure_featurizers)>0:
+        structure_featurizer=MultipleFeaturizer(structure_featurizers)
+        data = structure_featurizer.featurize_dataframe(data,"structure",pbar=False)
+
+    data=data.drop(columns=['structure','composition'])
+    return data
+
+
+if __name__=='__main__':
+    from matgraphdb.data.manager import DBManager
+    from pymatgen.core import Structure
+    import itertools
+
+
+    data=DBManager().load_json('mp-1000.json')
+    features=['sine_coulomb_matrix','element_fraction','element_property','xrd_pattern']
+
+    feature_sets=[
+        ['sine_coulomb_matrix'],
+        ['xrd_pattern'],
+        ['element_fraction'],
+        ['element_property'],
+        ['sine_coulomb_matrix','element_property'],
+        ['sine_coulomb_matrix','element_fraction'],
+        ['element_property','element_fraction'],
+        ['sine_coulomb_matrix','element_property','element_fraction'],
+    ]
+    structures = [Structure.from_dict(data['structure'])]
+    print(structures)
+    materials_ids=['mp-1000']
+    # features=generate_matminer_embeddings(structures,materials_ids,features=['sine_coulomb_matrix','xrd_pattern'])
+    # print(features)
+
+    for feature_set in feature_sets:
+        print(feature_set)
+        features=generate_matminer_embeddings(structures,materials_ids,features=feature_set)
+        print(features)
+
+
 
