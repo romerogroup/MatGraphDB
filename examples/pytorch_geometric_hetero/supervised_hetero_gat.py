@@ -18,12 +18,12 @@ from matgraphdb.mlcore.callbacks import EarlyStopping
 
 
 
-random.seed(42)
-np.random.seed(42)
+# random.seed(42)
+# np.random.seed(42)
 
-torch.manual_seed(42)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(42)  #
+# torch.manual_seed(42)
+# if torch.cuda.is_available():
+#     torch.cuda.manual_seed_all(42)  #
     
 
 # class StackedGATLayers(nn.Module):
@@ -158,7 +158,7 @@ class SupervisedHeteroGATModel(nn.Module):
         for node_type, emb_layer in self.embs.items():
             # Handling nodes based on feature availability
             if node_type in self.data_lins:
-                x_dict[node_type] = self.data_lins[node_type](data[node_type].x) + emb_layer(data[node_type].node_id)
+                x_dict[node_type] = self.data_lins[node_type](data[node_type].x)# + emb_layer(data[node_type].node_id)
             else:
                 x_dict[node_type] = emb_layer(data[node_type].node_id)
 
@@ -228,9 +228,23 @@ NODE_TYPE='material'
 # TARGET_PROPERTY='formation_energy_per_atom'
 # TARGET_PROPERTY='energy_per_atom'
 # TARGET_PROPERTY='band_gap'
-TARGET_PROPERTY='k_vrh'
+
 # TARGET_PROPERTY='density'
 # TARGET_PROPERTY='density_atomic'
+
+TARGET_PROPERTY='k_vrh'
+# TARGET_PROPERTY='k_voigt'
+# TARGET_PROPERTY='k_reuss'
+# TARGET_PROPERTY='g_vrh'
+# TARGET_PROPERTY='g_voigt'
+# TARGET_PROPERTY='g_reuss'
+# TARGET_PROPERTY='sound_velocity_transverse'
+# TARGET_PROPERTY='sound_velocity_longitudinal'
+# TARGET_PROPERTY='thermal_conductivity_clarke'
+# TARGET_PROPERTY='thermal_conductivity_cahill'
+# TARGET_PROPERTY='universal_anisotropy'
+# TARGET_PROPERTY='homogeneous_poisson'
+# TARGET_PROPERTY='debye_temperature'
 
 # TARGET_PROPERTY='crystal_system'
 # TARGET_PROPERTY='point_group'
@@ -238,20 +252,20 @@ TARGET_PROPERTY='k_vrh'
 # TARGET_PROPERTY='elements'
 
 # CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
-# CONNECTION_TYPE='GEOMETRIC_CONNECTS'
-CONNECTION_TYPE='ELECTRIC_CONNECTS'
+CONNECTION_TYPE='GEOMETRIC_CONNECTS'
+# CONNECTION_TYPE='ELECTRIC_CONNECTS'
 
 # Training params
 TRAIN_PROPORTION = 0.8
 TEST_PROPORTION = 0.1
 VAL_PROPORTION = 0.1
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0003
 N_EPCOHS = 3000
 
 # model params
 HEADS = 4
 NUM_LAYERS = 2
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 EVAL_INTERVAL = 10
 
 USE_EARLY_STOPPING=True
@@ -265,7 +279,8 @@ GAMMA=0.1
 
 node_filtering={
     'material':{
-        'k_vrh':(0,300),
+        'k_vrh':(0,200),
+        # 'state':,
         },
     }
 
@@ -282,29 +297,34 @@ node_properties={
     'scale': {
             # 'robust_scale': True,
             # 'standardize': True,
-            'normalize': True
+            # 'normalize': True
         }
     },
 'material':
         {   
     'properties':[
-        'composition',
+        # 'composition',
         # 'space_group',
-        'nelements',
-        'nsites',
-        'crystal_system',
-        'band_gap',
-        'formation_energy_per_atom',
-        'energy_per_atom',
-        'is_stable',
-        'volume',
-        'density',
-        'density_atomic',
+        # 'nelements',
+        # 'nsites',
+        # 'crystal_system',
+        # 'band_gap',
+        # 'formation_energy_per_atom',
+        # 'energy_per_atom',
+        # 'is_stable',
+        # 'volume',
+        # 'density',
+        # 'density_atomic',
+
+        # 'sine_coulomb_matrix',
+        # 'element_fraction',
+        'element_property',
+        # 'xrd_pattern',
         ],
     'scale': {
             # 'robust_scale': True,
             # 'standardize': True,
-            'normalize': True
+            # 'normalize': True
         }
         }
     }
@@ -316,7 +336,7 @@ edge_properties={
             'weight'
             ],
         'scale': {
-            # 'robust_scale': True,
+            'robust_scale': True,
             # 'standardize': True,
             # 'normalize': True
         }

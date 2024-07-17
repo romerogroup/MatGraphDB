@@ -1,295 +1,406 @@
+# Creating a GraphSAGE model
 
-
+import random
+import numpy as np
 import torch
-from torch_geometric.data import HeteroData
-from torch_geometric.nn import SAGEConv, to_hetero
+import torch.nn as nn
 import torch.nn.functional as F
-import torch_geometric.transforms as T
-
-import pandas as pd
-import tqdm
-from sklearn.metrics import roc_auc_score
-
-from matgraphdb.mlcore.datasets import load_node_csv, load_edge_csv
-from matgraphdb.mlcore.encoders import CategoricalEncoder,IdentityEncoder
+from torch_geometric.loader import NeighborLoader
+from torch_geometric.nn import  SAGEConv, GCNConv, GraphConv,GAT,GATConv, GATv2Conv, to_hetero
 
 
+from matgraphdb.mlcore.models import MultiLayerPerceptron, MajorityClassClassifier, WeightedRandomClassifier
+from matgraphdb.mlcore.datasets import MaterialGraphDataset
+from matgraphdb.mlcore.metrics import ClassificationMetrics,RegressionMetrics
 
 
-
-
-class GNN(torch.nn.Module):
-    def __init__(self, hidden_channels):
-        super().__init__()
-        self.conv1 = SAGEConv(hidden_channels, hidden_channels)
-        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
-    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
-        x = F.relu(self.conv1(x, edge_index))
-        x = self.conv2(x, edge_index)
-        return x
-# Our final classifier applies the dot-product between source and destination
-# node embeddings to derive edge-level predictions:
-class Classifier(torch.nn.Module):
-    def forward(self, x_user: torch.Tensor, x_movie: torch.Tensor, edge_label_index: torch.Tensor) -> torch.Tensor:
-        # Convert node embeddings to edge-level representations:
-        edge_feat_user = x_user[edge_label_index[0]]
-        edge_feat_movie = x_movie[edge_label_index[1]]
-        # Apply dot-product to get a prediction per supervision edge:
-        return (edge_feat_user * edge_feat_movie).sum(dim=-1)
-
-class Model(torch.nn.Module):
-    def __init__(self, hidden_channels):
-        super().__init__()
-        # Since the dataset does not come with rich features, we also learn two
-        # embedding matrices for users and movies:
-        self.movie_lin = torch.nn.Linear(20, hidden_channels)
-        self.user_emb = torch.nn.Embedding(data["user"].num_nodes, hidden_channels)
-        self.movie_emb = torch.nn.Embedding(data["movie"].num_nodes, hidden_channels)
-        # Instantiate homogeneous GNN:
-        self.gnn = GNN(hidden_channels)
-        # Convert GNN model into a heterogeneous variant:
-        self.gnn = to_hetero(self.gnn, metadata=data.metadata())
-        self.classifier = Classifier()
-    def forward(self, data: HeteroData) -> torch.Tensor:
-        x_dict = {
-          "user": self.user_emb(data["user"].node_id),
-          "movie": self.movie_lin(data["movie"].x) + self.movie_emb(data["movie"].node_id),
-        } 
-        # `x_dict` holds feature matrices of all node types
-        # `edge_index_dict` holds all edge indices of all edge types
-        x_dict = self.gnn(x_dict, data.edge_index_dict)
-        pred = self.classifier(
-            x_dict["user"],
-            x_dict["movie"],
-            data["user", "rates", "movie"].edge_label_index,
-        )
-        return pred
+from matgraphdb.mlcore.callbacks import EarlyStopping
 
 
 
-if __name__ == "__main__":
- 
-    # movie_path = 'data/movies/movies.csv'
-    # movie_x, movie_mapping = load_node_csv(
-    #     movie_path, index_col='movieId', encoders={
-    #         'genres': CategoricalEncoder()
-    #     })
+random.seed(42)
+np.random.seed(42)
 
-
-
-    # rating_path = 'data/movies/ratings.csv'
-    # _, user_mapping = load_node_csv(rating_path, index_col='userId')
-
-    # data = HeteroData()
-
-    # data["user"].node_id = torch.arange(len(user_mapping))
-    # data["movie"].node_id = torch.arange(len(movie_mapping))
-    # data['user'].num_nodes = len(user_mapping)  # Users do not have any features.
-    # data['movie'].x = movie_x
-
-    # print(data)
-
-    # edge_index, edge_label = load_edge_csv(
-    #     rating_path,
-    #     src_index_col='userId',
-    #     src_mapping=user_mapping,
-    #     dst_index_col='movieId',
-    #     dst_mapping=movie_mapping,
-    #     encoders={'rating': IdentityEncoder(dtype=torch.long)},
-    # )
-
-    # data['user', 'rates', 'movie'].edge_index = edge_index
-    # data['user', 'rates', 'movie'].edge_label = edge_label
-
-    # # We can leverage the `T.ToUndirected()` transform for this from PyG:
-    # data = T.ToUndirected()(data)
-
-    # print(data)
-
-    # Load the entire ratings data frame into memory:
-
-    # Load the entire movie data frame into memory:
-    movie_path = 'data/movies/movies.csv'
-    movies_df = pd.read_csv(movie_path, index_col='movieId')
-
-    # Split genres and convert into indicator variables:
-    genres = movies_df['genres'].str.get_dummies('|')
-    print(genres[["Action", "Adventure", "Drama", "Horror"]].head())
-    # Use genres as movie input features:
-    movie_feat = torch.from_numpy(genres.values).to(torch.float)
-    assert movie_feat.size() == (9742, 20)  # 20 genres in total.
-
-
-    ratings_path = 'data/movies/ratings.csv'
-    
-    ratings_df = pd.read_csv(ratings_path)
-
-    # Create a mapping from unique user indices to range [0, num_user_nodes):
-    unique_user_id = ratings_df['userId'].unique()
-    unique_user_id = pd.DataFrame(data={
-        'userId': unique_user_id,
-        'mappedID': pd.RangeIndex(len(unique_user_id)),
-    })
-    print("Mapping of user IDs to consecutive values:")
-    print("==========================================")
-    print(unique_user_id.head())
-    print()
-    # Create a mapping from unique movie indices to range [0, num_movie_nodes):
-    unique_movie_id = ratings_df['movieId'].unique()
-    unique_movie_id = pd.DataFrame(data={
-        'movieId': unique_movie_id,
-        'mappedID': pd.RangeIndex(len(unique_movie_id)),
-    })
-
-    print("Mapping of movie IDs to consecutive values:")
-    print("===========================================")
-    print(unique_movie_id.head())
-    # Perform merge to obtain the edges from users and movies:
-    ratings_user_id = pd.merge(ratings_df['userId'], unique_user_id,
-                                left_on='userId', right_on='userId', how='left')
-    ratings_user_id = torch.from_numpy(ratings_user_id['mappedID'].values)
-    ratings_movie_id = pd.merge(ratings_df['movieId'], unique_movie_id,
-                                left_on='movieId', right_on='movieId', how='left')
-    ratings_movie_id = torch.from_numpy(ratings_movie_id['mappedID'].values)
-    # With this, we are ready to construct our `edge_index` in COO format
-    # following PyG semantics:
-    edge_index_user_to_movie = torch.stack([ratings_user_id, ratings_movie_id], dim=0)
-    assert edge_index_user_to_movie.size() == (2, 100836)
-    print()
-    print("Final edge indices pointing from users to movies:")
-    print("=================================================")
-    print(edge_index_user_to_movie)
-
-
-    data = HeteroData()
-    # Save node indices:
-    data["user"].node_id = torch.arange(len(unique_user_id))
-    data["movie"].node_id = torch.arange(len(movies_df))
-    # Add the node features and edge indices:
-    data["movie"].x = movie_feat
-    data["user", "rates", "movie"].edge_index = edge_index_user_to_movie
-    # We also need to make sure to add the reverse edges from movies to users
-    # in order to let a GNN be able to pass messages in both directions.
-    # We can leverage the `T.ToUndirected()` transform for this from PyG:
-    data = T.ToUndirected()(data)
-
-
-
-    """
-    
-    Defining Edge-level Training Splits
-    Since our data is now ready-to-be-used, we can split the ratings of users into 
-    training, validation, and test splits. 
-    This is needed in order to ensure that we leak no information 
-    about edges used during evaluation into the training phase. 
-    For this, we make use of the transforms.RandomLinkSplit transformation from PyG. 
-    This transforms randomly divides the edges in the ("user", "rates", "movie") into training, validation and test edges. 
-    The disjoint_train_ratio parameter further separates edges 
-    in the training split into edges used for message passing (edge_index) 
-    and edges used for supervision (edge_label_index). 
-    Note that we also need to specify the reverse edge type ("movie", "rev_rates", "user"). 
-    This allows the RandomLinkSplit transform to drop reverse edges accordingly to not leak any information into the training phase.
-    
-    """
-    # For this, we first split the set of edges into
-    # training (80%), validation (10%), and testing edges (10%).
-    # Across the training edges, we use 70% of edges for message passing,
-    # and 30% of edges for supervision.
-    # We further want to generate fixed negative edges for evaluation with a ratio of 2:1.
-    # Negative edges during training will be generated on-the-fly.
-    # We can leverage the `RandomLinkSplit()` transform for this from PyG:
-    transform = T.RandomLinkSplit(
-        num_val=0.1,
-        num_test=0.1,
-        disjoint_train_ratio=0.3,
-        neg_sampling_ratio=2.0,
-        add_negative_train_samples=False,
-        edge_types=("user", "rates", "movie"),
-        rev_edge_types=("movie", "rev_rates", "user"), 
-    )
-    train_data, val_data, test_data = transform(data)
-
-
-
-    """
-    Defining Mini-batch Loaders
-    In this step, we create a mini-batch loader that will generate subgraphs that can be used as input into our GNN. 
-    While this step is not strictly necessary for small-scale graphs, 
-    it is absolutely necessary to apply GNNs on larger graphs that do not fit onto GPU memory otherwise. 
-    Here, we make use of the loader.LinkNeighborLoader which samples multiple hops from
-    both ends of a link and creates a subgraph from it. 
-    Here, edge_label_index serves as the "seed links" to start sampling from.
-    
-    """
-    # In the first hop, we sample at most 20 neighbors.
-    # In the second hop, we sample at most 10 neighbors.
-    # In addition, during training, we want to sample negative edges on-the-fly with
-    # a ratio of 2:1.
-    # We can make use of the `loader.LinkNeighborLoader` from PyG:
-    from torch_geometric.loader import LinkNeighborLoader
-
-    # Define seed edges:
-    edge_label_index = train_data["user", "rates", "movie"].edge_label_index
-    edge_label = train_data["user", "rates", "movie"].edge_label
-    train_loader = LinkNeighborLoader(
-        data=train_data,
-        num_neighbors=[20, 10],
-        neg_sampling_ratio=2.0,
-        edge_label_index=(("user", "rates", "movie"), edge_label_index),
-        edge_label=edge_label,
-        batch_size=128,
-        shuffle=True,
-    )
-
-
+torch.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)  #
 
     
-
-    model = Model(hidden_channels=64)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Device: '{device}'")
-    model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    for epoch in range(1, 6):
-        total_loss = total_examples = 0
-        for sampled_data in tqdm.tqdm(train_loader):
-            optimizer.zero_grad()
-            sampled_data.to(device)
-            pred = model(sampled_data)
-            ground_truth = sampled_data["user", "rates", "movie"].edge_label
-            loss = F.binary_cross_entropy_with_logits(pred, ground_truth)
-            loss.backward()
-            optimizer.step()
-            total_loss += float(loss) * pred.numel()
-            total_examples += pred.numel()
-        print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
-
-
-
-    # Define the validation seed edges:
-    edge_label_index = val_data["user", "rates", "movie"].edge_label_index
-    edge_label = val_data["user", "rates", "movie"].edge_label
-    val_loader = LinkNeighborLoader(
-        data=val_data,
-        num_neighbors=[20, 10],
-        edge_label_index=(("user", "rates", "movie"), edge_label_index),
-        edge_label=edge_label,
-        batch_size=3 * 128,
-        shuffle=False,
-    )
-    sampled_data = next(iter(val_loader))
-
-
     
-    preds = []
-    ground_truths = []
-    for sampled_data in tqdm.tqdm(val_loader):
-        with torch.no_grad():
-            sampled_data.to(device)
-            preds.append(model(sampled_data))
-            ground_truths.append(sampled_data["user", "rates", "movie"].edge_label)
-    pred = torch.cat(preds, dim=0).cpu().numpy()
-    ground_truth = torch.cat(ground_truths, dim=0).cpu().numpy()
-    auc = roc_auc_score(ground_truth, pred)
-    print()
-    print(f"Validation AUC: {auc:.4f}")
+def get_node_dataloaders(data,node_type,shuffle=False):
+    data[node_type].node_id
+    input_nodes=('material',data[node_type].node_id)
+    loader = NeighborLoader(
+                graph_dataset.data,
+                # Sample 15 neighbors for each node and each edge type for 2 iterations:
+                num_neighbors=[15] * 2,
+                replace=False,
+                subgraph_type="bidirectional",
+                disjoint=False,
+                weight_attr = None,
+                transform=None,
+                transform_sampler_output = None,
+                
+                input_nodes=input_nodes,
+                shuffle=shuffle,
+                batch_size=128,
+            )
+    return loader
+
+
+def split_data_on_node_type(data,node_type,train_proportion=0.8,test_proportion=0.1, val_proportion=0.1):
+    assert train_proportion + test_proportion + val_proportion == 1.0
+    for node_type in data.node_types:
+        train_mask=torch.zeros(data[node_type].num_nodes,dtype=torch.bool)
+        test_mask=torch.zeros(data[node_type].num_nodes,dtype=torch.bool)
+        val_mask=torch.zeros(data[node_type].num_nodes,dtype=torch.bool)
+
+        num_nodes_for_type=data[node_type].num_nodes
+        if node_type==NODE_TYPE:
+            # Determine indices for training, testing, and validation
+            indices = torch.randperm(num_nodes_for_type)
+
+            num_train = int(train_proportion * num_nodes_for_type)
+            num_val = int(test_proportion * num_nodes_for_type)
+            num_test = num_nodes_for_type - num_train - num_val
+
+            train_mask[indices[:num_train]] = True
+            val_mask[indices[num_train:num_train + num_val]] = True
+            test_mask[indices[num_train + num_val:]] = True
+        else:
+            train_mask[:num_nodes_for_type]=True
+
+        data[node_type].train_mask=train_mask
+        data[node_type].test_mask=test_mask
+        data[node_type].val_mask=val_mask
+    return data
+
+
+
+
+
+NODE_TYPE='material'
+# 
+# TARGET_PROPERTY='energy_above_hull'
+# TARGET_PROPERTY='formation_energy_per_atom'
+# TARGET_PROPERTY='energy_per_atom'
+# TARGET_PROPERTY='band_gap'
+
+# TARGET_PROPERTY='density'
+# TARGET_PROPERTY='density_atomic'
+
+TARGET_PROPERTY='k_vrh'
+# TARGET_PROPERTY='k_voigt'
+# TARGET_PROPERTY='k_reuss'
+# TARGET_PROPERTY='g_vrh'
+# TARGET_PROPERTY='g_voigt'
+# TARGET_PROPERTY='g_reuss'
+# TARGET_PROPERTY='sound_velocity_transverse'
+# TARGET_PROPERTY='sound_velocity_longitudinal'
+# TARGET_PROPERTY='thermal_conductivity_clarke'
+# TARGET_PROPERTY='thermal_conductivity_cahill'
+# TARGET_PROPERTY='universal_anisotropy'
+# TARGET_PROPERTY='homogeneous_poisson'
+# TARGET_PROPERTY='debye_temperature'
+
+# TARGET_PROPERTY='crystal_system'
+# TARGET_PROPERTY='point_group'
+# TARGET_PROPERTY='nelements'
+# TARGET_PROPERTY='elements'
+
+# CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
+# CONNECTION_TYPE='GEOMETRIC_CONNECTS'
+CONNECTION_TYPE='ELECTRIC_CONNECTS'
+
+# Training params
+TRAIN_PROPORTION = 0.8
+TEST_PROPORTION = 0.1
+VAL_PROPORTION = 0.1
+LEARNING_RATE = 0.0003
+N_EPCOHS = 3000
+
+# model params
+HEADS = 8
+NUM_LAYERS = 3
+HIDDEN_CHANNELS = 64
+EVAL_INTERVAL = 10
+
+USE_EARLY_STOPPING=True
+EARLY_STOPPING_PATIENCE = 100
+
+
+USE_LEARNING_RATE_SCHEDULER=False
+STEP_SIZE=500
+GAMMA=0.1
+
+
+node_filtering={
+    'material':{
+        'k_vrh':(0,300),
+        # 'state':,
+        },
+    }
+
+
+node_properties={
+'element':
+    {
+    'properties' :[
+            'atomic_number',
+            'group',
+            'row',
+            'atomic_mass'
+            ],
+    'scale': {
+            # 'robust_scale': True,
+            # 'standardize': True,
+            'normalize': True
+        }
+    },
+'material':
+        {   
+    'properties':[
+        # 'composition',
+        # 'space_group',
+        # 'nelements',
+        # 'nsites',
+        # 'crystal_system',
+        # 'band_gap',
+        # 'formation_energy_per_atom',
+        # 'energy_per_atom',
+        # 'is_stable',
+        # 'volume',
+        # 'density',
+        # 'density_atomic',
+
+        # 'sine_coulomb_matrix',
+        # 'element_fraction',
+        'element_property',
+        # 'xrd_pattern',
+        ],
+    'scale': {
+            # 'robust_scale': True,
+            # 'standardize': True,
+            'normalize': True
+        }
+        }
+    }
+
+edge_properties={
+    'weight':
+        {
+        'properties':[
+            'weight'
+            ],
+        'scale': {
+            # 'robust_scale': True,
+            # 'standardize': True,
+            'normalize': True
+        }
+    }
+    }
+
+
+if CONNECTION_TYPE=='GEOMETRIC_CONNECTS':
+    graph_dataset=MaterialGraphDataset.gc_element_chemenv(
+                                            node_properties=node_properties,
+                                            node_filtering=node_filtering,
+                                            edge_properties=edge_properties,
+                                            node_target_property=TARGET_PROPERTY,
+                                            edge_target_property=None,
+
+                                            )
+elif CONNECTION_TYPE=='ELECTRIC_CONNECTS':
+    graph_dataset=MaterialGraphDataset.ec_element_chemenv(
+                                            node_properties=node_properties,
+                                            node_filtering=node_filtering,
+                                            edge_properties=edge_properties,
+                                            node_target_property=TARGET_PROPERTY,
+                                            edge_target_property=None,
+                                            )
+elif CONNECTION_TYPE=='GEOMETRIC_ELECTRIC_CONNECTS':
+    graph_dataset=MaterialGraphDataset.gec_element_chemenv(
+                                            node_properties=node_properties,
+                                            node_filtering=node_filtering,
+                                            edge_properties=edge_properties,
+                                            node_target_property=TARGET_PROPERTY,
+                                            edge_target_property=None,
+                                            )
+
+data=graph_dataset.data
+OUT_CHANNELS=data[NODE_TYPE].out_channels
+
+
+device =  "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
+data=split_data_on_node_type(data,
+                            node_type=NODE_TYPE,
+                            train_proportion=TRAIN_PROPORTION,
+                            test_proportion=TEST_PROPORTION,
+                            val_proportion=VAL_PROPORTION)
+
+
+
+
+
+model = SupervisedHeteroGATModel(data,
+                            embd_dim=HIDDEN_CHANNELS, 
+                            out_channels=OUT_CHANNELS,
+                            prediction_node_type=NODE_TYPE,
+                            num_layers=NUM_LAYERS,
+                            heads=HEADS,
+                            device=device)
+
+print(model)
+model.to(device)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+if USE_LEARNING_RATE_SCHEDULER:
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+
+es = None
+if USE_EARLY_STOPPING:
+    es = EarlyStopping(patience = EARLY_STOPPING_PATIENCE)
+# model(data)
+
+if OUT_CHANNELS==1:
+    print("Using MSE Loss")
+    loss_fn=nn.MSELoss()
+else:
+    print("Using Cross Entropy Loss")
+    loss_fn=nn.CrossEntropyLoss()
+
+
+
+def train(model, optimizer, data, loss_fn):
+    model.train()
+    total_loss = 0
+    total_examples = 0
+
+    data = data.to(device)
+    optimizer.zero_grad()
+
+    out = model(data)
+    mask=data[NODE_TYPE].train_mask
+    pred=out[mask]
+    ground_truth=data[NODE_TYPE].y[mask]
+
+    loss = loss_fn(pred, ground_truth)
+
+    loss.backward()
+    optimizer.step()
+    total_loss += float(loss)
+    total_examples += pred.numel()
+
+    return total_loss 
+
+
+def evaluate(model, data):
+    model.eval()
+    with torch.no_grad():
+        
+        losses=[]
+        metrics={"val":{},"test":{}}
+        data = data.to(device)
+        optimizer.zero_grad()
+
+        logits = model(data)
+        out_channel=logits.shape[1]
+        for key in metrics.keys():
+            if out_channel==1:
+                metrics[key]['mape']=[]
+                metrics[key]['mae']=[]
+            else:
+                metrics[key]['accuracy']=[]
+                metrics[key]['precision']=[]
+                metrics[key]['recall']=[]
+                metrics[key]['f1']=[]
+
+        for split in ['val_mask', 'test_mask']:
+            mask=data[NODE_TYPE][split]
+            logits=logits.to(device)
+            
+            masked_logits=logits[mask]
+            ground_truth=data[NODE_TYPE].y[mask]
+
+            loss = loss_fn(masked_logits, ground_truth)
+
+            out_channel=logits.shape[1]
+            split_name=split.split('_')[0]
+            if out_channel==1:
+                mape=RegressionMetrics.mean_absolute_percentage_error(y_pred=masked_logits,y_true=ground_truth)
+                mae=RegressionMetrics.mean_absolute_error(y_pred=masked_logits,y_true=ground_truth)
+                metrics[split_name]['mape'].append(mape.item())
+                metrics[split_name]['mae'].append(mae.item())
+            else:
+                probabilities = torch.sigmoid(masked_logits)
+                # Converting masked_logits from (batch_size, out_channels) to (batch_size,)
+                pred=probabilities.argmax(1)
+
+                
+                # accuracy=ClassificationMetrics.accuracy(y_pred=pred,y_true=ground_truth)
+                # metrics[split_name]['accuracy'].append(accuracy.item()*100)
+
+                cm=ClassificationMetrics.confusion_matrix(y_pred=pred,y_true=ground_truth,num_classes=out_channel)
+
+                weights=cm.sum(dim=1)/cm.sum(dim=1).sum()
+
+                accuracy=ClassificationMetrics.multi_class_accuracy(confusion_matrix=cm)
+                avg_accuracy=(weights * accuracy).sum()
+                metrics[split_name]['accuracy'].append(avg_accuracy*100)
+
+                precision=ClassificationMetrics.multiclass_precision(confusion_matrix=cm)
+                avg_precision= (weights * precision).sum()
+                metrics[split_name]['precision'].append(avg_precision*100)
+
+                recall=ClassificationMetrics.multiclass_recall(confusion_matrix=cm)
+                avg_recall=(weights * recall).sum()
+                metrics[split_name]['recall'].append(avg_recall*100)
+
+                f1=ClassificationMetrics.multiclass_f1_score(confusion_matrix=cm)
+                avg_f1=(weights * f1).sum()
+                metrics[split_name]['f1'].append(avg_f1*100)
+
+            losses.append(loss.item())
+
+    return losses,metrics
+
+
+
+
+for epoch in range(N_EPCOHS):
+    train_loss = train(model, optimizer, data, loss_fn=loss_fn)
+    if epoch%EVAL_INTERVAL==0:
+        losses,metrics = evaluate(model, data)
+
+        # print(f"Epoch: {epoch:03d},Train Loss: {train_loss:.4f}, Val Loss: {losses[0]:.4f}, Test Loss: {losses[1]:.4f}")
+
+
+    if epoch%EVAL_INTERVAL==0:
+        losses,metrics = evaluate(model, data)
+
+        # print(f"Epoch: {epoch:03d},Train Loss: {train_loss:.4f}, Val Loss: {losses[0]:.4f}, Test Loss: {losses[1]:.4f}")
+
+        metrics_str=""
+        metrics_str+=f"Epoch: {epoch:03d},Train Loss: {train_loss:.4f}, Test Loss: {losses[1]:.4f}"
+        for split,metrics_dict in metrics.items():
+            metrics_str+=" | "
+            for i,(key,value) in enumerate(metrics_dict.items()):
+                if i==0:
+                    metrics_str+=f" {split}-{key}: {value[0]:.2f}"
+                else:
+                    metrics_str+=f", {split}-{key}: {value[0]:.2f}"
+        print(metrics_str)
+
+    if es is not None:
+        if es(model=model, val_loss=losses[1]):
+            best_loss=losses[1]
+
+            print("Early stopping")
+            print('_______________________')
+            print(f'Stopping : {epoch - es.counter}')
+            print(f'Best loss: {es.best_loss}')
+            break
+    
+    if USE_LEARNING_RATE_SCHEDULER:
+        scheduler.step()

@@ -191,12 +191,13 @@ node_properties={
 'material':
         {   
     'properties':[
-        'nelements',
-        'nsites',
-        # 'crystal_system',
-        'volume',
-        'density',
-        'density_atomic',
+        # 'nelements',
+        # 'nsites',
+        # # 'crystal_system',
+        # 'volume',
+        # 'density',
+        # 'density_atomic',
+        'element_property',
         ],
     'scale': {
             # 'robust_scale': True,

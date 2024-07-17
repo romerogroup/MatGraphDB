@@ -21,25 +21,21 @@ def chunk_list(input_list, chunk_size):
     return chunks
 
 
-def download_materials(save_dir, fileds_to_include):
+def download_materials(save_dir,**kwargs):
     """
     Downloads materials from the Materials Project database.
     https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
 
     Args:
         save_dir (str): The directory where the downloaded materials will be saved.
-        fileds_to_include (list): A list of fields to include in the downloaded materials.
+        kwargs (dict): A dictionary of keyword arguments to pass to the MPRester.summary._search method.
 
     Returns:
         None
     """
 
     with MPRester(MP_API_KEY) as mpr:
-        summary_docs = mpr.summary._search( 
-                                        nsites_max=40,
-                                        energy_above_hull_min=0,
-                                        energy_above_hull_max=0.2,
-                                        fields=fileds_to_include)
+        summary_docs = mpr.materials.summary._search(all_fields=True, **kwargs)
 
     print('-'*200)
     print("Generating directory json files database")
@@ -49,251 +45,164 @@ def download_materials(save_dir, fileds_to_include):
     os.makedirs(save_dir,exist_ok=True)
 
     for doc in summary_docs:
+        # summary_doc_dict = doc.model_dump(mode='json')
         summary_doc_dict = doc.dict()
         mp_id=summary_doc_dict['material_id']
 
         json_file=os.path.join(save_dir,f'{mp_id}.json')
 
-        json_database_entry={}
-        for field_name in fileds_to_include:
-            if field_name in summary_doc_dict.keys():
-                json_database_entry.update({field_name:summary_doc_dict[field_name]})
+        with open(json_file, 'w') as f:
+            json.dump(summary_doc_dict, f, indent=4)
+
+    print('-'*200)
+
+def download_materials_data(save_dir,  endpoint, material_ids):
+    chunks = chunk_list(material_ids, chunk_size=10000)
+
+    final_save_dir=os.path.join(save_dir,endpoint)
+    os.makedirs(final_save_dir,exist_ok=True)
+
+    for chunk in chunks:
+        with MPRester(MP_API_KEY) as mpr:
+            docs = eval(f"mpr.materials.{endpoint}.search(material_ids=chunk, all_fields=True)")
+
+        print('-'*200)
+        print("Generating directory json files database")
+        print('-'*200)
+
+
+        for doc in docs:
+            # doc_dict = doc.model_dump(mode='json')
+            doc_dict = doc.dict()
+            mp_id=doc_dict['material_id']
+
+            json_file=os.path.join(final_save_dir,f'{mp_id}.json')
+
+
+            with open(json_file, 'w') as f:
+                json.dump(doc_dict, f, indent=4)
+
+        print('-'*200)
+
+def download_molecules(save_dir,**kwargs):
+    """
+    Downloads materials from the Materials Project database.
+    https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
+
+    Args:
+        save_dir (str): The directory where the downloaded materials will be saved.
+        kwargs (dict): A dictionary of keyword arguments to pass to the MPRester.summary._search method.
+
+    Returns:
+        None
+    """
+
+    with MPRester(MP_API_KEY) as mpr:
+        summary_docs = mpr.molecules.summary.search(fields=['molecule_id'])
+
+    molecules_ids = [doc.molecule_id for doc in summary_docs]
+    with MPRester(MP_API_KEY) as mpr:
+        summary_docs = mpr.molecules.summary.search(molecules_ids=molecules_ids, all_fields=True, **kwargs)
+    
+    print('-'*200)
+    print("Generating directory json files database")
+    print('-'*200)
+
+
+    os.makedirs(save_dir,exist_ok=True)
+
+    for doc in summary_docs:
+        summary_doc_dict = doc.model_dump(mode='json')
+        mp_id=summary_doc_dict['material_id']
+
+        json_file=os.path.join(save_dir,f'{mp_id}.json')
 
         with open(json_file, 'w') as f:
-            json.dump(json_database_entry, f, indent=4)
+            json.dump(summary_doc_dict, f, indent=4)
 
     print('-'*200)
 
 
-def download_bonds_endpoint(save_dir, fileds_to_include, material_ids):
-    """
-    Downloads materials from the Materials Project database.
-    https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
-    https://api.materialsproject.org/redoc#section/Accessing-Data
+def download_molecules_data(save_dir, endpoint, molecules_ids):
+    chunks = chunk_list(molecules_ids, chunk_size=10000)
 
-    Args:
-        save_dir (str): The directory where the downloaded materials will be saved.
-        material_ids (list): A list of fields to include in the downloaded materials.
+    final_save_dir=os.path.join(save_dir,endpoint)
 
-    Returns:
-        None
-    """
-    chunks = chunk_list(material_ids, chunk_size=10000)
+    os.makedirs(final_save_dir,exist_ok=True)
     for chunk in chunks:
         with MPRester(MP_API_KEY) as mpr:
-            docs = mpr.materials.bonds.search(material_ids=chunk, all_fields=True)
-
+            docs = eval(f"mpr.molecules.{endpoint}.search(molecules_ids=chunk, all_fields=True)")
         print('-'*200)
         print("Generating directory json files database")
         print('-'*200)
 
-
-        os.makedirs(save_dir,exist_ok=True)
-
         for doc in docs:
-            doc_dict = doc.dict()
-            mp_id=doc_dict['material_id']
+            doc_dict = doc.model_dump(mode='json')
+            mp_id=doc_dict['molecules_ids']
 
-            json_file=os.path.join(save_dir,f'{mp_id}.json')
-
-            json_database_entry={}
-            for field_name in fileds_to_include:
-                if field_name in doc_dict.keys():
-                    json_database_entry.update({field_name:doc_dict[field_name]})
+            json_file=os.path.join(final_save_dir,f'{mp_id}.json')
 
             with open(json_file, 'w') as f:
-                json.dump(json_database_entry, f, indent=4)
+                json.dump(doc_dict, f, indent=4)
 
         print('-'*200)
-
-
-
-def download_elasticity_endpoint(save_dir, fileds_to_include, material_ids):
-    """
-    Downloads materials from the Materials Project database.
-    https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
-    https://api.materialsproject.org/redoc#section/Accessing-Data
-
-    Args:
-        save_dir (str): The directory where the downloaded materials will be saved.
-        material_ids (list): A list of fields to include in the downloaded materials.
-
-    Returns:
-        None
-    """
-    chunks = chunk_list(material_ids, chunk_size=10000)
-    for chunk in chunks:
-        with MPRester(MP_API_KEY) as mpr:
-            # docs = mpr.materials.elasticity.search(material_ids=chunk, all_fields=True)
-            docs = mpr.materials.elasticity.search(material_ids=chunk, fields=['elastic_tensor'])
-
-        print('-'*200)
-        print("Generating directory json files database")
-        print('-'*200)
-
-
-        os.makedirs(save_dir,exist_ok=True)
-
-        for doc in docs:
-            doc_dict = doc.dict()
-            mp_id=doc_dict['material_id']
-
-            json_file=os.path.join(save_dir,f'{mp_id}.json')
-
-            json_database_entry={}
-            for field_name in fileds_to_include:
-                if field_name in doc_dict.keys():
-                    json_database_entry.update({field_name:doc_dict[field_name]})
-
-            with open(json_file, 'w') as f:
-                json.dump(json_database_entry, f, indent=4)
-
-        print('-'*200)
-
-
-def download_piezoelectric_endpoint(save_dir, fileds_to_include, material_ids):
-    """
-    Downloads materials from the Materials Project database.
-    https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
-    https://api.materialsproject.org/redoc#section/Accessing-Data
-
-    Args:
-        save_dir (str): The directory where the downloaded materials will be saved.
-        material_ids (list): A list of fields to include in the downloaded materials.
-
-    Returns:
-        None
-    """
-    chunks = chunk_list(material_ids, chunk_size=10000)
-    for chunk in chunks:
-        with MPRester(MP_API_KEY) as mpr:
-            docs = mpr.materials.piezoelectric.search(material_ids=chunk,all_fields=True)
-            # docs = mpr.materials.piezoelectric.search(material_ids=chunk,fields=['ionic','e_ij_max'])
-
-
-        print('-'*200)
-        print("Generating directory json files database")
-        print('-'*200)
-
-
-        os.makedirs(save_dir,exist_ok=True)
-
-        for doc in docs:
-            doc_dict = doc.dict()
-            mp_id=doc_dict['material_id']
-
-            json_file=os.path.join(save_dir,f'{mp_id}.json')
-
-            json_database_entry={}
-            for field_name in fileds_to_include:
-                if field_name in doc_dict.keys():
-                    json_database_entry.update({field_name:doc_dict[field_name]})
-
-            with open(json_file, 'w') as f:
-                json.dump(json_database_entry, f, indent=4)
-
-        print('-'*200)
-
-
 
 if __name__=='__main__':
 
 
-
-    fileds_to_include = [
-        "nsites",
-        "elements",
-        "nelements",
-        "composition",
-        "composition_reduced",
-        "formula_pretty",
-        "formula_anonymous",
-        "chemsys",
-        "volume",
-        "density",
-        "density_atomic",
-        "symmetry",
-        "property_name",
-        "material_id",
-        "last_updated",
-        "origins",
-        "warnings",
-        "structure",
-        "uncorrected_energy_per_atom",
-        "energy_per_atom",
-        "formation_energy_per_atom",
-        "energy_above_hull",
-        "is_stable",
-        "equilibrium_reaction_energy_per_atom",
-        "decomposes_to",
-        "xas",
-        "grain_boundaries",
-        "band_gap",
-        "cbm",
-        "vbm",
-        "efermi",
-        "is_gap_direct",
-        "is_metal",
-        "es_source_calc_id",
-        "bandstructure",
-        "dos",
-        "dos_energy_up",
-        "dos_energy_down",
-        "is_magnetic",
-        "ordering",
-        "total_magnetization",
-        "total_magnetization_normalized_vol",
-        "total_magnetization_normalized_formula_units",
-        "num_magnetic_sites",
-        "num_unique_magnetic_sites",
-        "types_of_magnetic_species",
-        "bulk_modulus",
-        "shear_modulus",
-        "universal_anisotropy",
-        "homogeneous_poisson",
-        "e_total",
-        "e_ionic",
-        "e_electronic",
-        "n",
-        "e_ij_max",
-        "weighted_surface_energy_EV_PER_ANG2",
-        "weighted_surface_energy",
-        "weighted_work_function",
-        "surface_anisotropy",
-        "shape_factor",
-        "has_reconstructed",
-        "possible_species",
-        "has_props",
-        "theoretical"
-    ]
+    # Using the Mprester API
+    # with MPRester(api_key=MP_API_KEY) as mpr:
+    #     elasticity_doc = mpr.elasticity.search(material_ids=["mp-66"])
+    #     print(dir(elasticity_doc[0]))
+    #     print(elasticity_doc)
+    ################################################################################################
+    ################################################################################################
+    # Download materials
+    ################################################################################################
+    ################################################################################################
 
     # save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','json_database')
-    # download_materials(save_dir=save_dir,fileds_to_include=fileds_to_include)
+
+    # materials_filter={
+    #                 'nsites_max':40,
+    #                 'energy_above_hull_min':0,
+    #                 'energy_above_hull_max':0.2
+    #                 }
+    # download_materials(save_dir=save_dir,**materials_filter)
 
 
-    fileds_to_include = [
-                    "material_id",
-                    "last_updated",
-                    "origins",
-                    "warnings",
-                    "structure_graph",
-                    "method",
-                    "bond_types",
-                    "bond_length_stats",
-                    "coordination_envs",
-                    "coordination_envs_anonymous"]
     external_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','json_database')
     material_ids = [file.split('.')[0] for file in os.listdir(external_dir) if file.endswith('.json')]
-    # save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','bonds_database')
-    # download_bonds_endpoint(save_dir, fileds_to_include, material_ids)
+
+    save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project')
+
+    download_materials_data(save_dir, endpoint='bonds', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='elasticity', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='piezoelectric', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='thermo', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='dielectric', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='oxidation_states', material_ids=material_ids)
+    download_materials_data(save_dir, endpoint='phonon', material_ids=material_ids)
 
 
-    save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','elasticity_database_2')
-    material_ids = ['mp-66']
-    download_elasticity_endpoint(save_dir, fileds_to_include,material_ids)
 
 
-    # save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','piezoelectric_database_2')
-    # material_ids = ['mp-648932','mp-4829']
-    # download_piezoelectric_endpoint(save_dir, fileds_to_include, material_ids)
 
+    ################################################################################################
+    ################################################################################################
+    # Download molecules
+    ################################################################################################
+    ################################################################################################
+
+    # download_materials(save_dir=os.path.join(EXTERNAL_DATA_DIR,'molecules','json_database'))
+    # external_dir=os.path.join(EXTERNAL_DATA_DIR,'molecules','json_database')
+    # molecules_ids = [file.split('.')[0] for file in os.listdir(external_dir) if file.endswith('.json')]
+
+    # save_dir=os.path.join(EXTERNAL_DATA_DIR,'molecules')
+
+    # download_molecules_data(save_dir, endpoint='jcesr', molecules_ids=molecules_ids)
+    # download_molecules_data(save_dir, endpoint='redox', molecules_ids=molecules_ids)
+    # download_molecules_data(save_dir, endpoint='vibrations', molecules_ids=molecules_ids)
+    # download_molecules_data(save_dir, endpoint='thermo', molecules_ids=molecules_ids)
+    # download_molecules_data(save_dir, endpoint='bonding', molecules_ids=molecules_ids)
+    # download_molecules_data(save_dir, endpoint='orbitals', molecules_ids=molecules_ids)

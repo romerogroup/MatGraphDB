@@ -77,15 +77,15 @@ TARGET_PROPERTY='k_vrh'
 # TARGET_PROPERTY='nelements'
 # TARGET_PROPERTY='elements'
 
-CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
+# CONNECTION_TYPE='GEOMETRIC_ELECTRIC_CONNECTS'
 # CONNECTION_TYPE='GEOMETRIC_CONNECTS'
-# CONNECTION_TYPE='ELECTRIC_CONNECTS'
+CONNECTION_TYPE='ELECTRIC_CONNECTS'
 
 # Training params
 TRAIN_PROPORTION = 0.8
 TEST_PROPORTION = 0.1
 VAL_PROPORTION = 0.1
-LEARNING_RATE = 0.1
+LEARNING_RATE = 0.001
 N_EPCOHS = 1000
 
 # model params
@@ -104,7 +104,7 @@ GAMMA=0.1
 
 node_filtering={
     'material':{
-        'k_vrh':(0,300),
+        'k_vrh':(0,200),
         },
     }
 
@@ -119,7 +119,7 @@ node_properties={
             'atomic_mass'
             ],
     'scale': {
-            'robust_scale': True,
+            # 'robust_scale': True,
             # 'standardize': True,
             # 'normalize': True
         }
@@ -127,20 +127,28 @@ node_properties={
 'material':
         {   
     'properties':[
-        'composition',
-        'nelements',
-        'nsites',
+        # 'composition',
+        # 'space_group',
+        # 'nelements',
+        # 'nsites',
         # 'crystal_system',
-        'volume',
-        'density',
-        'density_atomic',
-        'g_voigt'
-        'k_vrh'
+        # 'band_gap',
+        # 'formation_energy_per_atom',
+        # 'energy_per_atom',
+        # 'is_stable',
+        # 'volume',
+        # 'density',
+        # 'density_atomic',
+
+        # 'sine_coulomb_matrix',
+        # 'element_fraction',
+        'element_property',
+        # 'xrd_pattern',
         ],
     'scale': {
             # 'robust_scale': True,
             # 'standardize': True,
-            'normalize': True
+            # 'normalize': True
         }
         }
     }
@@ -152,9 +160,9 @@ edge_properties={
             'weight'
             ],
         'scale': {
-            'robust_scale': True,
+            # 'robust_scale': True,
             # 'standardize': True,
-            # 'normalize': True
+            'normalize': True
         }
     }
     }
@@ -287,7 +295,7 @@ class MultiLayerPerceptron(nn.Module):
         out=self.input_layer(x)
         for layer in self.layers:
             out = out + layer(out)
-        # out=self.ln_f(out)
+        out=self.ln_f(out)
         out=self.output_layer(out)
         return out
     
@@ -318,6 +326,7 @@ def train_step(model,dataloader,device,optimizer,loss_fn):
         Returns:
             float: The average loss per batch on the training data.
         """
+        model.train()
         num_batches = len(dataloader)
         batch_train_loss = 0.0
         for i_batch, (X,y) in enumerate(dataloader):

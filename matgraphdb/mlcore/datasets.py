@@ -10,7 +10,7 @@ import torch_geometric.transforms as T
 
 from matgraphdb.mlcore.encoders import EdgeEncoders, NodeEncoders
 from matgraphdb import GraphGenerator
-
+import numpy as np
 class NumpyDataset(Dataset):
     def __init__(self, X,y):
         self.X = X
@@ -59,6 +59,28 @@ def load_node_csv(path, index_col,
 
 
     column_names=list(df.columns)
+
+
+    if feature_encoders != {}:
+        for name in feature_encoders.keys():
+            if 'float[]' in name:
+                values=[]
+                for row in df[name]:
+                    values.append([float(i) for i in row.split(';')])
+                values = np.array(values)
+                nan_mask = np.isnan(values)
+
+                # Determine which rows contain at least one NaN
+                rows_with_nan = nan_mask.any(axis=1)
+
+                # Get indices of rows with at least one NaN
+                row_indices = np.where(rows_with_nan)[0]
+
+                if row_indices.size > 0:
+                    # Drop rows that contain NaN values
+                    df = df.drop(index=df.index[row_indices])
+
+                
     
     if node_filter != {}:
         

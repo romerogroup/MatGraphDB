@@ -75,12 +75,34 @@ class IdentityEncoder:
     
 class ListIdentityEncoder:
     """Converts a column of list of numbers into torch tensor."""
-    def __init__(self, dtype=None):
+    def __init__(self, dtype=None, standardize=False, normalize=False, robust_scale=False, normalization_range=(0,1)):
         self.dtype = dtype
+        self.standardize = standardize
+        self.normalize = normalize
+        self.robust_scale = robust_scale
+        self.normalization_range = normalization_range
+        if self.standardize and self.normalize and self.robust_scale:
+            raise Exception("Cannot standardize, normalize, and robust_scale at the same time")
 
     def __call__(self, df):
-        df=df.apply(lambda x: x.split(';'))
-        return torch.from_numpy(df.values).view(-1, 1).to(self.dtype)
+        values=[]
+        for irow,row in enumerate(df):
+            embedding=[float(i) for i in row.split(';')]
+            values.append(embedding)
+        values=np.array(values)
+
+        tensor=torch.from_numpy(values).to(self.dtype)
+        if self.standardize:
+            tensor, mean, std = standardize_tensor(tensor)
+            return tensor.to(self.dtype)
+        elif self.robust_scale:
+            tensor, median, iqr = robust_scale(tensor,q_min=0.25,q_max=0.75)
+            return tensor.to(self.dtype)
+        elif self.normalize:
+            tensor, min, max = min_max_normalize(tensor,normalization_range=self.normalization_range)
+            return tensor.to(self.dtype)
+        else:
+            return tensor
 
 class ElementsEncoder:
     """Converts a column of list of numbers into torch tensor."""
@@ -371,6 +393,11 @@ class NodeEncoders:
                 'e_total:float':IdentityEncoder(dtype=torch.float32,**kwargs),
                 'e_ionic:float':IdentityEncoder(dtype=torch.float32,**kwargs),
                 'e_electronic:float':IdentityEncoder(dtype=torch.float32,**kwargs),
+
+                'sine_coulomb_matrix:float[]':ListIdentityEncoder(dtype=torch.float32,**kwargs),
+                'element_fraction:float[]':ListIdentityEncoder(dtype=torch.float32,**kwargs),
+                'element_property:float[]':ListIdentityEncoder(dtype=torch.float32,**kwargs),
+                'xrd_pattern:float[]':ListIdentityEncoder(dtype=torch.float32,**kwargs),
                 }
         encoder_mapping, name_id_map, id_name_map=self.get_encoder_mapping(node_path=node_path,
                                                 skip_columns=skip_columns,
@@ -461,7 +488,17 @@ if __name__ == "__main__":
     material_df=pd.read_csv(material_node_path,index_col=0)
 
 
+    # Example usage of encoders
+    # identity_encoder=IdentityEncoder()
+    # atomic_numbers=identity_encoder(material_df['k_vrh:float'])
+    # print(atomic_numbers.shape)
 
+
+    # Example usage of encoders
+    identity_encoder=ListIdentityEncoder(dtype=torch.float32,normalize=True)
+    values=identity_encoder(material_df['element_property:float[]'])
+    print(values[:10])
+    # print(atomic_numbers.shape)
 
     # # Example usage of encoders
     # identity_encoder=IdentityEncoder(normalization_func=min_max_normalize)

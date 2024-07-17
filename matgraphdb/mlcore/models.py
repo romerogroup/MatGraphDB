@@ -48,7 +48,6 @@ class MultiLayerPerceptron(nn.Module):
         out=self.input_layer(x)
         for layer in self.layers:
             out = out + layer(out)
-            out=layer(out)
         out=self.ln_f(out)
         out=self.output_layer(out)
         return out
