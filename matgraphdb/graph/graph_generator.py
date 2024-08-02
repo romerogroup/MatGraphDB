@@ -165,7 +165,7 @@ class GraphGenerator:
             create_nodes(node_names=chemenv_names, 
                         node_type='Chemenv', 
                         node_prefix='chemenv', 
-                        # node_properties=chemenv_names_properties,
+                        node_properties=chemenv_names_properties,
                         filepath=os.path.join(node_dir, 'chemenv.csv'))
         # Chemenv Element
         if not os.path.exists(os.path.join(node_dir,'chemenv_element.csv')):
@@ -173,7 +173,8 @@ class GraphGenerator:
             chemenv_element_names,chemenv_element_names_properties,chemenv_element_name_id_map=self.node_types.get_chemenv_element_nodes()
             create_nodes(node_names=chemenv_element_names, 
                         node_type='ChemenvElement', 
-                        node_prefix='chemenvElement', 
+                        node_prefix='chemenvElement',
+                        node_properties=chemenv_element_names_properties, 
                         filepath=os.path.join(node_dir, 'chemenv_element.csv'))
         # Magnetic State
         if not os.path.exists(os.path.join(node_dir,'magnetic_state.csv')):

@@ -1267,19 +1267,19 @@ if __name__=='__main__':
 
     data=DBManager()
     print("geometric consistent bond connections")
-    success,failed=data.check_property(property_name=properties[3])
+    success,failed=data.check_property(property_name=properties[1])
     print("Number of failed files: ", len(failed))
     print("Number of success files: ", len(success))
 
-    print("electric consistent bond connections")
-    success,failed=data.check_property(property_name=properties[4])
-    print("Number of failed files: ", len(failed))
-    print("Number of success files: ", len(success))
+    # print("electric consistent bond connections")
+    # success,failed=data.check_property(property_name=properties[4])
+    # print("Number of failed files: ", len(failed))
+    # print("Number of success files: ", len(success))
 
-    print("geometric electric consistent bond connections")
-    success,failed=data.check_property(property_name=properties[5])
-    print("Number of failed files: ", len(failed))
-    print("Number of success files: ", len(success))
+    # print("geometric electric consistent bond connections")
+    # success,failed=data.check_property(property_name=properties[5])
+    # print("Number of failed files: ", len(failed))
+    # print("Number of success files: ", len(success))
 
 
 

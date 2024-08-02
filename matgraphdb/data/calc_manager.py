@@ -1,6 +1,7 @@
 import os
 import json
 from glob import glob
+import subprocess
 from typing import Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
@@ -10,7 +11,7 @@ from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER, GLOBAL_PROP_FILE
 
 
 
-class DBManager:
+class CalculationManager:
     def __init__(self, db_manager: DBManager):
         """
         Initializes the Manager object.
@@ -134,4 +135,19 @@ class DBManager:
                     '/linux/Chargemol_09_26_2017_linux_parallel> chargemol_debug.txt 2>&1\n')
                     file.write('\n')
                     file.write(f'echo "run complete on `hostname`: `date`" 1>&2\n')
+    @staticmethod
+    def launch_calcs(slurm_scripts=[]):
+        """
+        Launches SLURM calculations by submitting SLURM scripts.
+
+        Args:
+            slurm_scripts (list): A list of SLURM script file paths.
+
+        Returns:
+            None
+        """
+        if slurm_scripts != []:
+            for slurm_script in slurm_scripts:
+                result = subprocess.run(['sbatch', slurm_script], capture_output=False, text=True)
+
 
