@@ -9,7 +9,7 @@ import time
 
 def load_json_files(directory):
     data = []
-    for filename in os.listdir(directory[:100]):
+    for filename in os.listdir(directory[:10]):
         if filename.endswith('.json'):
             filepath = os.path.join(directory, filename)
             with open(filepath, 'r') as file:
@@ -42,6 +42,8 @@ if __name__ == '__main__':
 
 
     data = load_json_files(json_database)
+    print(data[0].keys())
+    create_hdf5(data, hdf5_path='data/raw/test.hdf5')
     print(len(data))
     print(data[0])
 

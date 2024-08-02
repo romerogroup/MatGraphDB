@@ -10,7 +10,7 @@ from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER, GLOBAL_PROP_FILE
 
 
 
-class DBManager:
+class CalculationManager:
     def __init__(self, db_manager: DBManager):
         """
         Initializes the Manager object.
