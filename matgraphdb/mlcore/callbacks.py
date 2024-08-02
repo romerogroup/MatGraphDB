@@ -27,17 +27,18 @@ class EarlyStopping():
         self.best_model = None
         self.best_loss = None
         self.best_mape_loss = None
+        self.best_mae_loss = None
         self.counter = 0
         self.status = 0
 
-    def __call__(self, model, val_loss:float):
+    def __call__(self, model, test_loss:float, mae_loss):
         """The class calling method
 
         Parameters
         ----------
         model : torch.nn.Module
             The pytorch model
-        val_loss : float
+        test_loss : float
             The validation loss
         mape_val_loss : float
             The map_val_loss
@@ -48,14 +49,17 @@ class EarlyStopping():
             _description_
         """
         if self.best_loss == None:
-            self.best_loss = val_loss
+            self.best_loss = test_loss
+            self.best_mae_loss = mae_loss
 
             self.best_model = copy.deepcopy(model)
-        elif self.best_loss - val_loss > self.min_delta:
-            self.best_loss = val_loss
+        elif self.best_loss - test_loss > self.min_delta:
+            self.best_loss = test_loss
+            self.best_mae_loss = mae_loss
+            
             self.counter = 0
             self.best_model.load_state_dict(model.state_dict())
-        elif self.best_loss - val_loss < self.min_delta:
+        elif self.best_loss - test_loss < self.min_delta:
             self.counter +=1
             if self.counter >= self.patience:
                 self.status = f'Stopped on {self.counter}'
