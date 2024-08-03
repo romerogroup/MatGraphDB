@@ -24,8 +24,6 @@ from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_ch
 from matgraphdb.utils.periodic_table import atomic_symbols
 
     
-
-    
 class DBManager:
     def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, n_cores=N_CORES):
         """
@@ -77,7 +75,7 @@ class DBManager:
         """
         return {file.split(os.sep)[-1]:f"m-{i}" for i,file in enumerate(files)}
 
-    def process_task(self, func, list,**kwargs):
+    def process_task(self, func, list, **kwargs):
         LOGGER.info(f"Process full database using {self.n_cores} cores")
         print(f"Using {self.n_cores} cores")
         with Pool(self.n_cores) as p:
