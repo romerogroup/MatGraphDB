@@ -81,6 +81,27 @@ class DBManager:
         except FileNotFoundError:
             return {}
     
+    def load_data_tasks(self,json_file):
+        """
+        Loads the data tasks.
+
+        Returns:
+            dict: A dictionary of data tasks.
+        """
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            LOGGER.error(f"Error processing file: {e}")
+            return None
+
+        return data
+
+    def load_data(self):
+        files=self.database_files()
+        results=self.process_task(self.load_data_tasks,files)
+        return results
+
     def index_files(self, files):
         """
         Indexes a list of files.

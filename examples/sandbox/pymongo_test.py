@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
 import os
 import json
 import time
@@ -5,6 +7,7 @@ import time
 from functools import wraps
 from pymongo import MongoClient, ASCENDING
 
+from matgraphdb import DBManager
 
 
 def load_json_files(directory):
@@ -17,7 +20,6 @@ def load_json_files(directory):
             with open(filepath, 'r') as file:
                 data.append(json.load(file))
     return data
-
 
 
 def insert_data(json_data, db_name='MatgraphDB', collection_name='materials'):
@@ -87,38 +89,93 @@ def setup_database(db_name='MatgraphDB', collection_name='materials'):
     # Close the connection
     client.close()
 
-def read_data(db_name='MatgraphDB', collection_name='materials'):    
+
+# def read_data_task(mongo_cursor):
+#     data=[]
+#     for post in mongo_cursor:
+#         data.append(post)
+#     return data
+
+# def read_data(db_name='MatgraphDB', collection_name='materials'):    
+#     client = MongoClient('mongodb://localhost:27017/')  # Replace with your MongoDB connection string if needed
+#     db = client[db_name]
+#     collection = db[collection_name]
+
+#     data=[]
+#     for post in collection.find():
+#         data.append(post)
+#     return data
+
+
+
+def read_chunk(start, end, db_name='MatgraphDB', collection_name='materials'):
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client[db_name]
+    collection = db[collection_name]
+    
+    chunk = list(collection.find().skip(start).limit(end - start))
+    client.close()
+    return chunk
+
+
+def read_data(db_name='MatgraphDB', collection_name='materials',num_cores=None):  
+    if num_cores is None:
+        num_cores = multiprocessing.cpu_count()  
     client = MongoClient('mongodb://localhost:27017/')  # Replace with your MongoDB connection string if needed
     db = client[db_name]
     collection = db[collection_name]
 
+    total_docs = collection.count_documents({})
+    chunk_size = total_docs // num_cores
+
+    chunks = [(i * chunk_size, (i + 1) * chunk_size) for i in range(num_cores)]
+
+    if total_docs % num_cores != 0:
+        chunks[-1] = (chunks[-1][0], total_docs)
+    client.close()
+    print(num_cores)
+    # with multiprocessing.Pool(num_cores) as pool:
+    with multiprocessing.pool.ThreadPool(num_cores) as pool:
+        # results = pool.map(lambda x: read_chunk(*x), chunks)
+
+        results = pool.starmap(read_chunk, chunks)
+        # results = list(executor.map(lambda x: read_chunk(*x), chunks))
     data=[]
-    for post in collection.find():
-        data.append(post)
+    for result in results:
+        data.extend(result)
+    # Flatten the list of chunks
+    # all_docs = [doc for chunk in results for doc in chunk]
     return data
+
 
 def main():
 
     db_name='MatgraphDB'
-    collection_name='materials'
+    collection_name='materials_db'
 
-    # json_database='data/raw/materials_project_nelements_2/json_database'
-    json_database='data/production/materials_project/json_database'
+    # db_manager=DBManager()
+    # start_time=time.time()
+    # raw_data=db_manager.load_data()
+    # load_time=time.time()-start_time
+    # print(f"Load time: {load_time} seconds")
+    # data=[]
+    # for mat_data in raw_data:
+    #     if isinstance(mat_data,dict):
+    #         data.append(mat_data)
+
+    
+    # delete_data(db_name=db_name, collection_name=collection_name)
+
+    # setup_database(db_name=db_name, collection_name=collection_name)
+    # insert_data(data, db_name=db_name,collection_name=collection_name)
+    # data=None
+
+    # # update_data(data, db_name=db_name,collection_name=collection_name)
+
+    # # delete_data(db_name='MatgraphDB', collection_name='materials')
 
     start_time=time.time()
-    data = load_json_files(json_database)
-    load_time=time.time()-start_time
-    print(f"Load time: {load_time} seconds")
-
-    insert_data(data, db_name=db_name,collection_name=collection_name)
-    data=None
-
-    # update_data(data, db_name=db_name,collection_name=collection_name)
-
-    # delete_data(db_name='MatgraphDB', collection_name='materials')
-
-    start_time=time.time()
-    read_data(db_name='MatgraphDB', collection_name='materials')
+    read_data(db_name=db_name, collection_name=collection_name)
     load_time=time.time()-start_time
     print(f"Load time: {load_time} seconds")
 
