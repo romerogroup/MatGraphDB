@@ -80,6 +80,7 @@ EXTERNAL_DATA_DIR=os.path.join(ROOT,'data','external')
 MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
 ML_DIR=os.path.join(MP_DIR,'ML')
 ML_SCRATCH_RUNS_DIR=os.path.join(ML_DIR,'scratch_runs')
+MATERIAL_PARQUET_FILE=os.path.join(MP_DIR,'materials_database.parquet')
 
 TMP_DIR=os.path.join(MP_DIR,"tmp")
 DB_DIR=os.path.join(MP_DIR,'json_database')
