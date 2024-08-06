@@ -1115,7 +1115,141 @@ class DBManager:
 
         LOGGER.info("Finished merging external database")
         return None
-        
+
+    def create_parquet_file_task(self, json_file):
+        """
+        Gets all material as a python dictionary in the database.
+        Returns:
+            None
+        """
+        data=None
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+
+            mp_id=json_file.split(os.sep)[-1].split('.')[0]
+            data['material_id']=mp_id
+            if 'composition' in data:
+                compositions=data.pop('composition')
+                data['composition-values']=list(compositions.values())
+                data['composition-elements']=list(compositions.keys())
+            if 'composition_reduced' in data:
+                data.pop('composition_reduced')
+                data['composition_reduced-values']=list(compositions.values())
+                data['composition_reduced-elements']=list(compositions.keys())
+
+            if 'symmetry' in data:
+                symmetry=data.pop('symmetry')
+                data['symmetry-crystal_system']=symmetry.get('crystal_system')
+                data['symmetry-symbol']=symmetry.get('symbol')
+                data['symmetry-number']=symmetry.get('number')
+                data['symmetry-point_group']=symmetry.get('point_group')
+                data['symmetry-symprec']=symmetry.get('symprec')
+                data['symmetry-version']=symmetry.get('version')
+
+            if 'structure' in data:
+                structure=data.pop('structure')
+                data['lattice']=structure['lattice']['matrix']
+                data['pbc']=structure['lattice']['pbc']
+                data['a']=structure['lattice']['a']
+                data['b']=structure['lattice']['b']
+                data['c']=structure['lattice']['c']
+                data['alpha']=structure['lattice']['alpha']
+                data['beta']=structure['lattice']['beta']
+                data['gamma']=structure['lattice']['gamma']
+                data['volume']=structure['lattice']['volume']
+
+                frac_coords=[]
+                cart_coords=[]
+                species=[]
+                for site in structure['sites']:
+                    frac_coords.append(site['abc'])
+                    cart_coords.append(site['xyz'])
+                    species.append(site['label'])
+                data['frac_coords']=frac_coords
+                data['cart_coords']=cart_coords
+                data['species']=species
+            
+            if 'oxidation_states' in data:
+                oxidation_states=data.pop('oxidation_states')
+                data['oxidation_states-possible_species']=oxidation_states.get('possible_species')
+                data['oxidation_states-possible_valences']=oxidation_states.get('possible_valences')
+                data['oxidation_states-method']=oxidation_states.get('method')
+
+            if 'feature_vectors' in data:
+                feature_vectors=data.pop('feature_vectors')
+
+                tmp_dict=feature_vectors.get('sine_coulomb_matrix')
+                if tmp_dict is not None:
+                    data['sine_coulomb_matrix']=tmp_dict.get('values')
+
+                tmp_dict=feature_vectors.get('element_property')
+                if tmp_dict is not None:
+                    data['element_property']=tmp_dict.get('values')
+
+                tmp_dict=feature_vectors.get('element_fraction')
+                if tmp_dict is not None:
+                    data['element_fraction']=tmp_dict.get('values')
+
+                tmp_dict=feature_vectors.get('xrd_pattern')
+                if tmp_dict is not None:
+                    data['xrd_pattern']=tmp_dict.get('values')
+
+            if 'has_props' in data:
+                has_props=data.pop('has_props')
+                data['has_props-materials']=has_props.get('materials')
+                data['has_props-thermo']=has_props.get('thermo')
+                data['has_props-xas']=has_props.get('xas')
+                data['has_props-grain_boundaries']=has_props.get('grain_boundaries')
+                data['has_props-chemenv']=has_props.get('chemenv')
+                data['has_props-electronic_structure']=has_props.get('electronic_structure')
+                data['has_props-absorption']=has_props.get('absorption')
+                data['has_props-bandstructure']=has_props.get('bandstructure')
+                data['has_props-dos']=has_props.get('dos')
+                data['has_props-magnetism']=has_props.get('magnetism')
+                data['has_props-elasticity']=has_props.get('elasticity')
+                data['has_props-dielectric']=has_props.get('dielectric')
+                data['has_props-piezoelectric']=has_props.get('piezoelectric')
+                data['has_props-surface_properties']=has_props.get('surface_properties')    
+                data['has_props-oxi_states']=has_props.get('oxi_states')
+                data['has_props-provenance']=has_props.get('provenance')
+                data['has_props-charge_density']=has_props.get('charge_density')
+                data['has_props-eos']=has_props.get('eos')
+                data['has_props-phonon']=has_props.get('phonon')
+                data['has_props-insertion_electrodes']=has_props.get('insertion_electrodes')
+                data['has_props-substrates']=has_props.get('substrates')
+
+            if 'elasticity' in data:
+                elasticity=data.pop('elasticity')
+                data['elasticity-warnings']=elasticity.get('warnings')
+                data['elasticity-order']=elasticity.get('order')
+                data['elasticity-k_vrh']=elasticity.get('k_vrh')
+                data['elasticity-k_reuss']=elasticity.get('k_reuss')
+                data['elasticity-k_voigt']=elasticity.get('k_voigt')
+                data['elasticity-g_vrh']=elasticity.get('g_vrh')
+                data['elasticity-g_reuss']=elasticity.get('g_reuss')
+                data['elasticity-g_voigt']=elasticity.get('g_voigt')
+                data['elasticity-sound_velocity_transverse']=elasticity.get('sound_velocity_transverse')
+                data['elasticity-sound_velocity_longitudinal']=elasticity.get('sound_velocity_longitudinal')
+                data['elasticity-sound_velocity_total']=elasticity.get('sound_velocity_total')
+                data['elasticity-sound_velocity_acoustic']=elasticity.get('sound_velocity_acoustic')
+                data['elasticity-sound_velocity_optical']=elasticity.get('sound_velocity_optical')
+                data['elasticity-thermal_conductivity_clarke']=elasticity.get('thermal_conductivity_clarke')
+                data['elasticity-thermal_conductivity_cahill']=elasticity.get('thermal_conductivity_cahill')
+                data['elasticity-young_modulus']=elasticity.get('young_modulus')
+                data['elasticity-universal_anisotropy']=elasticity.get('universal_anisotropy')
+                data['elasticity-homogeneous_poisson']=elasticity.get('homogeneous_poisson')
+                data['elasticity-debye_temperature']=elasticity.get('debye_temperature')
+                data['elasticity-state']=elasticity.get('state')
+
+            
+            for key in data.keys():
+                data[key] = [data.get(key, None)]
+            return data
+        except Exception as e:
+            print(f"Error processing file {json_file}: {e}")
+            return None
+
     def create_parquet_file(self):
         """
         Generates the a parquet file for all materials in the database.
@@ -1123,147 +1257,9 @@ class DBManager:
             None
         """
 
-        def create_parquet_file_task(json_file):
-            """
-            Gets all material as a python dictionary in the database.
-            Returns:
-                None
-            """
-            
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                if 'composition' in data:
-                    compositions=data.pop('composition')
-                    data['composition-values']=list(compositions.values())
-                    data['composition-elements']=list(compositions.keys())
-                if 'composition_reduced' in data:
-                    data.pop('composition_reduced')
-                    data['composition_reduced-values']=list(compositions.values())
-                    data['composition_reduced-elements']=list(compositions.keys())
-
-                if 'symmetry' in data:
-                    symmetry=data.pop('symmetry')
-                    data['symmetry-crystal_system']=symmetry.get('crystal_system')
-                    data['symmetry-symbol']=symmetry.get('symbol')
-                    data['symmetry-number']=symmetry.get('number')
-                    data['symmetry-point_group']=symmetry.get('point_group')
-                    data['symmetry-symprec']=symmetry.get('symprec')
-                    data['symmetry-version']=symmetry.get('version')
-
-                if 'structure' in data:
-                    structure=data.pop('structure')
-                    data['lattice']=structure['lattice']['matrix']
-                    data['pbc']=structure['lattice']['pbc']
-                    data['a']=structure['lattice']['a']
-                    data['b']=structure['lattice']['b']
-                    data['c']=structure['lattice']['c']
-                    data['alpha']=structure['lattice']['alpha']
-                    data['beta']=structure['lattice']['beta']
-                    data['gamma']=structure['lattice']['gamma']
-                    data['volume']=structure['lattice']['volume']
-
-                    frac_coords=[]
-                    cart_coords=[]
-                    species=[]
-                    for site in structure['sites']:
-                        frac_coords.append(site['abc'])
-                        cart_coords.append(site['xyz'])
-                        species.append(site['label'])
-                    data['frac_coords']=frac_coords
-                    data['cart_coords']=cart_coords
-                    data['species']=species
-                
-                if 'oxidation_states' in data:
-                    oxidation_states=data.pop('oxidation_states')
-                    data['oxidation_states-possible_species']=oxidation_states.get('possible_species')
-                    data['oxidation_states-possible_valences']=oxidation_states.get('possible_valences')
-                    data['oxidation_states-method']=oxidation_states.get('method')
-
-                if 'feature_vectors' in data:
-                    feature_vectors=data.pop('feature_vectors')
-
-                    tmp_dict=feature_vectors.get('sine_coulomb_matrix')
-                    if tmp_dict is not None:
-                        data['sine_coulomb_matrix']=tmp_dict.get('values')
-
-                    tmp_dict=feature_vectors.get('element_property')
-                    if tmp_dict is not None:
-                        data['element_property']=tmp_dict.get('values')
-
-                    tmp_dict=feature_vectors.get('element_fraction')
-                    if tmp_dict is not None:
-                        data['element_fraction']=tmp_dict.get('values')
-
-                    tmp_dict=feature_vectors.get('xrd_pattern')
-                    if tmp_dict is not None:
-                        data['xrd_pattern']=tmp_dict.get('values')
-
-                if 'has_props' in data:
-                    has_props=data.pop('has_props')
-                    data['has_props-materials']=has_props.get('materials')
-                    data['has_props-thermo']=has_props.get('thermo')
-                    data['has_props-xas']=has_props.get('xas')
-                    data['has_props-grain_boundaries']=has_props.get('grain_boundaries')
-                    data['has_props-chemenv']=has_props.get('chemenv')
-                    data['has_props-electronic_structure']=has_props.get('electronic_structure')
-                    data['has_props-absorption']=has_props.get('absorption')
-                    data['has_props-bandstructure']=has_props.get('bandstructure')
-                    data['has_props-dos']=has_props.get('dos')
-                    data['has_props-magnetism']=has_props.get('magnetism')
-                    data['has_props-elasticity']=has_props.get('elasticity')
-                    data['has_props-dielectric']=has_props.get('dielectric')
-                    data['has_props-piezoelectric']=has_props.get('piezoelectric')
-                    data['has_props-surface_properties']=has_props.get('surface_properties')    
-                    data['has_props-oxi_states']=has_props.get('oxi_states')
-                    data['has_props-provenance']=has_props.get('provenance')
-                    data['has_props-charge_density']=has_props.get('charge_density')
-                    data['has_props-eos']=has_props.get('eos')
-                    data['has_props-phonon']=has_props.get('phonon')
-                    data['has_props-insertion_electrodes']=has_props.get('insertion_electrodes')
-                    data['has_props-substrates']=has_props.get('substrates')
-
-                if 'elasticity' in data:
-                    elasticity=data.pop('elasticity')
-                    data['elasticity-warnings']=elasticity.get('warnings')
-                    data['elasticity-order']=elasticity.get('order')
-                    data['elasticity-k_vrh']=elasticity.get('k_vrh')
-                    data['elasticity-k_reuss']=elasticity.get('k_reuss')
-                    data['elasticity-k_voigt']=elasticity.get('k_voigt')
-                    data['elasticity-g_vrh']=elasticity.get('g_vrh')
-                    data['elasticity-g_reuss']=elasticity.get('g_reuss')
-                    data['elasticity-g_voigt']=elasticity.get('g_voigt')
-                    data['elasticity-sound_velocity_transverse']=elasticity.get('sound_velocity_transverse')
-                    data['elasticity-sound_velocity_longitudinal']=elasticity.get('sound_velocity_longitudinal')
-                    data['elasticity-sound_velocity_total']=elasticity.get('sound_velocity_total')
-                    data['elasticity-sound_velocity_acoustic']=elasticity.get('sound_velocity_acoustic')
-                    data['elasticity-sound_velocity_optical']=elasticity.get('sound_velocity_optical')
-                    data['elasticity-thermal_conductivity_clarke']=elasticity.get('thermal_conductivity_clarke')
-                    data['elasticity-thermal_conductivity_cahill']=elasticity.get('thermal_conductivity_cahill')
-                    data['elasticity-young_modulus']=elasticity.get('young_modulus')
-                    data['elasticity-universal_anisotropy']=elasticity.get('universal_anisotropy')
-                    data['elasticity-homogeneous_poisson']=elasticity.get('homogeneous_poisson')
-                    data['elasticity-debye_temperature']=elasticity.get('debye_temperature')
-                    data['elasticity-state']=elasticity.get('state')
-
-                
-                for key in data.keys():
-                    data[key] = [data.get(key, None)]
-                return data
-            except Exception as e:
-                print(f"Error processing file {json_file}: {e}")
-
-            try:
-                mp_id=json_file.split(os.sep)[-1].split('.')[0]
-                data['material_id']=mp_id
-                return data
-            except:
-
-                return None
-        
         # Process the database with the defined function
         files=self.database_files()
-        results=self.process_task(create_parquet_file_task,files)
+        results=self.process_task(self.create_parquet_file_task,files)
         parquet_table=None
         main_data={}
         # Get all possible keys from the files
