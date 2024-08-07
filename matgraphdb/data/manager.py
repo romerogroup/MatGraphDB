@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
 
+
 import pandas as pd
 import numpy as np
 from pymatgen.core import Structure, Composition
@@ -22,7 +23,10 @@ from matgraphdb.calculations.mat_calcs.embeddings import generate_composition_em
 from matgraphdb.calculations.mat_calcs.wyckoff_calc import calculate_wyckoff_positions
 from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 from matgraphdb.utils.periodic_table import atomic_symbols
+from matgraphdb.data.parquet_schemas import MATERIAL_PARQUET_SCHEMA
+from matgraphdb.utils import get_child_logger
 
+logger=get_child_logger(__name__, console_out=False, log_level='info')
     
 class DBManager:
     def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, n_cores=N_CORES):
@@ -76,8 +80,8 @@ class DBManager:
         return {file.split(os.sep)[-1]:f"m-{i}" for i,file in enumerate(files)}
 
     def process_task(self, func, list, **kwargs):
-        LOGGER.info(f"Process full database using {self.n_cores} cores")
-        print(f"Using {self.n_cores} cores")
+        logger.info(f"Process full database using {self.n_cores} cores")
+        logger.info(f"Using {self.n_cores} cores")
         with Pool(self.n_cores) as p:
             results=p.map(partial(func,**kwargs), list)
         return results
@@ -102,7 +106,7 @@ class DBManager:
                 with open(json_file) as f:
                     data = json.load(f)
             except Exception as e:
-                LOGGER.error(f"Error processing file: {e}")
+                logger.debug(f"Error processing file: {e}")
                 return None
 
             return data
@@ -1129,6 +1133,9 @@ class DBManager:
 
             mp_id=json_file.split(os.sep)[-1].split('.')[0]
             data['material_id']=mp_id
+            data['name']=mp_id
+            data['type']='MATERIAL'
+
             if 'composition' in data:
                 compositions=data.pop('composition')
                 data['composition-values']=list(compositions.values())
@@ -1140,12 +1147,11 @@ class DBManager:
 
             if 'symmetry' in data:
                 symmetry=data.pop('symmetry')
-                data['symmetry-crystal_system']=symmetry.get('crystal_system')
-                data['symmetry-symbol']=symmetry.get('symbol')
-                data['symmetry-number']=symmetry.get('number')
-                data['symmetry-point_group']=symmetry.get('point_group')
-                data['symmetry-symprec']=symmetry.get('symprec')
-                data['symmetry-version']=symmetry.get('version')
+                data['crystal_system']=symmetry.get('crystal_system')
+                data['space_group']=symmetry.get('number')
+                data['space_group_symbol']=symmetry.get('symbol')
+                data['point_group']=symmetry.get('point_group')
+
 
             if 'structure' in data:
                 structure=data.pop('structure')
@@ -1157,7 +1163,7 @@ class DBManager:
                 data['alpha']=structure['lattice']['alpha']
                 data['beta']=structure['lattice']['beta']
                 data['gamma']=structure['lattice']['gamma']
-                data['volume']=structure['lattice']['volume']
+                data['unit_cell_volume']=structure['lattice']['volume']
 
                 frac_coords=[]
                 cart_coords=[]
@@ -1241,13 +1247,13 @@ class DBManager:
                 data['elasticity-homogeneous_poisson']=elasticity.get('homogeneous_poisson')
                 data['elasticity-debye_temperature']=elasticity.get('debye_temperature')
                 data['elasticity-state']=elasticity.get('state')
-
+            
             
             for key in data.keys():
                 data[key] = [data.get(key, None)]
             return data
         except Exception as e:
-            print(f"Error processing file {json_file}: {e}")
+            logger.debug(f"Error processing file {json_file}: {e}")
             return None
 
     def create_parquet_file(self):
@@ -1273,17 +1279,47 @@ class DBManager:
         for i,result in enumerate(results):
             data=result
             if data is not None:
+                # populate the main data if it has a value
                 for key,value in data.items():
                     main_data[key].extend(value)
+
+                # If the key does not exist in the main data, add it with None value
                 for key,value in main_data.items():
                     if key not in data.keys():
                         main_data[key].extend([None])
 
-        parquet_table=pa.Table.from_pydict(main_data)
+        parquet_table=pa.Table.from_pydict(main_data,schema=MATERIAL_PARQUET_SCHEMA)
 
         pq.write_table(parquet_table, os.path.join(MP_DIR, 'materials_database.parquet'))
-        print("Database saved to parquet file")
+        logger.info("Database saved to parquet file")
+
+        metadata = pq.read_metadata( os.path.join(MP_DIR, 'materials_database.parquet'))
+        all_columns = []
+
+        logger.info("Column names")
+        for filed_schema in metadata.schema:
+            
+            # Only want top column names
+            max_defintion_level=filed_schema.max_definition_level
+            if max_defintion_level!=1:
+                continue
+  
+            logger.info(filed_schema.name)
+            all_columns.append(filed_schema.name)
         return None
+
+class MPTasks:
+    
+    def bonding_task(json_file):
+            # Load data from JSON file
+            mpid=json_file.split('/')[-1].split('.')[0]
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    structure=Structure.from_dict(data['structure'])
+            except Exception as e:
+                LOGGER.error(f"Error processing file {mpid}: {e}")
+                return None
 
 
 def get_data(data, key, default=None):

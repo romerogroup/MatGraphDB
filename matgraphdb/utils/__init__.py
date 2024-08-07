@@ -1,5 +1,5 @@
 # Important directory paths
-from matgraphdb.utils.config import FILE, PKG_DIR, ROOT, LOG_DIR, DATA_DIR, EXTERNAL_DATA_DIR
+from matgraphdb.utils.config import FILE, PKG_DIR, ROOT, DATA_DIR, EXTERNAL_DATA_DIR
 
 # Impot config settings
 from matgraphdb.utils.config import CONFIG, MP_API_KEY, N_CORES, OPENAI_API_KEY
@@ -16,8 +16,8 @@ from matgraphdb.utils.config import (USER, PASSWORD, LOCATION, GRAPH_DB_NAME, DB
 from matgraphdb.utils.config import (ML_DIR,ML_SCRATCH_RUNS_DIR)
 
 # Other important variables
-from matgraphdb.utils.log_config import setup_logging
+from matgraphdb.utils.log_config import setup_logging, get_child_logger, get_parent_logger
 from matgraphdb.utils.timing import Timer, timeit
 
 # Initialize logger
-LOGGER = setup_logging(log_dir=LOG_DIR,apply_filter=CONFIG['APPLY_LOG_FILTER'])
+LOGGER = setup_logging()
