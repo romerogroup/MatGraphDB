@@ -11,24 +11,20 @@ import pandas as pd
 import pyarrow.parquet as pq
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.units import FloatWithUnit
+import pyarrow as pa
+import pyarrow.parquet as pq
 
+from matgraphdb.data.parquet_schemas import get_node_schema
 from matgraphdb.utils.periodic_table import atomic_symbols, pymatgen_properties
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import  GRAPH_DIR, LOGGER
+from matgraphdb.utils import GRAPH_DIR, get_child_logger
 
-class NodeTypes(Enum):
-    ELEMENT='ELEMENT'
-    CHEMENV='CHEMENV'
-    CRYSTAL_SYSTEM='CRYSTAL_SYSTEM'
-    MAGNETIC_STATE='MAGNETIC_STATE'
-    SPACE_GROUP='SPACE_GROUP'
-    OXIDATION_STATE='OXIDATION_STATE'
-    MATERIAL='MATERIAL'
-    SPG_WYCKOFF='SPG_WYCKOFF'
-    CHEMENV_ELEMENT='CHEMENV_ELEMENT'
-    LATTICE='LATTICE'
-    SITE='SITE'
+from matgraphdb.graph.types import NodeTypes, RelationshipTypes
+
+
+logger=get_child_logger(__name__, console_out=False, log_level='debug')
+
 
 class Nodes:
 
@@ -58,11 +54,16 @@ class Nodes:
         warnings.filterwarnings("ignore", category=UserWarning)
         node_type=NodeTypes.ELEMENT.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
 
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
         elements = atomic_symbols[1:]
         elements_properties = []
@@ -83,13 +84,30 @@ class Nodes:
 
                 tmp_dict[key]=value
             elements_properties.append(tmp_dict)
-            
+        
+
         df = pd.DataFrame(elements_properties)
         df['name'] = df['symbol']
         df['type'] = node_type
+
+        column_names=list(df.columns)
+        for name in column_names:
+            logger.debug(f"Column: {name}")
+
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema = get_node_schema(NodeTypes.ELEMENT)
+        
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_crystal_system_nodes(self, columns=None, **kwargs):
@@ -299,18 +317,42 @@ class Nodes:
     def get_material_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.MATERIAL.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
-
-        df = pd.read_parquet(MATERIAL_PARQUET_FILE)
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
+        try:
+            df = pd.read_parquet(MATERIAL_PARQUET_FILE)
+            return df
+        except Exception as e:
+            logger.error(f"Error reading {node_type} parquet file: {e}")
+            return None
+        
         df['name'] = df['material_id']
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+        
+        
+        schema = get_node_schema(NodeTypes.MATERIAL)
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        pq.write_table(parquet_table, filepath)
+
+        logger.info(f"Finished saving {node_type} nodes to {filepath}")
         return df
     
     def get_material_lattice_nodes(self, columns=None, **kwargs):
@@ -384,8 +426,11 @@ class Nodes:
         self.get_wyckoff_positions_nodes()
 
     def get_property_names(self, node_type):
+        logger.info(f"Getting property names for {node_type} nodes")
         filepath=self.get_node_filepaths(node_type=node_type)
         properties = Nodes.get_column_names(filepath)
+        for property in properties:
+            logger.debug(f"Property: {property}")
         return properties
     
     def load_nodes(self, filepath, columns=None, include_cols=True, **kwargs):
@@ -410,7 +455,7 @@ class Nodes:
         return df
             
     def save_nodes(self, df, filepath):
-        df.to_parquet(filepath, engine='pyarrow')
+        pq.write_table(df, filepath)
 
     def get_node_filepaths(self, node_type=None):
         node_types = [type.value for type in NodeTypes]
@@ -436,27 +481,6 @@ class Nodes:
             all_columns.append(filed_schema.name)
         return all_columns
 
-class RelationshipTypes(Enum):
-
-    MATERIAL_SPG=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.SPACE_GROUP.value}'
-    MATERIAL_CRYSTAL_SYSTEM=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CRYSTAL_SYSTEM.value}'
-    MATERIAL_LATTICE=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.LATTICE.value}'
-    MATERIAL_SITE=f'{NodeTypes.MATERIAL.value}-CAN-{NodeTypes.SITE.value}'
-
-    MATERIAL_CHEMENV=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CHEMENV.value}'
-    MATERIAL_CHEMENV_ELEMENT=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CHEMENV_ELEMENT.value}'
-    MATERIAL_ELEMENT=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.ELEMENT.value}'
-
-    ELEMENT_OXIDATION_STATE=f'{NodeTypes.ELEMENT.value}-CAN_OCCUR-{NodeTypes.OXIDATION_STATE.value}'
-    ELEMENT_CHEMENV=f'{NodeTypes.ELEMENT.value}-CAN_OCCUR-{NodeTypes.CHEMENV.value}'
-
-    ELEMENT_GEOMETRIC_CONNECTS_ELEMENT=f'{NodeTypes.ELEMENT.value}-GEOMETRIC_CONNECTS-{NodeTypes.ELEMENT.value}'
-    ELEMENT_ELECTRIC_CONNECTS_ELEMENT=f'{NodeTypes.ELEMENT.value}-ELECTRIC_CONNECTS-{NodeTypes.ELEMENT.value}'
-    ELEMENT_GEOMETRIC_ELECTRIC_CONNECTS_ELEMENT=f'{NodeTypes.ELEMENT.value}-GEOMETRIC_ELECTRIC_CONNECTS-{NodeTypes.ELEMENT.value}'
-
-    CHEMENV_GEOMETRIC_CONNECTS_CHEMENV=f'{NodeTypes.CHEMENV.value}-GEOMETRIC_CONNECTS-{NodeTypes.CHEMENV.value}'
-    CHEMENV_ELECTRIC_CONNECTS_CHEMENV=f'{NodeTypes.CHEMENV.value}-ELECTRIC_CONNECTS-{NodeTypes.CHEMENV.value}'
-    CHEMENV_GEOMETRIC_ELECTRIC_CONNECTS_CHEMENV=f'{NodeTypes.CHEMENV.value}-GEOMETRIC_ELECTRIC_CONNECTS-{NodeTypes.CHEMENV.value}'
 
 class Relationships:
 
@@ -484,7 +508,6 @@ class Relationships:
         os.makedirs(self.relationship_dir,exist_ok=True)
 
         self.nodes=Nodes(node_dir=self.node_dir,
-                         file_type=self.file_type,
                          output_format=self.output_format)
         
         if not skip_init:
@@ -1458,7 +1481,6 @@ class MaterialGraph:
                 graph_dir=os.path.join(GRAPH_DIR,'main'),
                 from_scratch=False,
                 skip_init=False,
-                file_type='parquet',
                 output_format='pandas'):
         """
         Initializes the GraphGenerator object.
@@ -1469,10 +1491,7 @@ class MaterialGraph:
             skip_main_init (bool,optional): If True, skips the initialization of the main nodes and relationships.
 
         """
-        if file_type not in ['parquet','csv']:
-            raise ValueError("file_type must be either 'parquet' or 'csv'")
-
-        self.file_type=file_type
+        self.file_type='parquet'
         self.output_format=output_format
 
         self.graph_dir=graph_dir
@@ -1490,7 +1509,6 @@ class MaterialGraph:
         self.relationships=Relationships(relationship_dir=self.relationship_dir,
                                     node_dir=self.node_dir,
                                     output_format=self.output_format, 
-                                    file_type=self.file_type,
                                     skip_init=skip_init)
         self.nodes=self.relationships.nodes
 
@@ -1770,9 +1788,11 @@ if __name__=='__main__':
     # Nodes with columns
     ################################################################################################
     node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    nodes=Nodes(node_dir=node_dir,output_format='pandas')
-    # # df=nodes.get_element_nodes()
-    
+    nodes=Nodes(node_dir=node_dir,skip_init=True)
+    # df=nodes.get_material_nodes()
+    df=nodes.get_element_nodes()
+    # properties=nodes.get_property_names(node_type='ELEMENT')
+    # print(properties)
     # # print(df.head())
     # # # for irow, row in df.iterrows():
     # # #     print(row)
@@ -1789,7 +1809,7 @@ if __name__=='__main__':
 
 
     # df=nodes.get_material_nodes(columns=['name'], include_cols=False)
-    # # df=nodes.get_material_nodes()
+    # df=nodes.get_material_nodes()
     # print(df.head(5))
     # print('name' not in list(df.columns))
     # # df=df.dropna()

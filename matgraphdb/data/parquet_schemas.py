@@ -1,5 +1,5 @@
 import pyarrow as pa
-from matgraphdb.graph.material_graph import NodeTypes, RelationshipTypes
+from matgraphdb.graph.types import NodeTypes, RelationshipTypes
 
 t_string=pa.string()
 t_int=pa.int64()
@@ -19,22 +19,20 @@ material_property_schema_list=[
     pa.field('space_group', t_int, metadata={'encoder':'SpaceGroupOneHotEncoder()'}),
     pa.field('space_group_symbol', t_string, metadata={'encoder':'ClassificationEncoder()'}),
     pa.field('point_group', t_string, metadata={'encoder':'ClassificationEncoder()'}),
-    pa.field('hall_symbol', t_string, metadata={'encoder':'ClassificationEncoder()'}),
 
     pa.field('composition-values', pa.list_(t_float)),
     pa.field('composition-elements', pa.list_(t_string)),
-    pa.field('composition-reduced-values', pa.list_(t_float)),
-    pa.field('composition-reduced-elements', pa.list_(t_string)),
+    pa.field('composition_reduced-values', pa.list_(t_float)),
+    pa.field('composition_reduced-elements', pa.list_(t_string)),
 
     pa.field('lattice',pa.list_(pa.list_(t_float))),
-    pa.field('pbc', pa.list_(t_bool)),
+    # pa.field('pbc', pa.list_(t_bool)),
     pa.field('a', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('b', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('c', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('alpha', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('beta', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('gamma', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
-    pa.field('volume', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('frac_coords', pa.list_(pa.list_(t_float))),
     pa.field('cart_coords', pa.list_(pa.list_(t_float))),
     pa.field('species', pa.list_(t_string)),
@@ -73,24 +71,24 @@ material_property_schema_list=[
     pa.field('element_property', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('xrd_pattern', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
 
-    pa.field('coordination_environments_multi_weight', pa.list_(pa.struct([('ce_symbol', t_string),
+    pa.field('coordination_environments_multi_weight', pa.list_(pa.list_(pa.struct([('ce_symbol', t_string),
                                                                     ('ce_fraction', t_float),
                                                                     ('csm', t_float),
-                                                                    ('permutation', pa.list_(t_int))]))),
+                                                                    ('permutation', pa.list_(t_int))])))),
     pa.field('coordination_multi_connections', pa.list_(pa.list_(t_int))),
     pa.field('coordination_multi_numbers', pa.list_(t_int), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('chargemol_bonding_connections', pa.list_(pa.list_(t_int))),
-    pa.field('chargemol_bonding_orders', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
-    pa.field('chargemol_net_atomic_charges', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
+    pa.field('chargemol_bonding_orders', pa.list_(pa.list_(t_float)), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
+    # pa.field('chargemol_net_atomic_charges', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('chargemol_squared_moments', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('chargemol_cubed_moments', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('chargemol_fourth_moments', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('geometric_consistent_bond_connections', pa.list_(pa.list_(t_int))),
-    pa.field('geometric_consistent_bond_orders', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
+    pa.field('geometric_consistent_bond_orders', pa.list_(pa.list_(t_float)), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('electric_consistent_bond_connections', pa.list_(pa.list_(t_int))),
-    pa.field('electric_consistent_bond_orders', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
+    pa.field('electric_consistent_bond_orders', pa.list_(pa.list_(t_float)), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('geometric_electric_consistent_bond_connections', pa.list_(pa.list_(t_int))),
-    pa.field('geometric_electric_consistent_bond_orders', pa.list_(t_float), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
+    pa.field('geometric_electric_consistent_bond_orders', pa.list_(pa.list_(t_float)), metadata={'encoder':'ListIdentityEncoder(dtype=torch.float32)'}),
     pa.field('bond_cutoff_connections', pa.list_(pa.list_(t_int))),
     pa.field('wyckoffs', pa.list_(t_string)),
 
@@ -103,14 +101,15 @@ material_property_schema_list=[
     pa.field('equilibrium_reaction_energy_per_atom', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('decomposes_to', pa.list_(pa.struct([
                                 ('amount', t_float),
-                                ('formula', t_string),]))),
+                                ('formula', t_string),
+                                ('material_id', t_string)]))),
     pa.field('types_of_magnetic_species', pa.list_(t_string)),
     pa.field('grain_boundaries', pa.list_(pa.struct([
                                 ('gb_energy', t_float),
-                                ('rotation_angle', t_string),
-                                ('sigma', t_float),
+                                ('rotation_angle', t_float),
+                                ('sigma', t_int),
                                 ('type', t_string)]))),
-    pa.field('dos_energy_up', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
+    pa.field('dos_energy_up', pa.list_(t_float), metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
 
     pa.field('n', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('e_ij_max', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
