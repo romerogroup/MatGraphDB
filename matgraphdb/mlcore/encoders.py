@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from matgraphdb.mlcore.transforms import min_max_normalize, standardize_tensor, robust_scale
-
+from matgraphdb.graph.material_graph import NodeTypes,RelationshipTypes
 class CategoricalEncoder:
     def __init__(self, sep='|'):
         self.sep = sep
@@ -50,39 +50,17 @@ class BooleanEncoder:
     
 class IdentityEncoder:
     """Converts a column of numbers into torch tensor."""
-    def __init__(self, dtype=torch.float32, standardize=False, normalize=False, robust_scale=False, normalization_range=(0,1)):
+    def __init__(self, dtype=torch.float32):
         self.dtype = dtype
-        self.standardize = standardize
-        self.normalize = normalize
-        self.robust_scale = robust_scale
-        self.normalization_range = normalization_range
-        if self.standardize and self.normalize and self.robust_scale:
-            raise Exception("Cannot standardize, normalize, and robust_scale at the same time")
 
     def __call__(self, df):
         tensor=torch.from_numpy(df.values).view(-1, 1).to(self.dtype)
-        if self.standardize:
-            tensor, mean, std = standardize_tensor(tensor)
-            return tensor.to(self.dtype)
-        elif self.robust_scale:
-            tensor, median, iqr = robust_scale(tensor,q_min=0.25,q_max=0.75)
-            return tensor.to(self.dtype)
-        elif self.normalize:
-            tensor, min, max = min_max_normalize(tensor,normalization_range=self.normalization_range)
-            return tensor.to(self.dtype)
-        else:
-            return tensor
+        return tensor
     
 class ListIdentityEncoder:
     """Converts a column of list of numbers into torch tensor."""
-    def __init__(self, dtype=None, standardize=False, normalize=False, robust_scale=False, normalization_range=(0,1)):
+    def __init__(self, dtype=None):
         self.dtype = dtype
-        self.standardize = standardize
-        self.normalize = normalize
-        self.robust_scale = robust_scale
-        self.normalization_range = normalization_range
-        if self.standardize and self.normalize and self.robust_scale:
-            raise Exception("Cannot standardize, normalize, and robust_scale at the same time")
 
     def __call__(self, df):
         values=[]
@@ -92,17 +70,7 @@ class ListIdentityEncoder:
         values=np.array(values)
 
         tensor=torch.from_numpy(values).to(self.dtype)
-        if self.standardize:
-            tensor, mean, std = standardize_tensor(tensor)
-            return tensor.to(self.dtype)
-        elif self.robust_scale:
-            tensor, median, iqr = robust_scale(tensor,q_min=0.25,q_max=0.75)
-            return tensor.to(self.dtype)
-        elif self.normalize:
-            tensor, min, max = min_max_normalize(tensor,normalization_range=self.normalization_range)
-            return tensor.to(self.dtype)
-        else:
-            return tensor
+        return tensor
 
 class ElementsEncoder:
     """Converts a column of list of numbers into torch tensor."""
@@ -237,14 +205,6 @@ class NodeEncoders:
     
     def get_element_encoder(self,node_path, column_encoders={}, **kwargs):
         if column_encoders=={}:
-            # column_encoders={
-            #     'atomic_number:float':IdentityEncoder(normalize=do_scaling),
-            #     'X:float':IdentityEncoder(normalize=do_scaling),
-            #     'atomic_radius:float':IdentityEncoder(normalize=do_scaling),
-            #     'group:int':IdentityEncoder(normalize=do_scaling),
-            #     'row:int':IdentityEncoder(normalize=do_scaling),
-            #     'atomic_mass:float':IdentityEncoder(normalize=do_scaling),
-            #     }
             column_encoders={
                 'atomic_number:float':IdentityEncoder(dtype=torch.float32,**kwargs),
                 'X:float':IdentityEncoder(dtype=torch.float32,**kwargs),
@@ -298,55 +258,7 @@ class NodeEncoders:
         return encoder_mapping, name_id_map, id_name_map
     
     def get_material_encoder(self,node_path,skip_columns=[],column_encoders={}, **kwargs):
-        if column_encoders=={}:
-            # column_encoders={
-            #     'composition:string':CompositionEncoder(),
-            #     'elements:string[]':ElementsEncoder(),
-            #     'crystal_system:string':ClassificationEncoder(),
-            #     'space_group:int':SpaceGroupOneHotEncoder(),
-            #     'point_group:string':ClassificationEncoder(),
-            #     'hall_symbol:string':ClassificationEncoder(),
-            #     'is_gap_direct:boolean':ClassificationEncoder(),
-            #     'is_metal:boolean':ClassificationEncoder(),
-            #     'is_magnetic:boolean':ClassificationEncoder(),
-            #     'ordering:string':ClassificationEncoder(),
-            #     'is_stable:boolean':ClassificationEncoder(),
-                
-            #     # 'nelements:int':ClassificationEncoder(),
-            #     'nelements:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'nsites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'volume:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'density:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'density_atomic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'energy_per_atom:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'formation_energy_per_atom:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'energy_above_hull:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'band_gap:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-
-            #     'cbm:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'vbm:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-
-            #     'efermi:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'total_magnetization:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'total_magnetization_normalized_vol:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'num_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'num_unique_magnetic_sites:int':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-
-            #     'k_voigt:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'k_reuss:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'k_vrh:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-
-            #     'g_voigt:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'g_reuss:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'g_vrh:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-
-            #     'universal_anisotropy:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'homogeneous_poisson:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'e_total:float':IdentityEncoder(dtype=torch.float32,robust_scale=do_scaling),
-            #     'e_ionic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     'e_electronic:float':IdentityEncoder(dtype=torch.float32,normalize=do_scaling),
-            #     }
-            
+        if column_encoders=={}:         
             column_encoders={
                 'composition:string':CompositionEncoder(),
                 'elements:string[]':ElementsEncoder(),
@@ -469,23 +381,191 @@ class EdgeEncoders:
 
 
 
+
+# encoders={
+#         NodeTypes.MATERIAL.value:
+#             {
+#                 'nsites':IdentityEncoder(dtype=torch.float32),
+#                 'nelements':IdentityEncoder(dtype=torch.float32),
+#                 'volume':IdentityEncoder(dtype=torch.float32),
+#                 'density':IdentityEncoder(dtype=torch.float32),
+#                 'density_atomic':IdentityEncoder(dtype=torch.float32),
+#                 'energy_per_atom':IdentityEncoder(dtype=torch.float32),
+#                 'formation_energy_per_atom':IdentityEncoder(dtype=torch.float32),
+#                 'energy_above_hull':IdentityEncoder(dtype=torch.float32),
+#                 'is_stable':BooleanEncoder(dtype=torch.float32),
+#                 'band_gap':IdentityEncoder(dtype=torch.float32),
+#                 'cbm':IdentityEncoder(dtype=torch.float32),
+#                 'vbm':IdentityEncoder(dtype=torch.float32),
+#                 'efermi':IdentityEncoder(dtype=torch.float32),
+#                 'is_gap_direct',
+#                 'is_metal',
+#                 'is_magnetic',
+#                 'ordering',
+#                 'total_magnetization':IdentityEncoder(dtype=torch.float32),
+#                 'total_magnetization_normalized_vol':IdentityEncoder(dtype=torch.float32),
+#                 'num_magnetic_sites':IdentityEncoder(dtype=torch.float32),
+#                 'num_unique_magnetic_sites':IdentityEncoder(dtype=torch.float32),
+#                 'k_voigt':IdentityEncoder(dtype=torch.float32),
+#                 'k_reuss':IdentityEncoder(dtype=torch.float32),
+#                 'k_vrh':IdentityEncoder(dtype=torch.float32),
+#                 'g_voigt':IdentityEncoder(dtype=torch.float32),
+#                 'g_reuss':IdentityEncoder(dtype=torch.float32),
+#                 'g_vrh':IdentityEncoder(dtype=torch.float32),
+#                 'universal_anisotropy':IdentityEncoder(dtype=torch.float32),
+#                 'e_total':IdentityEncoder(dtype=torch.float32),
+#                 'e_ionic':IdentityEncoder(dtype=torch.float32),
+#                 'e_electronic':IdentityEncoder(dtype=torch.float32),
+#                 'symmetry-crystal_system',
+#                 'symmetry-symbol',
+#                 'symmetry-number',
+#                 'symmetry-point_group',
+#                 'a':IdentityEncoder(dtype=torch.float32),
+#                 'b':IdentityEncoder(dtype=torch.float32),
+#                 'c':IdentityEncoder(dtype=torch.float32),
+#                 'alpha':IdentityEncoder(dtype=torch.float32),
+#                 'beta':IdentityEncoder(dtype=torch.float32),
+#                 'gamma':IdentityEncoder(dtype=torch.float32),
+#                 'sine_coulomb_matrix':ListIdentityEncoder(dtype=torch.float32),
+#                 'element_property':ListIdentityEncoder(dtype=torch.float32),
+#                 'element_fraction':ListIdentityEncoder(dtype=torch.float32),
+#                 'xrd_pattern':ListIdentityEncoder(dtype=torch.float32),
+#                 'uncorrected_energy_per_atom':IdentityEncoder(dtype=torch.float32),
+#                 'equilibrium_reaction_energy_per_atom':IdentityEncoder(dtype=torch.float32),
+#                 'n':IdentityEncoder(dtype=torch.float32),
+#                 'weighted_surface_energy_EV_PER_ANG2':IdentityEncoder(dtype=torch.float32),
+#                 'weighted_surface_energy':IdentityEncoder(dtype=torch.float32),
+#                 'weighted_work_function':IdentityEncoder(dtype=torch.float32),
+#                 'surface_anisotropy':IdentityEncoder(dtype=torch.float32),
+#                 'shape_factor':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-order':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-k_vrh':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-k_reuss':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-k_voigt':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-g_vrh':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-g_reuss':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-g_voigt':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-sound_velocity_transverse':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-sound_velocity_longitudinal':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-sound_velocity_total':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-sound_velocity_acoustic':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-sound_velocity_optical':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-thermal_conductivity_clarke':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-thermal_conductivity_cahill':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-young_modulus':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-universal_anisotropy':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-homogeneous_poisson':IdentityEncoder(dtype=torch.float32),
+#                 'elasticity-debye_temperature':IdentityEncoder(dtype=torch.float32),
+#                 'shape_factor':IdentityEncoder(dtype=torch.float32),
+#                     },
+#         NodeTypes.ELEMENT.value:
+#             }
+
 if __name__ == "__main__":
     import pandas as pd
     import os
     import matplotlib.pyplot as plt
-    from matgraphdb import GraphGenerator
+    from matgraphdb.graph.material_graph import MaterialGraph
     from matgraphdb.mlcore.transforms import min_max_normalize, standardize_tensor
-    main_graph_dir = GraphGenerator().main_graph_dir
-    main_nodes_dir = os.path.join(main_graph_dir,'nodes') 
-    print(main_graph_dir)
 
-    element_node_path=os.path.join(main_nodes_dir,'element.csv')
-    chemenv_node_path=os.path.join(main_nodes_dir,'chemenv.csv')
-    material_node_path=os.path.join(main_nodes_dir,'material.csv')
+    material_graph=MaterialGraph()
+    graph_dir = material_graph.graph_dir
+    nodes_dir = material_graph.node_dir
+    relationship_dir = material_graph.relationship_dir
+ 
 
-    element_df=pd.read_csv(element_node_path,index_col=0)
-    chemenv_df=pd.read_csv(chemenv_node_path,index_col=0)
-    material_df=pd.read_csv(material_node_path,index_col=0)
+    node_names=material_graph.list_nodes()
+    relationship_names=material_graph.list_relationships()
+
+    node_files=material_graph.get_node_filepaths()
+    relationship_files=material_graph.get_relationship_filepaths()
+
+
+    # Example of using NodeEncoders
+    # node_encoders=NodeEncoders()
+    # encoders,_,_=node_encoders.get_element_encoder(element_node_path)
+    # x = None
+    # if encoders is not None:
+    #     xs = [encoder(element_df[col]) for col, encoder in encoders.items()]
+    #     x = torch.cat(xs, dim=-1)
+
+    # mateiral_node=material_graph.nodes.get_material_nodes(columns=[
+    #                                                             'nsites',
+    #                                                             'elements',
+    #                                                             'nelements',
+    #                                                             'volume',
+    #                                                             'density',
+    #                                                             'density_atomic',
+    #                                                             'energy_per_atom',
+    #                                                             'formation_energy_per_atom',
+    #                                                             'energy_above_hull',
+    #                                                             'is_stable',
+    #                                                             'band_gap',
+    #                                                             'cbm',
+    #                                                             'vbm',
+    #                                                             'efermi',
+    #                                                             'is_gap_direct',
+    #                                                             'is_metal',
+    #                                                             'is_magnetic',
+    #                                                             'ordering',
+    #                                                             'total_magnetization',
+    #                                                             'total_magnetization_normalized_vol',
+    #                                                             'num_magnetic_sites',
+    #                                                             'num_unique_magnetic_sites',
+    #                                                             'k_voigt',
+    #                                                             'k_reuss',
+    #                                                             'k_vrh',
+    #                                                             'g_voigt',
+    #                                                             'g_reuss',
+    #                                                             'g_vrh',
+    #                                                             'universal_anisotropy',
+    #                                                             'e_total',
+    #                                                             'e_ionic',
+    #                                                             'e_electronic',
+    #                                                             'symmetry-crystal_system',
+    #                                                             'symmetry-symbol',
+    #                                                             'symmetry-number',
+    #                                                             'symmetry-point_group',
+    #                                                             'a',
+    #                                                             'b',
+    #                                                             'c',
+    #                                                             'alpha',
+    #                                                             'beta',
+    #                                                             'gamma',
+    #                                                             'sine_coulomb_matrix',
+    #                                                             'element_property',
+    #                                                             'element_fraction',
+    #                                                             'xrd_pattern',
+    #                                                             'uncorrected_energy_per_atom',
+    #                                                             'equilibrium_reaction_energy_per_atom',
+    #                                                             'n',
+    #                                                             'weighted_surface_energy_EV_PER_ANG2',
+    #                                                             'weighted_surface_energy',
+    #                                                             'weighted_work_function',
+    #                                                             'surface_anisotropy',
+    #                                                             'shape_factor',
+    #                                                             'elasticity-order',
+    #                                                             'elasticity-k_vrh',
+    #                                                             'elasticity-k_reuss',
+    #                                                             'elasticity-k_voigt',
+    #                                                             'elasticity-g_vrh',
+    #                                                             'elasticity-g_reuss',
+    #                                                             'elasticity-g_voigt',
+    #                                                             'elasticity-sound_velocity_transverse',
+    #                                                             'elasticity-sound_velocity_longitudinal',
+    #                                                             'elasticity-sound_velocity_total',
+    #                                                             'elasticity-sound_velocity_acoustic',
+    #                                                             'elasticity-sound_velocity_optical',
+    #                                                             'elasticity-thermal_conductivity_clarke',
+    #                                                             'elasticity-thermal_conductivity_cahill',
+    #                                                             'elasticity-young_modulus',
+    #                                                             'elasticity-universal_anisotropy',
+    #                                                             'elasticity-homogeneous_poisson',
+    #                                                             'elasticity-debye_temperature',
+    #                                                             'shape_factor',
+    #                                                                 ], 
+    #                                                       include_cols=False)
+
 
 
     # Example usage of encoders
@@ -495,9 +575,9 @@ if __name__ == "__main__":
 
 
     # Example usage of encoders
-    identity_encoder=ListIdentityEncoder(dtype=torch.float32,normalize=True)
-    values=identity_encoder(material_df['element_property:float[]'])
-    print(values[:10])
+    # identity_encoder=ListIdentityEncoder(dtype=torch.float32,normalize=True)
+    # values=identity_encoder(material_df['element_property:float[]'])
+    # print(values[:10])
     # print(atomic_numbers.shape)
 
     # # Example usage of encoders

@@ -1,4 +1,4 @@
-from matgraphdb.graph.node_types import NodeTypes
+from matgraphdb.graph.material_graph import NodeTypes
 from matgraphdb import Neo4jManager,Neo4jGDSManager
 from matgraphdb.utils import LOGGER
 

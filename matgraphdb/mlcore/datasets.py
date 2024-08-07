@@ -2,6 +2,7 @@ from glob import glob
 import os
 from typing import List, Union
 
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -9,32 +10,7 @@ from torch_geometric.data import HeteroData,InMemoryDataset
 import torch_geometric.transforms as T 
 
 from matgraphdb.mlcore.encoders import EdgeEncoders, NodeEncoders
-from matgraphdb import GraphGenerator
-import numpy as np
-class NumpyDataset(Dataset):
-    def __init__(self, X,y):
-        self.X = X
-        self.y = y
-        self.n_samples=len(self.X)
-
-    def __getitem__(self, index):
-        features = self.X[index,:]
-        label = self.y[index]
-        return features, label
-    
-    def __len__(self):
-        return self.n_samples
-
-class PyTorchGeometricDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
-
-    def __getitem__(self, index):
-        data = self.data[index]
-        return data
-
-    def __len__(self):
-        return len(self.data)
+from matgraphdb.graph.material_graph import MaterialGraph
 
 
 # load node csv file and map index to continuous index
@@ -503,16 +479,17 @@ if __name__ == "__main__":
 
     import pandas as pd
     import os
-    
-    main_graph_dir = GraphGenerator().main_graph_dir
-    main_nodes_dir = os.path.join(main_graph_dir,'nodes')
-    main_relationship_dir = os.path.join(main_graph_dir,'relationships')
-    print(main_graph_dir)
+    material_graph=MaterialGraph()
+    graph_dir = material_graph.graph_dir
+    nodes_dir = material_graph.node_dir
+    relationship_dir = material_graph.relationship_dir
+ 
 
-    element_node_path=os.path.join(main_nodes_dir,'element.csv')
-    material_node_path=os.path.join(main_nodes_dir,'material.csv')
-    material_crystal_system_path=os.path.join(main_relationship_dir,'MATERIAL-HAS-CRYSTAL_SYSTEM.csv')
+    node_names=material_graph.list_nodes()
+    relationship_names=material_graph.list_relationships()
 
+    node_files=material_graph.get_node_filepaths()
+    relationship_files=material_graph.get_relationship_filepaths()
 
     # Example of using pyGHeteroDataGenerator
     # node_encoders=NodeEncoders()
@@ -524,97 +501,104 @@ if __name__ == "__main__":
 
     # node_filtering={}
 
-    node_filtering={
-        'material':{
-            'k_vrh':(0,300),
-            },
-        }
-    node_properties={
-    'element':
-        {
-        'properties' :[
-                'atomic_number',
-                'group',
-                'row',
-                'atomic_mass'
-                ],
-        'scale': {
-                # 'robust_scale': True,
-                # 'standardize': True,
-                'normalize': True
-            }
-        },
-    'material':
-            {   
-        'properties':[
-            'nelements',
-            'nsites',
-            'crystal_system',
-            'volume',
-            'density',
-            'density_atomic',
-            ],
-        'scale': {
-                # 'robust_scale': True,
-                'standardize': True,
-                # 'normalize': True
-            }
-            }
-        }
 
-    edge_properties={
-        'weight':
-            {
-            'properties':[
-                'weight'
-                ],
-            'scale': {
-                # 'robust_scale': True,
-                # 'standardize': True,
-                # 'normalize': True
-            }
-        }
-        }
-
-    
-    target_property='k_vrh'
+    ################################################################################################
     # Example of using MaterialGraphDataset
-    graph_dataset=MaterialGraphDataset.ec_element_chemenv(
-                                                        node_properties=node_properties,
-                                                        node_filtering=node_filtering,
-                                                        edge_properties=edge_properties,
-                                                        node_target_property=target_property,
-                                                        edge_target_property=None,
-                                                        )
     
-    data=graph_dataset.data
+    # node_filtering={
+    #     'material':{
+    #         'k_vrh':(0,300),
+    #         },
+    #     }
+    # node_properties={
+    # 'element':
+    #     {
+    #     'properties' :[
+    #             'atomic_number',
+    #             'group',
+    #             'row',
+    #             'atomic_mass'
+    #             ],
+    #     'scale': {
+    #             # 'robust_scale': True,
+    #             # 'standardize': True,
+    #             'normalize': True
+    #         }
+    #     },
+    # 'material':
+    #         {   
+    #     'properties':[
+    #         'nelements',
+    #         'nsites',
+    #         'crystal_system',
+    #         'volume',
+    #         'density',
+    #         'density_atomic',
+    #         ],
+    #     'scale': {
+    #             # 'robust_scale': True,
+    #             'standardize': True,
+    #             # 'normalize': True
+    #         }
+    #         }
+    #     }
+
+    # edge_properties={
+    #     'weight':
+    #         {
+    #         'properties':[
+    #             'weight'
+    #             ],
+    #         'scale': {
+    #             # 'robust_scale': True,
+    #             # 'standardize': True,
+    #             # 'normalize': True
+    #         }
+    #     }
+    #     }
+
+    
+    # target_property='k_vrh'
+    # # Example of using MaterialGraphDataset
+    # graph_dataset=MaterialGraphDataset.ec_element_chemenv(
+    #                                                     node_properties=node_properties,
+    #                                                     node_filtering=node_filtering,
+    #                                                     edge_properties=edge_properties,
+    #                                                     node_target_property=target_property,
+    #                                                     edge_target_property=None,
+    #                                                     )
+    
+    # data=graph_dataset.data
 
     # print(data)
     # print(data['element'].x[:10])    
 
 
-    print('material node target property')
-    print(f"Min: {data['material'].y.min()} | Max: {data['material'].y.max()} | Mean: {data['material'].y.mean()} | Std: {data['material'].y.std()} | Median: {data['material'].y.median()}")
-    print('-'*200)
+    # print('material node target property')
+    # print(f"Min: {data['material'].y.min()} | Max: {data['material'].y.max()} | Mean: {data['material'].y.mean()} | Std: {data['material'].y.std()} | Median: {data['material'].y.median()}")
+    # print('-'*200)
 
-    print('element node')
-    print(data['element'].property_names)
-    for icol in range(data['element'].x.shape[1]):
-        print(f"Column {icol} | Min: {data['element'].x[:,icol].min()} | Max: {data['element'].x[:,icol].max()} | Mean: {data['element'].x[:,icol].mean()} | Std: {data['element'].x[:,icol].std()} | Median: {data['element'].x[:,icol].median()}")
-    print('-'*200)
+    # print('element node')
+    # print(data['element'].property_names)
+    # for icol in range(data['element'].x.shape[1]):
+    #     print(f"Column {icol} | Min: {data['element'].x[:,icol].min()} | Max: {data['element'].x[:,icol].max()} | Mean: {data['element'].x[:,icol].mean()} | Std: {data['element'].x[:,icol].std()} | Median: {data['element'].x[:,icol].median()}")
+    # print('-'*200)
 
-    print('material node')
-    print(data['material'].property_names)
-    for icol in range(data['material'].x.shape[1]):
-        print(f"Column {icol} | Min: {data['material'].x[:,icol].min()} | Max: {data['material'].x[:,icol].max()} | Mean: {data['material'].x[:,icol].mean()} | Std: {data['material'].x[:,icol].std()} | Median: {data['material'].x[:,icol].median()}")
-    print('-'*200)
+    # print('material node')
+    # print(data['material'].property_names)
+    # for icol in range(data['material'].x.shape[1]):
+    #     print(f"Column {icol} | Min: {data['material'].x[:,icol].min()} | Max: {data['material'].x[:,icol].max()} | Mean: {data['material'].x[:,icol].mean()} | Std: {data['material'].x[:,icol].std()} | Median: {data['material'].x[:,icol].median()}")
+    # print('-'*200)
 
-    print('element','electric_connects','element')
-    edge_attr=data['element','electric_connects','element'].edge_attr
-    print(data['element','electric_connects','element'].property_names)
-    for icol in range(edge_attr.shape[1]):
-        print(f"Column {icol} | Min: {edge_attr[:,icol].min()} | Max: {edge_attr[:,icol].max()} | Mean: {edge_attr[:,icol].mean()} | Std: {edge_attr[:,icol].std()} | Median: {edge_attr[:,icol].median()}")
-    print('-'*200)
+    # print('element','electric_connects','element')
+    # edge_attr=data['element','electric_connects','element'].edge_attr
+    # print(data['element','electric_connects','element'].property_names)
+    # for icol in range(edge_attr.shape[1]):
+    #     print(f"Column {icol} | Min: {edge_attr[:,icol].min()} | Max: {edge_attr[:,icol].max()} | Mean: {edge_attr[:,icol].mean()} | Std: {edge_attr[:,icol].std()} | Median: {edge_attr[:,icol].median()}")
+    # print('-'*200)
+
+
+
     # print(dir(graph_dataset.data))
 
 

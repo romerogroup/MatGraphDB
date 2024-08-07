@@ -6,7 +6,7 @@ from glob import glob
 import pandas as pd
 import pymatgen.core as pmat
 
-from matgraphdb.graph.node_types import NodeTypes
+from matgraphdb.graph.material_graph import NodeTypes
 from matgraphdb.utils import  GLOBAL_PROP_FILE, NODE_DIR, LOGGER, ENCODING_DIR
 
 def create_nodes(node_names, node_type, node_prefix, node_properties=None, filepath=None):

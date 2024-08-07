@@ -13,7 +13,7 @@ from matgraphdb.graph.create_node_csv import create_nodes
 from matgraphdb.graph.create_relationship_csv import (create_relationships,create_bonding_task, create_chemenv_element_task, create_material_element_task, 
                                                       create_material_chemenv_task, create_material_chemenvElement_task, create_material_spg_task,
                                                       create_material_crystal_system_task)
-from matgraphdb.graph.node_types import NodeTypes
+from matgraphdb.graph.material_graph import NodeTypes
 
 # TODO Move is_in_range and is_in_list to utils
 # TODO Create docstrings for screen materials
