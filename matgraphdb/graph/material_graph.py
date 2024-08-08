@@ -14,16 +14,16 @@ from pymatgen.core.units import FloatWithUnit
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from matgraphdb.data.parquet_schemas import get_node_schema
+
 from matgraphdb.utils.periodic_table import atomic_symbols, pymatgen_properties
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import MATERIAL_PARQUET_FILE
 from matgraphdb.utils import GRAPH_DIR, get_child_logger
-
+from matgraphdb.data.parquet_schemas import get_node_schema,get_relationship_schema
 from matgraphdb.graph.types import NodeTypes, RelationshipTypes
 
 
-logger=get_child_logger(__name__, console_out=False, log_level='debug')
+logger=get_child_logger(__name__, console_out=False, log_level='info')
 
 
 class Nodes:
@@ -90,15 +90,10 @@ class Nodes:
         df['name'] = df['symbol']
         df['type'] = node_type
 
-        column_names=list(df.columns)
-        for name in column_names:
-            logger.debug(f"Column: {name}")
-
         if columns:
             df = df[columns]
 
         schema = get_node_schema(NodeTypes.ELEMENT)
-        
         try:
             parquet_table=pa.Table.from_pandas(df,schema=schema)
         except Exception as e:
@@ -113,11 +108,16 @@ class Nodes:
     def get_crystal_system_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.CRYSTAL_SYSTEM.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
-            
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
+
         crystal_systems = ['triclinic', 'monoclinic', 'orthorhombic',
                            'tetragonal', 'trigonal', 'hexagonal', 'cubic']
         crystal_systems_properties = []
@@ -129,16 +129,31 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.CRYSTAL_SYSTEM)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+        
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
 
     def get_magnetic_states_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.MAGNETIC_STATE.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
             
         magnetic_states = ['NM', 'FM', 'FiM', 'AFM', 'Unknown']
         magnetic_states_properties = []
@@ -150,17 +165,31 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.MAGNETIC_STATE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+        
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_oxidation_states_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.OXIDATION_STATE.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
 
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
         # Old method
         # oxidation_states = np.arange(-9, 10)
         # oxidation_states_names = [f'ox_{i}' for i in oxidation_states]
@@ -190,39 +219,70 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        schema=get_node_schema(NodeTypes.OXIDATION_STATE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+        self.save_nodes(parquet_table, filepath)
+ 
         return df
     
     def get_space_group_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.SPACE_GROUP.value
 
+        logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
         
         space_groups = [f'spg_{i}' for i in np.arange(1, 231)]
         space_groups_properties = []
         for i, space_group in enumerate(space_groups[:]):
             spg_num=space_group.split('_')[1]
-            space_groups_properties.append({"spg": spg_num})
+            space_groups_properties.append({"spg": int(spg_num)})
 
         df = pd.DataFrame(space_groups_properties)
-        df['name'] = df['spg']
+        df['name'] = df['spg'].astype(str)
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.SPACE_GROUP)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_chemenv_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.CHEMENV.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
         chemenv_names = list(mp_coord_encoding.keys())
         chemenv_names_properties = []
@@ -236,17 +296,32 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_chemenv_element_nodes(self, columns=None, **kwargs):
         warnings.filterwarnings("ignore", category=UserWarning)
         node_type=NodeTypes.CHEMENV_ELEMENT.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
         
         chemenv_names = list(mp_coord_encoding.keys())
         elements = atomic_symbols[1:]
@@ -284,16 +359,31 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.CHEMENV_ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_wyckoff_positions_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.SPG_WYCKOFF.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
         
         space_groups = [f'spg_{i}' for i in np.arange(1, 231)]
         wyckoff_letters = ['a', 'b', 'c', 'd', 'e', 'f']
@@ -311,7 +401,17 @@ class Nodes:
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.SPG_WYCKOFF)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_material_nodes(self, columns=None, **kwargs):
@@ -329,7 +429,6 @@ class Nodes:
         logger.info(f"No node file found. Attemping to create {node_type} nodes")
         try:
             df = pd.read_parquet(MATERIAL_PARQUET_FILE)
-            return df
         except Exception as e:
             logger.error(f"Error reading {node_type} parquet file: {e}")
             return None
@@ -358,31 +457,51 @@ class Nodes:
     def get_material_lattice_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.LATTICE.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
         df = self.get_material_nodes(columns=['material_id', 'lattice', 'a', 'b', 'c', 
                                                                  'alpha', 'beta', 'gamma', 
-                                                                 'symmetry-crystal_system','volume'])
+                                                                 'crystal_system','volume'])
 
         df['name'] = df['material_id']
         df['type'] = node_type
         if columns:
             df = df[columns]
-        self.save_nodes(df, filepath)
+
+        schema=get_node_schema(NodeTypes.LATTICE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
     
     def get_material_site_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.SITE.value
 
+        logger.info(f"Getting {node_type} nodes")
+
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
         df = self.get_material_nodes(columns=['material_id', 'lattice', 'frac_coords', 'species'])
         all_species=[]
@@ -411,7 +530,16 @@ class Nodes:
         if columns:
             df = df[columns]
 
-        self.save_nodes(df, filepath)
+        schema=get_node_schema(NodeTypes.SITE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
         return df
 
     def initialize_nodes(self):
@@ -425,12 +553,15 @@ class Nodes:
         
         self.get_wyckoff_positions_nodes()
 
+        self.get_material_lattice_nodes()
+        self.get_material_site_nodes()
+
     def get_property_names(self, node_type):
         logger.info(f"Getting property names for {node_type} nodes")
         filepath=self.get_node_filepaths(node_type=node_type)
         properties = Nodes.get_column_names(filepath)
         for property in properties:
-            logger.debug(f"Property: {property}")
+            logger.info(f"Property: {property}")
         return properties
     
     def load_nodes(self, filepath, columns=None, include_cols=True, **kwargs):
@@ -518,14 +649,19 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_SPG.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
         
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
+        
         # Loading nodes
-        node_a_df = self.nodes.get_material_nodes( columns=['symmetry-number'])
+        node_a_df = self.nodes.get_material_nodes(columns=['space_group'])
         node_b_df = self.nodes.get_space_group_nodes( columns=['name'])
 
         # Mapping name to index
@@ -541,16 +677,25 @@ class Relationships:
         df = df.reset_index().rename(columns={'index': node_a_type+'-START_ID'})
 
         # Adding node b ID with the mapping
-        df[node_b_type+'-END_ID'] = df['symmetry-number'].map(name_to_index_mapping_b).astype(int)
+        df[node_b_type+'-END_ID'] = df['space_group'].map(name_to_index_mapping_b).astype(int)
 
-        df.drop(columns=['symmetry-number'], inplace=True)
+        df.drop(columns=['space_group'], inplace=True)
         df['TYPE'] = relationship_type
 
         df['weight'] = 1.0
 
         if columns:
             df = df[columns]
-        self.save_relationships(df, filepath)
+
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_SPG)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_material_crystal_system_relationships(self, columns=None, **kwargs):
@@ -558,14 +703,19 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_CRYSTAL_SYSTEM.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
         
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
+        
         # Loading nodes
-        node_a_df = self.nodes.get_material_nodes( columns=['symmetry-crystal_system'])
+        node_a_df = self.nodes.get_material_nodes( columns=['crystal_system'])
         node_b_df = self.nodes.get_crystal_system_nodes( columns=['name'])
 
         # Mapping name to index
@@ -575,7 +725,7 @@ class Relationships:
         df = node_a_df.copy()
 
         # converting to lower case
-        df['symmetry-crystal_system'] = df['symmetry-crystal_system'].str.lower()
+        df['crystal_system'] = df['crystal_system'].str.lower()
         
         # Removing NaN values
         df = df.dropna()
@@ -584,9 +734,9 @@ class Relationships:
         df = df.reset_index().rename(columns={'index': node_a_type+'-START_ID'})
 
         # Adding node b ID with the mapping
-        df[node_b_type+'-END_ID'] = df['symmetry-crystal_system'].map(name_to_index_mapping_b)
+        df[node_b_type+'-END_ID'] = df['crystal_system'].map(name_to_index_mapping_b)
 
-        df.drop(columns=['symmetry-crystal_system'], inplace=True)
+        df.drop(columns=['crystal_system'], inplace=True)
         df['TYPE'] = relationship_type
 
         df['weight'] = 1.0
@@ -594,7 +744,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_CRYSTAL_SYSTEM)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_material_lattice_relationships(self, columns=None, **kwargs):
@@ -602,11 +760,16 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_LATTICE.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_material_nodes( columns=['name'])
@@ -635,7 +798,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_LATTICE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_material_site_relationships(self, columns=None, **kwargs):
@@ -643,11 +814,16 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_SITE.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_material_nodes( columns=['name'])
@@ -663,10 +839,10 @@ class Relationships:
         df = df.dropna()
 
         # Making current index a column and reindexing
-        df = df.reset_index().rename(columns={'index': node_b_type+'-START_ID'})
+        df = df.reset_index().rename(columns={'index': node_a_type+'-START_ID'})
 
         # Adding node b ID with the mapping
-        df[node_a_type+'-END_ID'] = df['name'].map(name_to_index_mapping_a)
+        df[node_b_type+'-END_ID'] = df['name'].map(name_to_index_mapping_a)
 
         df.drop(columns=['name'], inplace=True)
         df['TYPE'] = relationship_type
@@ -676,7 +852,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_SITE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_element_oxidation_state_relationships(self, columns=None, **kwargs):
@@ -684,11 +868,16 @@ class Relationships:
         relationship_type=RelationshipTypes.ELEMENT_OXIDATION_STATE.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_element_nodes(columns=['name','common_oxidation_states'])
@@ -747,7 +936,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.ELEMENT_OXIDATION_STATE)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_material_element_relationships(self, columns=None, **kwargs):
@@ -755,11 +952,16 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_ELEMENT.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_material_nodes( columns=[
@@ -805,7 +1007,16 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
+
         return df
 
     def get_material_chemenv_relationships(self, columns=None, **kwargs):
@@ -813,11 +1024,16 @@ class Relationships:
         relationship_type=RelationshipTypes.MATERIAL_CHEMENV.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_material_nodes( columns=[
@@ -868,7 +1084,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.MATERIAL_CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
         
     def get_element_chemenv_relationships(self, columns=None, **kwargs):
@@ -876,11 +1100,16 @@ class Relationships:
         relationship_type=RelationshipTypes.ELEMENT_CHEMENV.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         node_a_df = self.nodes.get_element_nodes( columns=['name'])
@@ -939,7 +1168,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.ELEMENT_CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_element_geometric_electric_element_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -948,11 +1185,16 @@ class Relationships:
         relationship_type=RelationshipTypes.ELEMENT_GEOMETRIC_ELECTRIC_CONNECTS_ELEMENT.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         element_df = self.nodes.get_element_nodes( columns=['name'])
@@ -1011,7 +1253,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.ELEMENT_GEOMETRIC_ELECTRIC_CONNECTS_ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_element_geometric_element_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -1020,11 +1270,16 @@ class Relationships:
         relationship_type=RelationshipTypes.ELEMENT_GEOMETRIC_CONNECTS_ELEMENT.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         element_df = self.nodes.get_element_nodes( columns=['name'])
@@ -1081,7 +1336,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.ELEMENT_GEOMETRIC_CONNECTS_ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_element_electric_element_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -1090,11 +1353,16 @@ class Relationships:
         relationship_type=RelationshipTypes.ELEMENT_ELECTRIC_CONNECTS_ELEMENT.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         element_df = self.nodes.get_element_nodes( columns=['name'])
@@ -1151,7 +1419,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.ELEMENT_ELECTRIC_CONNECTS_ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
 
     def get_chemenv_geometric_electric_chemenv_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -1160,11 +1436,16 @@ class Relationships:
         relationship_type=RelationshipTypes.CHEMENV_GEOMETRIC_ELECTRIC_CONNECTS_CHEMENV.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         chemenv_df = self.nodes.get_chemenv_nodes( columns=['name'])
@@ -1227,7 +1508,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.CHEMENV_GEOMETRIC_ELECTRIC_CONNECTS_CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_chemenv_geometric_chemenv_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -1236,11 +1525,16 @@ class Relationships:
         relationship_type=RelationshipTypes.CHEMENV_GEOMETRIC_CONNECTS_CHEMENV.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         chemenv_df = self.nodes.get_chemenv_nodes( columns=['name'])
@@ -1303,7 +1597,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.CHEMENV_GEOMETRIC_CONNECTS_CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
     
     def get_chemenv_electric_chemenv_relationships(self, columns=None, remove_duplicates=True, **kwargs):
@@ -1312,11 +1614,16 @@ class Relationships:
         relationship_type=RelationshipTypes.CHEMENV_ELECTRIC_CONNECTS_CHEMENV.value
         node_a_type,connection_name,node_b_type=relationship_type.split('-')
 
+        logger.info(f"Getting {relationship_type} relationships")
+
         # Loading relationship if it exists
         filepath=os.path.join(self.relationship_dir, f'{relationship_type}.{self.file_type}')
         if os.path.exists(filepath):
+            logger.info(f"Trying to load {relationship_type} relationships from {filepath}")
             df=self.load_relationships(filepath=filepath, columns=columns, **kwargs)
             return df
+        
+        logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
         chemenv_df = self.nodes.get_chemenv_nodes( columns=['name'])
@@ -1379,7 +1686,15 @@ class Relationships:
         if columns:
             df = df[columns]
 
-        self.save_relationships(df, filepath)
+        schema=get_relationship_schema(RelationshipTypes.CHEMENV_ELECTRIC_CONNECTS_CHEMENV)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {relationship_type} relationships to {filepath}")
+        self.save_relationships(parquet_table, filepath)
         return df
 
     def initialize_relationships(self):
@@ -1424,10 +1739,7 @@ class Relationships:
         return df
             
     def save_relationships(self, df, filepath):
-        if self.file_type=='parquet':
-            df.to_parquet(filepath, index=False, engine='pyarrow')
-        elif self.file_type=='csv':
-            df.to_csv(filepath, index=False)
+        pq.write_table(df, filepath)
 
     def get_relationship_filepaths(self, relationship_type=None):
         relationship_types = [type.value for type in RelationshipTypes]
@@ -1787,11 +2099,11 @@ if __name__=='__main__':
     ################################################################################################
     # Nodes with columns
     ################################################################################################
-    node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    nodes=Nodes(node_dir=node_dir,skip_init=True)
+    # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
+    # nodes=Nodes(node_dir=node_dir,skip_init=False)
     # df=nodes.get_material_nodes()
-    df=nodes.get_element_nodes()
-    # properties=nodes.get_property_names(node_type='ELEMENT')
+    # df=nodes.get_element_nodes()
+    # properties=nodes.get_property_names(node_type='MATERIAL')
     # print(properties)
     # # print(df.head())
     # # # for irow, row in df.iterrows():
@@ -1821,9 +2133,9 @@ if __name__=='__main__':
     ################################################################################################
     # Relationships
     ################################################################################################
-    # relationships=Relationships(relationship_dir=os.path.join('data','production','materials_project','graph_database','test','relationships'),
+    relationships=Relationships(relationship_dir=os.path.join('data','production','materials_project','graph_database','main','relationships'),
                                 
-    #                             node_dir=os.path.join('data','production','materials_project','graph_database','test','nodes'))
+                                node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes'))
     # df=relationships.get_material_spg_relationships()
     # df=relationships.get_material_crystal_system_relationships()
     # df=relationships.get_material_lattice_relationships()

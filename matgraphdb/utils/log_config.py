@@ -16,7 +16,7 @@ FORMATTER = logging.Formatter(fmt=FORMAT_STRING)
 
 logging_levels=['critical','error','warning','info','debug']
 
-def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='info', format=FORMATTER):
+def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='debug', format=FORMATTER):
     """
     Set up logging for the MatGraphDB package.
 
@@ -26,6 +26,16 @@ def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='info', format=FO
     Returns:
         logger (logging.Logger): The logger object for the MatGraphDB package.
     """
+    if log_level == 'debug':
+        log_level = logging.DEBUG
+    elif log_level == 'info':
+        log_level = logging.INFO
+    elif log_level == 'warning':
+        log_level = logging.WARNING
+    elif log_level == 'error':
+        log_level = logging.ERROR
+    elif log_level == 'critical':
+        log_level = logging.CRITICAL
 
     # Create a timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -37,7 +47,7 @@ def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='info', format=FO
     log_filepath = os.path.join(log_dir,f'{PARENT_LOGGER_NAME}.log')
 
 
-    logging.basicConfig(level=logging.INFO, 
+    logging.basicConfig(level=log_level, 
                         format=FORMAT_STRING)
 
     logger = logging.getLogger(PARENT_LOGGER_NAME)  # define globally (used in train.py, val.py, detect.py, etc.)
@@ -100,12 +110,12 @@ def get_child_logger(name, console_out=False, log_level='info', format=FORMATTER
         child_logger.addHandler(child_handler)
     else:
         
-        if log_level == 'debug':
-            child_error_handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}_error.log'))
-            child_error_handler.setLevel(logging.DEBUG)
-            child_error_handler.setFormatter(format)
+        # if log_level == logging.DEBUG:
+        #     child_error_handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}_error.log'))
+        #     child_error_handler.setLevel(logging.DEBUG)
+        #     child_error_handler.setFormatter(format)
 
-            child_logger.addHandler(child_error_handler)
+        #     child_logger.addHandler(child_error_handler)
 
         child_handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}.log'))
         child_handler.setLevel(log_level)

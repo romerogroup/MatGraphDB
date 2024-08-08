@@ -170,10 +170,8 @@ material_property_schema_list=[
 
 
 element_property_schema_list = [
-    pa.field('atomic_number', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('group', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('row', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
-    pa.field('atomic_mass', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('Z', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('symbol', t_string, metadata={'encoder':'ClassificationEncoder()'}),
     pa.field('long_name', t_string, metadata={'encoder':'ClassificationEncoder()'}),
@@ -211,7 +209,7 @@ element_property_schema_list = [
     pa.field('average_cationic_radius', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('average_ionic_radius', t_float, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('ground_state_term_symbol', t_string, metadata={'encoder':'ClassificationEncoder()'}),
-    pa.field('group', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
+    
     pa.field('icsd_oxidation_states', pa.list_(t_int), metadata={'encoder':'IdentityEncoder(dtype=torch.int64)'}),
     pa.field('is_actinoid', t_bool, metadata={'encoder':'BooleanEncoder(dtype=torch.int64)'}),
     pa.field('is_alkali', t_bool, metadata={'encoder':'BooleanEncoder(dtype=torch.int64)'}),
@@ -231,7 +229,6 @@ element_property_schema_list = [
     pa.field('max_oxidation_state', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('min_oxidation_state', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.float32)'}),
     pa.field('oxidation_states', pa.list_(t_int), metadata={'encoder':'ListIdentityEncoder(dtype=torch.int64)'}),
-    pa.field('row', t_int, metadata={'encoder':'IdentityEncoder(dtype=torch.int64)'}),
     pa.field('valence', pa.list_(t_int), metadata={'encoder':'ListIdentityEncoder(dtype=torch.int64)'}),
     pa.field('name', t_string, metadata={'encoder':'ClassificationEncoder()'}),
     pa.field('type', t_string, metadata={'encoder':'ClassificationEncoder()'})]

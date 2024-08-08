@@ -19,7 +19,7 @@ class RelationshipTypes(Enum):
     MATERIAL_SPG=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.SPACE_GROUP.value}'
     MATERIAL_CRYSTAL_SYSTEM=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CRYSTAL_SYSTEM.value}'
     MATERIAL_LATTICE=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.LATTICE.value}'
-    MATERIAL_SITE=f'{NodeTypes.MATERIAL.value}-CAN-{NodeTypes.SITE.value}'
+    MATERIAL_SITE=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.SITE.value}'
 
     MATERIAL_CHEMENV=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CHEMENV.value}'
     MATERIAL_CHEMENV_ELEMENT=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CHEMENV_ELEMENT.value}'
