@@ -18,13 +18,12 @@ import pyarrow.parquet as pq
 from matgraphdb.utils.periodic_table import atomic_symbols, pymatgen_properties
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import GRAPH_DIR, get_child_logger
+from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_child_logger
 from matgraphdb.data.parquet_schemas import get_node_schema,get_relationship_schema
 from matgraphdb.graph.types import NodeTypes, RelationshipTypes
 
 
-logger=get_child_logger(__name__, console_out=False, log_level='info')
-
+logger=get_child_logger(__name__, console_out=False, log_level='debug')
 
 class Nodes:
 
@@ -43,11 +42,13 @@ class Nodes:
         self.node_types=NodeTypes
 
         if from_scratch:
+            logger.info(f"Starting from scratch. Deleting node directory {self.node_dir}")
             shutil.rmtree(self.node_dir)
 
         os.makedirs(self.node_dir,exist_ok=True)
 
         if not skip_init:
+            logger.info(f"Initializing nodes")
             self.initialize_nodes()
 
     def get_element_nodes(self, columns=None, **kwargs):
@@ -57,7 +58,7 @@ class Nodes:
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-
+        
         if os.path.exists(filepath):
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
@@ -65,28 +66,36 @@ class Nodes:
 
         logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
-        elements = atomic_symbols[1:]
-        elements_properties = []
+        df=pd.read_csv(os.path.join(PKG_DIR,'utils','imputed_periodic_table_values.csv'),index_col=0)#, encoding='utf8')
         
-        for i, element in enumerate(elements[:]):
-            tmp_dict=pymatgen_properties.copy()
-            pmat_element=Element(element)
-            for key in tmp_dict.keys():
-                try:
-                    value=getattr(pmat_element,key)
-                except:
-                    value=None
-                if isinstance(value,FloatWithUnit):
-                    value=value.real
-                if isinstance(value,dict):
-                    value=[(key2,value2) for key2,value2 in value.items()]
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: x.replace(']', '').replace('[', ''))
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: ','.join(x.split()) )
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: eval('['+x+']') )
 
-
-                tmp_dict[key]=value
-            elements_properties.append(tmp_dict)
+        df['experimental_oxidation_states']=df['experimental_oxidation_states'].apply(lambda x: eval(x) )
+        df['ionization_energies']=df['ionization_energies'].apply(lambda x: eval(x) )
+        # for irow, row in df.iterrows():
+        #     row['oxidation_states']=eval(row['oxidation_states'])
+        # df['oxidation_states']=df['oxidation_states']
         
+        # elements = atomic_symbols[1:]
+        # elements_properties = []
+        # for i, element in enumerate(elements[:]):
+        #     tmp_dict=pymatgen_properties.copy()
+        #     pmat_element=Element(element)
+        #     for key in tmp_dict.keys():
+        #         try:
+        #             value=getattr(pmat_element,key)
+        #         except:
+        #             value=None
+        #         if isinstance(value,FloatWithUnit):
+        #             value=value.real
+        #         if isinstance(value,dict):
+        #             value=[(key2,value2) for key2,value2 in value.items()]
+        #         tmp_dict[key]=value
+        #     elements_properties.append(tmp_dict)
 
-        df = pd.DataFrame(elements_properties)
+        # df = pd.DataFrame(elements_properties)
         df['name'] = df['symbol']
         df['type'] = node_type
 
@@ -94,6 +103,69 @@ class Nodes:
             df = df[columns]
 
         schema = get_node_schema(NodeTypes.ELEMENT)
+        try:
+            parquet_table=pa.Table.from_pandas(df,schema=schema)
+        except Exception as e:
+            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
+            return None
+
+        logger.info(f"Saving {node_type} nodes to {filepath}")
+
+        self.save_nodes(parquet_table, filepath)
+        return df
+    
+    def get_pre_imputed_element_nodes(self, columns=None, **kwargs):
+        warnings.filterwarnings("ignore", category=UserWarning)
+        node_type=NodeTypes.PRE_IMPUTED_ELEMENT.value
+
+        logger.info(f"Getting {node_type} nodes")
+
+        filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
+        
+        if os.path.exists(filepath):
+            logger.info(f"Trying to load {node_type} nodes from {filepath}")
+            df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
+            return df
+
+        logger.info(f"No node file found. Attemping to create {node_type} nodes")
+
+        df=pd.read_csv(os.path.join(PKG_DIR,'utils','periodic_table_values.csv'),index_col=0)#, encoding='utf8')
+        
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: x.replace(']', '').replace('[', ''))
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: ','.join(x.split()) )
+        df['oxidation_states']=df['oxidation_states'].apply(lambda x: eval('['+x+']') )
+
+        df['experimental_oxidation_states']=df['experimental_oxidation_states'].apply(lambda x: eval(x) )
+        df['ionization_energies']=df['ionization_energies'].apply(lambda x: eval(x) )
+        # for irow, row in df.iterrows():
+        #     row['oxidation_states']=eval(row['oxidation_states'])
+        # df['oxidation_states']=df['oxidation_states']
+        
+        # elements = atomic_symbols[1:]
+        # elements_properties = []
+        # for i, element in enumerate(elements[:]):
+        #     tmp_dict=pymatgen_properties.copy()
+        #     pmat_element=Element(element)
+        #     for key in tmp_dict.keys():
+        #         try:
+        #             value=getattr(pmat_element,key)
+        #         except:
+        #             value=None
+        #         if isinstance(value,FloatWithUnit):
+        #             value=value.real
+        #         if isinstance(value,dict):
+        #             value=[(key2,value2) for key2,value2 in value.items()]
+        #         tmp_dict[key]=value
+        #     elements_properties.append(tmp_dict)
+
+        # df = pd.DataFrame(elements_properties)
+        df['name'] = df['symbol']
+        df['type'] = node_type
+
+        if columns:
+            df = df[columns]
+
+        schema = get_node_schema(NodeTypes.PRE_IMPUTED_ELEMENT)
         try:
             parquet_table=pa.Table.from_pandas(df,schema=schema)
         except Exception as e:
@@ -309,69 +381,6 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_chemenv_element_nodes(self, columns=None, **kwargs):
-        warnings.filterwarnings("ignore", category=UserWarning)
-        node_type=NodeTypes.CHEMENV_ELEMENT.value
-
-        logger.info(f"Getting {node_type} nodes")
-
-        filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
-            logger.info(f"Trying to load {node_type} nodes from {filepath}")
-            df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
-            return df
-        
-        logger.info(f"No node file found. Attemping to create {node_type} nodes")
-        
-        chemenv_names = list(mp_coord_encoding.keys())
-        elements = atomic_symbols[1:]
-        chemenv_element_names = []
-        for element_name in elements:
-            for chemenv_name in chemenv_names:
-                
-                class_name = element_name + '_' + chemenv_name
-                chemenv_element_names.append(class_name)
-
-        chemenv_element_names_properties = []
-        for i, chemenv_element_name in enumerate(chemenv_element_names):
-            element_name=chemenv_element_name.split('_')[0]
-
-
-            tmp_dict=pymatgen_properties.copy()
-            pmat_element=Element(element_name)
-            for key in tmp_dict.keys():
-                try:
-                    value=getattr(pmat_element,key)
-                except:
-                    value=None
-                if isinstance(value,FloatWithUnit):
-                    value=value.real
-                    
-                tmp_dict[key]=value
-
-            coordination = int(chemenv_element_name.split(':')[1])
-            tmp_dict['chemenv_element_name'] = chemenv_element_name
-            tmp_dict['coordination'] = coordination
-            chemenv_element_names_properties.append(tmp_dict)
-
-        df = pd.DataFrame(chemenv_element_names_properties)
-        df['name'] = df['chemenv_element_name'].str.replace(':','_')
-        df['type'] = node_type
-        if columns:
-            df = df[columns]
-
-        schema=get_node_schema(NodeTypes.CHEMENV_ELEMENT)
-        try:
-            parquet_table=pa.Table.from_pandas(df,schema=schema)
-        except Exception as e:
-            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
-            return None
-
-        logger.info(f"Saving {node_type} nodes to {filepath}")
-
-        self.save_nodes(parquet_table, filepath)
-        return df
-    
     def get_wyckoff_positions_nodes(self, columns=None, **kwargs):
         node_type=NodeTypes.SPG_WYCKOFF.value
 
@@ -511,7 +520,7 @@ class Nodes:
         
         for irow, row in df.iterrows():
             if irow%10000==0:
-                print(f"Processing row {irow}")
+                logger.info(f"Processing row {irow}")
             if row['species'] is None:
                 continue
             for frac_coord, specie in zip(row['frac_coords'], row['species']):
@@ -634,6 +643,7 @@ class Relationships:
         self.relationship_types=RelationshipTypes
 
         if from_scratch:
+            logger.info(f"Starting from scratch. Deleting relationship directory {self.relationship_dir}")
             shutil.rmtree(self.relationship_dir)
 
         os.makedirs(self.relationship_dir,exist_ok=True)
@@ -642,6 +652,7 @@ class Relationships:
                          output_format=self.output_format)
         
         if not skip_init:
+            logger.info(f"Initializing relationships")
             self.initialize_relationships()
 
     def get_material_spg_relationships(self, columns=None, **kwargs):
@@ -880,7 +891,7 @@ class Relationships:
         logger.info(f"No relationship file found. Attemping to create {relationship_type} relationships")
         
         # Loading nodes
-        node_a_df = self.nodes.get_element_nodes(columns=['name','common_oxidation_states'])
+        node_a_df = self.nodes.get_element_nodes(columns=['name','experimental_oxidation_states'])
         node_b_df = self.nodes.get_oxidation_states_nodes(columns=['name'])
 
         node_material_df = self.nodes.get_material_nodes(
@@ -1812,6 +1823,7 @@ class MaterialGraph:
         self.sub_graphs_dir=os.path.join(self.graph_dir,'sub_graphs')
 
         if from_scratch and os.path.exists(self.graph_dir):
+            logger.info(f"Starting from scratch. Deleting graph directory {self.graph_dir}")
             shutil.rmtree(self.graph_dir)
 
         os.makedirs(self.node_dir,exist_ok=True)
@@ -1826,18 +1838,24 @@ class MaterialGraph:
 
     def get_node_filepaths(self):
         node_files=[os.path.join(self.node_dir,node_file) for node_file in os.listdir(self.node_dir)]
+        for node_file in node_files:
+            logger.debug(f"Node file: {node_file}")
         return node_files
     
     def get_relationship_filepaths(self):
         relationship_files=[os.path.join(self.relationship_dir,relationship_file) for relationship_file in os.listdir(self.relationship_dir)]
+        for relationship_file in relationship_files:
+            logger.debug(f"Relationship file: {relationship_file}")
         return relationship_files
     
     def list_nodes(self):
         node_names=[node_file.split('.')[0] for node_file in os.listdir(self.node_dir)]
+        logger.debug(f"Node names: {node_names}")
         return node_names
 
     def list_relationships(self):
         relationship_names=[relationship_file.split('.')[0] for relationship_file in os.listdir(self.relationship_dir)]
+        logger.debug(f"Relationship names: {relationship_names}")
         return relationship_names
     
     def screen_graph(self, sub_graph_name, from_scratch=False, **kwargs):
@@ -2100,9 +2118,11 @@ if __name__=='__main__':
     # Nodes with columns
     ################################################################################################
     # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    # nodes=Nodes(node_dir=node_dir,skip_init=False)
-    # df=nodes.get_material_nodes()
+    # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
+    # nodes=Nodes(node_dir=node_dir,skip_init=True)
+    # # df=nodes.get_material_nodes()
     # df=nodes.get_element_nodes()
+    # print(df.head())
     # properties=nodes.get_property_names(node_type='MATERIAL')
     # print(properties)
     # # print(df.head())
@@ -2132,10 +2152,10 @@ if __name__=='__main__':
 
     ################################################################################################
     # Relationships
-    ################################################################################################
-    relationships=Relationships(relationship_dir=os.path.join('data','production','materials_project','graph_database','main','relationships'),
+    # ################################################################################################
+    # relationships=Relationships(relationship_dir=os.path.join('data','production','materials_project','graph_database','main','relationships'),
                                 
-                                node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes'))
+    #                             node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes'))
     # df=relationships.get_material_spg_relationships()
     # df=relationships.get_material_crystal_system_relationships()
     # df=relationships.get_material_lattice_relationships()
@@ -2164,9 +2184,9 @@ if __name__=='__main__':
     ################################################################################################
 
 
-    # material_graph=MaterialGraph(graph_dir=os.path.join(GRAPH_DIR,'main'))
+    material_graph=MaterialGraph(graph_dir=os.path.join(GRAPH_DIR,'main'))
 
-    # print(material_graph.list_relationships())
-    # print(material_graph.list_nodes())
+    print(material_graph.list_relationships())
+    print(material_graph.list_nodes())
 
  
