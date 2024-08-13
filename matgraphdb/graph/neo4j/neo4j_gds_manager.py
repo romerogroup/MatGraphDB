@@ -6,15 +6,14 @@ from glob import glob
 from neo4j import GraphDatabase
 import pandas as pd
 
-from matgraphdb import DBManager
-from matgraphdb.utils import (PASSWORD,USER,LOCATION,DBMSS_DIR, GRAPH_DIR, LOGGER,MP_DIR)
+from matgraphdb.utils import (PASSWORD, USER, LOCATION, DBMSS_DIR, GRAPH_DIR, LOGGER,MP_DIR)
 from matgraphdb.utils.general import get_os
-from matgraphdb.graph.similarity_chat import get_similarity_query
-from matgraphdb.graph.utils import format_projection,format_dictionary,format_list,format_string
-from matgraphdb.graph.neo4j_manager import Neo4jManager
+from matgraphdb.graph.neo4j.utils import format_projection, format_dictionary, format_list, format_string
+
 
 class Neo4jGDSManager:
-    def __init__(self, neo4j_manager:Neo4jManager):
+
+    def __init__(self, neo4j_manager):
         self.neo4j_manager = neo4j_manager
         self.algorithm_modes=['stream','stats','write','mutate']
         self.link_prediction_algorithms=['adamicAdar','commonNeighbors','preferentialAttachment',
@@ -2577,6 +2576,8 @@ class Neo4jGDSManager:
         return results
 
 if __name__ == "__main__":
+
+    from matgraphdb.graph.neo4j.neo4j_manager import Neo4jManager
 
     # from matgraphdb.graph.graph_generator import GraphGenerator
     # generator=GraphGenerator(from_scratch=False)

@@ -1,7 +1,8 @@
 import math
 
-from matgraphdb import Neo4jGraphDatabase,Neo4jGDSManager
-from matgraphdb.graph.graph_database import format_dictionary
+from matgraphdb.graph.neo4j.neo4j_manager import Neo4jManager
+from matgraphdb.graph.neo4j.neo4j_gds_manager import Neo4jGDSManager
+from matgraphdb.graph.neo4j.utils import format_dictionary
 
 def shannon_entropy(probabilities):
     """
@@ -21,7 +22,7 @@ def shannon_entropy(probabilities):
     return entropy
 
 class Neo4jAnalyzer:
-    def __init__(self,neo4j_manager=Neo4jGraphDatabase()):
+    def __init__(self,neo4j_manager=Neo4jManager()):
 
         self.neo4j_manager=neo4j_manager
     

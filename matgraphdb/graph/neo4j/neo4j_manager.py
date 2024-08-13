@@ -6,11 +6,11 @@ from glob import glob
 from neo4j import GraphDatabase
 import pandas as pd
 
-from matgraphdb import DBManager
+from matgraphdb.data.manager import DBManager
 from matgraphdb.utils import (PASSWORD,USER,LOCATION,DBMSS_DIR, GRAPH_DIR, LOGGER,MP_DIR)
 from matgraphdb.utils.general import get_os
-from matgraphdb.graph.similarity_chat import get_similarity_query
-from matgraphdb.graph.utils import format_projection,format_dictionary,format_list,format_string
+from matgraphdb.graph.neo4j.utils import get_similarity_query, format_projection,format_dictionary,format_list,format_string
+
 
 # TODO: Think of way to store new node and relationship properties. 
 # TODO: For material nodes, we can use DB Manager to store properties back into json database

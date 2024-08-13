@@ -1,6 +1,10 @@
-from matgraphdb.graph.material_graph import NodeTypes
-from matgraphdb import Neo4jManager,Neo4jGDSManager
+
+
 from matgraphdb.utils import LOGGER
+from matgraphdb.graph.types import NodeTypes
+from matgraphdb.graph.neo4j.neo4j_manager import Neo4jManager
+from matgraphdb.graph.neo4j.neo4j_gds_manager import Neo4jGDSManager
+
 
 class GraphProjection:
     def __init__(self, 
