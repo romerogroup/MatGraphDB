@@ -16,7 +16,7 @@ from matgraphdb.utils.config import (USER, PASSWORD, LOCATION, GRAPH_DB_NAME, DB
 from matgraphdb.utils.config import (ML_DIR,ML_SCRATCH_RUNS_DIR)
 
 # Other important variables
-from matgraphdb.utils.log_config import setup_logging, get_child_logger, get_parent_logger
+from matgraphdb.utils.log_config import setup_logging, get_child_logger, get_logger
 from matgraphdb.utils.timing import Timer, timeit
 
 # Initialize logger

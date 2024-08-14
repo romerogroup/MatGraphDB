@@ -24,9 +24,9 @@ from matgraphdb.calculations.mat_calcs.wyckoff_calc import calculate_wyckoff_pos
 from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 from matgraphdb.utils.periodic_table import atomic_symbols
 from matgraphdb.data.parquet_schemas import MATERIAL_PARQUET_SCHEMA
-from matgraphdb.utils import get_child_logger
+from matgraphdb.utils import get_logger
 
-logger=get_child_logger(__name__, console_out=False, log_level='info')
+logger=get_logger(__name__, console_out=False, log_level='info')
     
 class DBManager:
     def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, n_cores=N_CORES):

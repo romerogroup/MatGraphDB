@@ -14,11 +14,11 @@ import networkx as nx
 
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_child_logger
+from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_logger
 from matgraphdb.data.parquet_schemas import get_node_schema,get_relationship_schema
 from matgraphdb.graph.types import NodeTypes, RelationshipTypes
 
-logger=get_child_logger(__name__, console_out=False, log_level='debug')
+logger=get_logger(__name__, console_out=False, log_level='debug')
 
 class Nodes:
 

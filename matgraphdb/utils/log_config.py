@@ -16,7 +16,7 @@ FORMATTER = logging.Formatter(fmt=FORMAT_STRING)
 
 logging_levels=['critical','error','warning','info','debug']
 
-def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='debug', format=FORMATTER):
+def setup_logging(log_dir=LOG_DIR, log_level='debug', format=FORMATTER):
     """
     Set up logging for the MatGraphDB package.
 
@@ -44,21 +44,19 @@ def setup_logging(log_dir=LOG_DIR, console_out=True, log_level='debug', format=F
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    log_filepath = os.path.join(log_dir,f'{PARENT_LOGGER_NAME}.log')
-
-
-    logging.basicConfig(level=log_level, 
-                        format=FORMAT_STRING)
-
-    logger = logging.getLogger(PARENT_LOGGER_NAME)  # define globally (used in train.py, val.py, detect.py, etc.)
-    
     handler = logging.FileHandler(os.path.join(LOG_DIR, f'{PARENT_LOGGER_NAME}.log'))
-    logger.addHandler(handler)
+    handler.setFormatter(format)
+    handler.setLevel(log_level)
+    
+
+    logger=logging.basicConfig(level=log_level, 
+                        format=FORMAT_STRING,
+                        handlers=[handler])
 
     return logger
 
 
-def get_parent_logger(console_out=False, log_level='info', format=FORMATTER):
+def get_logger(name, console_out=False, propagate=False, log_level='info', format=FORMATTER):
     if log_level not in logging_levels:
         raise ValueError(f"Invalid log level: {log_level}. Valid log levels are: {logging_levels}")
     
@@ -72,17 +70,19 @@ def get_parent_logger(console_out=False, log_level='info', format=FORMATTER):
         log_level = logging.ERROR
     elif log_level == 'critical':
         log_level = logging.CRITICAL
-
-    logger = logging.getLogger(PARENT_LOGGER_NAME)
-
+    
     if console_out:
         handler = logging.StreamHandler() 
     else:
-        handler = logging.FileHandler(os.path.join(LOG_DIR, f'{PARENT_LOGGER_NAME}.log'))
+        handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}.log'))
         handler.setFormatter(format)
 
-    logger.setHandler(handler)
-    logger.setLevel(log_level)
+    handler.setLevel(log_level)
+
+    logger = logging.getLogger(name)
+    logger.propagate = propagate  # Prevent propagation to parent logger
+
+    logger.addHandler(handler)
 
     return logger
 
@@ -109,13 +109,6 @@ def get_child_logger(name, console_out=False, log_level='info', format=FORMATTER
         child_handler.setLevel(log_level)
         child_logger.addHandler(child_handler)
     else:
-        
-        # if log_level == logging.DEBUG:
-        #     child_error_handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}_error.log'))
-        #     child_error_handler.setLevel(logging.DEBUG)
-        #     child_error_handler.setFormatter(format)
-
-        #     child_logger.addHandler(child_error_handler)
 
         child_handler = logging.FileHandler(os.path.join(LOG_DIR, f'{name}.log'))
         child_handler.setLevel(log_level)
