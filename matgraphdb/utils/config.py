@@ -66,14 +66,6 @@ PASSWORD=CONFIG['PASSWORD']
 LOCATION=CONFIG['LOCATION']
 GRAPH_DB_NAME=CONFIG['GRAPH_DB_NAME']
 
-# Load config from yaml file
-with open(PRIVATE_CONFIG_FILE, 'r') as f:
-    PRIVATE_CONFIG = yaml.safe_load(f)
-
-
-MP_API_KEY=PRIVATE_CONFIG['MP_API_KEY']
-OPENAI_API_KEY=PRIVATE_CONFIG['OPENAI_API_KEY']
-
 # MP_DIR=os.path.join(ROOT,'data','production',CONFIG['DB_NAME'])
 EXTERNAL_DATA_DIR=os.path.join(ROOT,'data','external')
 

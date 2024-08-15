@@ -9,8 +9,15 @@ from torch.utils.data import Dataset
 from torch_geometric.data import HeteroData,InMemoryDataset
 import torch_geometric.transforms as T 
 
-from matgraphdb.mlcore.encoders import EdgeEncoders, NodeEncoders
+# from matgraphdb.mlcore.encoders import EdgeEncoders, NodeEncoders
+from matgraphdb.mlcore.encoders import (CategoricalEncoder, ClassificationEncoder, IdentityEncoder,
+                                        ListIdentityEncoder, BooleanEncoder, ElementsEncoder,
+                                        CompositionEncoder,SpaceGroupOneHotEncoder)
 from matgraphdb.graph.material_graph import MaterialGraph
+
+from matgraphdb.utils import get_child_logger
+
+logger=get_child_logger(__name__, console_out=False, log_level='debug')
 
 
 # load node csv file and map index to continuous index
@@ -132,46 +139,81 @@ def load_edge_csv(path, src_index_col, dst_index_col, node_id_mappings,
 
     return edge_index, edge_attr, target
 
+def load_node_parquet(path, columns=None):
+    df = pd.read_parquet(path, columns=columns)
+
+    print(df.head())
+    columns=df.columns
+
+    print(df['is_rare_earth'])
+    cols_with_nan={ key:[] for key in columns}
+
+    # for irow, row in df.iterrows():
+    #     name=row['name']
+
+    #     for col in columns:
+    #         if row[col].isnull():
+    #             cols_with_nan[col].append(name)
+    cols_with_nan={}
+    for col in columns:
+        nan_rows=df[df[col].isnull()]
+
+        cols_with_nan[col] = [row['name'] for irow, row in nan_rows.iterrows()]
+    
+    for col in cols_with_nan:
+        print(col, cols_with_nan[col])
+
+    # for col in columns:
+        
+    #     print(col , df[col].isnull().any())
+
+        
+
+        # xs = [encoder(df[col]) for col, encoder in feature_encoders.items()]
+        # x = torch.cat(xs, dim=-1)
+
+
+    return df
+
 class PyTorchGeometricHeteroDataGenerator:
     def __init__(self):
         self.data = HeteroData()
         self.node_id_mappings={}
 
-    def add_node(self, node_path, 
+    def add_node_type(self, node_path, columns=None,
                 feature_encoder_mapping={}, 
                 target_encoder_mapping={}, 
                 node_filter={}):
+        
+
 
         node_name=os.path.basename(node_path).split('.')[0]
-
-
-
-
-        x, target, mapping, name_mapping = load_node_csv(node_path, 
-                                    index_col=0,
-                                    feature_encoders=feature_encoder_mapping,
-                                    target_encoders=target_encoder_mapping,
-                                    node_filter=node_filter)
+        df=load_node_parquet(node_path, columns=columns)
+        # x, target, mapping, name_mapping = load_node_csv(node_path, 
+        #                             index_col=0,
+        #                             feature_encoders=feature_encoder_mapping,
+        #                             target_encoders=target_encoder_mapping,
+        #                             node_filter=node_filter)
         
-        self.data[node_name].node_id=torch.arange(len(mapping))
-        self.data[node_name].names=list(name_mapping.values())
-        if x is not None:
-            self.data[node_name].x = x
-            self.data[node_name].property_names=[key.split(':')[0] for key in list(feature_encoder_mapping.keys())]
-        else:
-            self.data[node_name].num_nodes=len(mapping)
+        # self.data[node_name].node_id=torch.arange(len(mapping))
+        # self.data[node_name].names=list(name_mapping.values())
+        # if x is not None:
+        #     self.data[node_name].x = x
+        #     self.data[node_name].property_names=[key.split(':')[0] for key in list(feature_encoder_mapping.keys())]
+        # else:
+        #     self.data[node_name].num_nodes=len(mapping)
 
-        if target is not None:
-            self.data[node_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
-            out_channels=target.shape[1]
-            self.data[node_name].out_channels = out_channels
+        # if target is not None:
+        #     self.data[node_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
+        #     out_channels=target.shape[1]
+        #     self.data[node_name].out_channels = out_channels
 
-            if out_channels==1:
-                self.data[node_name].y=target
-            else:
-                self.data[node_name].y=torch.argmax(target, dim=1)
+        #     if out_channels==1:
+        #         self.data[node_name].y=target
+        #     else:
+        #         self.data[node_name].y=torch.argmax(target, dim=1)
 
-        return mapping
+        # return mapping
 
     def add_edge(self, edge_path, node_id_mappings, 
                 feature_encoder_mapping={},
@@ -238,7 +280,7 @@ class PyTorchGeometricHeteroDataGenerator:
                 else:
                     self.data[src_name,edge_type,dst_name].y=torch.argmax(target, dim=1)
 
-    def add_nodes(self, 
+    def add_node_types(self, 
                 node_paths, 
                 node_properties:dict={},
                 node_filtering:dict={},
@@ -324,154 +366,154 @@ class PyTorchGeometricHeteroDataGenerator:
 
 
 
-class MaterialGraphDataset:
-    MAIN_GRAPH_DIR = GraphGenerator().main_graph_dir
-    MAIN_NODES_DIR = os.path.join(MAIN_GRAPH_DIR,'nodes')
-    MAIN_RELATIONSHIP_DIR = os.path.join(MAIN_GRAPH_DIR,'relationships')
+# class MaterialGraphDataset:
+#     MAIN_GRAPH_DIR = GraphGenerator().main_graph_dir
+#     MAIN_NODES_DIR = os.path.join(MAIN_GRAPH_DIR,'nodes')
+#     MAIN_RELATIONSHIP_DIR = os.path.join(MAIN_GRAPH_DIR,'relationships')
 
-    def __init__(self,data):
-        self.data=data
+#     def __init__(self,data):
+#         self.data=data
 
-    @classmethod
-    def ec_element_chemenv(cls, sub_graph_path=None, 
-                                node_properties:dict={},
-                                node_filtering:dict={},
-                                edge_properties:dict={},
-                                node_target_property:str=None,
-                                edge_target_property:str=None,
-                                undirected=True):
+#     @classmethod
+#     def ec_element_chemenv(cls, sub_graph_path=None, 
+#                                 node_properties:dict={},
+#                                 node_filtering:dict={},
+#                                 edge_properties:dict={},
+#                                 node_target_property:str=None,
+#                                 edge_target_property:str=None,
+#                                 undirected=True):
         
-        if sub_graph_path is None:
-            node_dir=cls.MAIN_NODES_DIR
-            relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-        else:
-            node_dir=os.path.join(sub_graph_path,'nodes')
-            relationship_dir=os.path.join(sub_graph_path,'relationships')
+#         if sub_graph_path is None:
+#             node_dir=cls.MAIN_NODES_DIR
+#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
+#         else:
+#             node_dir=os.path.join(sub_graph_path,'nodes')
+#             relationship_dir=os.path.join(sub_graph_path,'relationships')
 
-        node_names=['element','chemenv','material']
-        relationship_names=['electric_connects','has','can_occur']
-        node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
+#         node_names=['element','chemenv','material']
+#         relationship_names=['electric_connects','has','can_occur']
+#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
 
-        # Get the relationship paths of the nodes
-        relationship_paths = cls.get_relationship_paths(node_names, 
-                                                        relationship_names, 
-                                                        relationship_dir)
+#         # Get the relationship paths of the nodes
+#         relationship_paths = cls.get_relationship_paths(node_names, 
+#                                                         relationship_names, 
+#                                                         relationship_dir)
         
-        generator=cls.initialize_generator(node_paths,relationship_paths,
-                            node_properties=node_properties,
-                            edge_properties=edge_properties,
-                            node_filtering=node_filtering,
-                            node_target_property=node_target_property,
-                            edge_target_property=edge_target_property,
-                            undirected=undirected)
+#         generator=cls.initialize_generator(node_paths,relationship_paths,
+#                             node_properties=node_properties,
+#                             edge_properties=edge_properties,
+#                             node_filtering=node_filtering,
+#                             node_target_property=node_target_property,
+#                             edge_target_property=edge_target_property,
+#                             undirected=undirected)
         
         
 
-        return cls(generator.data)
+#         return cls(generator.data)
 
-    @classmethod
-    def gc_element_chemenv(cls, sub_graph_path=None, 
-                                node_properties:dict={},
-                                node_filtering:dict={},
-                                edge_properties:dict={},
-                                node_target_property:str=None,
-                                edge_target_property:str=None,
-                                undirected=True):
+#     @classmethod
+#     def gc_element_chemenv(cls, sub_graph_path=None, 
+#                                 node_properties:dict={},
+#                                 node_filtering:dict={},
+#                                 edge_properties:dict={},
+#                                 node_target_property:str=None,
+#                                 edge_target_property:str=None,
+#                                 undirected=True):
         
-        if sub_graph_path is None:
-            node_dir=cls.MAIN_NODES_DIR
-            relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-        else:
-            node_dir=os.path.join(sub_graph_path,'nodes')
-            relationship_dir=os.path.join(sub_graph_path,'relationships')
+#         if sub_graph_path is None:
+#             node_dir=cls.MAIN_NODES_DIR
+#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
+#         else:
+#             node_dir=os.path.join(sub_graph_path,'nodes')
+#             relationship_dir=os.path.join(sub_graph_path,'relationships')
 
-        node_names=['element','chemenv','material']
-        relationship_names=['geometric_connects','has','can_occur']
-        node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
+#         node_names=['element','chemenv','material']
+#         relationship_names=['geometric_connects','has','can_occur']
+#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
 
-        # Get the relationship paths of the nodes
-        relationship_paths = cls.get_relationship_paths(node_names, 
-                                                        relationship_names, 
-                                                        relationship_dir)
+#         # Get the relationship paths of the nodes
+#         relationship_paths = cls.get_relationship_paths(node_names, 
+#                                                         relationship_names, 
+#                                                         relationship_dir)
 
-        generator=cls.initialize_generator(node_paths,relationship_paths,
-                            node_properties=node_properties,
-                            edge_properties=edge_properties,
-                            node_filtering=node_filtering,
-                            node_target_property=node_target_property,
-                            edge_target_property=edge_target_property,
-                            undirected=undirected)
+#         generator=cls.initialize_generator(node_paths,relationship_paths,
+#                             node_properties=node_properties,
+#                             edge_properties=edge_properties,
+#                             node_filtering=node_filtering,
+#                             node_target_property=node_target_property,
+#                             edge_target_property=edge_target_property,
+#                             undirected=undirected)
 
-        return cls(generator.data)
+#         return cls(generator.data)
     
-    @classmethod
-    def gec_element_chemenv(cls, 
-                            sub_graph_path=None, 
-                            node_properties:dict={},
-                            node_filtering:dict={},
-                            edge_properties:dict={},
-                            node_target_property:str=None,
-                            edge_target_property:str=None,
-                            undirected=True):
+#     @classmethod
+#     def gec_element_chemenv(cls, 
+#                             sub_graph_path=None, 
+#                             node_properties:dict={},
+#                             node_filtering:dict={},
+#                             edge_properties:dict={},
+#                             node_target_property:str=None,
+#                             edge_target_property:str=None,
+#                             undirected=True):
         
-        if sub_graph_path is None:
-            node_dir=cls.MAIN_NODES_DIR
-            relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-        else:
-            node_dir=os.path.join(sub_graph_path,'nodes')
-            relationship_dir=os.path.join(sub_graph_path,'relationships')
+#         if sub_graph_path is None:
+#             node_dir=cls.MAIN_NODES_DIR
+#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
+#         else:
+#             node_dir=os.path.join(sub_graph_path,'nodes')
+#             relationship_dir=os.path.join(sub_graph_path,'relationships')
 
-        node_names=['element','chemenv','material']
-        relationship_names=['geometric_electric_connects','has','can_occur']
-        node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
+#         node_names=['element','chemenv','material']
+#         relationship_names=['geometric_electric_connects','has','can_occur']
+#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
         
-        # Get the relationship paths of the nodes
-        relationship_paths = cls.get_relationship_paths(node_names, 
-                                                        relationship_names, 
-                                                        relationship_dir)
+#         # Get the relationship paths of the nodes
+#         relationship_paths = cls.get_relationship_paths(node_names, 
+#                                                         relationship_names, 
+#                                                         relationship_dir)
 
-        generator=cls.initialize_generator(node_paths,relationship_paths,
-                            node_properties=node_properties,
-                            edge_properties=edge_properties,
-                            node_filtering=node_filtering,
-                            node_target_property=node_target_property,
-                            edge_target_property=edge_target_property,
-                            undirected=undirected)
+#         generator=cls.initialize_generator(node_paths,relationship_paths,
+#                             node_properties=node_properties,
+#                             edge_properties=edge_properties,
+#                             node_filtering=node_filtering,
+#                             node_target_property=node_target_property,
+#                             edge_target_property=edge_target_property,
+#                             undirected=undirected)
 
-        return cls(generator.data)
+#         return cls(generator.data)
 
-    @staticmethod
-    def get_relationship_paths(node_names, relationship_names, relationship_dir):
-        """ Get the paths to the relationship files corredponding to the node used in the graph. """
-        relationship_files=glob(os.path.join(relationship_dir,'*.csv'))
+#     @staticmethod
+#     def get_relationship_paths(node_names, relationship_names, relationship_dir):
+#         """ Get the paths to the relationship files corredponding to the node used in the graph. """
+#         relationship_files=glob(os.path.join(relationship_dir,'*.csv'))
 
-        relationship_paths=[]
-        for relationship_file in relationship_files:
-            edge_name=os.path.basename(relationship_file).split('.')[0].lower()
-            src_name,edge_type,dst_name=edge_name.split('-')
-            if src_name in node_names and dst_name in node_names and edge_type in relationship_names:
-                relationship_paths.append(relationship_file)
-        return relationship_paths
+#         relationship_paths=[]
+#         for relationship_file in relationship_files:
+#             edge_name=os.path.basename(relationship_file).split('.')[0].lower()
+#             src_name,edge_type,dst_name=edge_name.split('-')
+#             if src_name in node_names and dst_name in node_names and edge_type in relationship_names:
+#                 relationship_paths.append(relationship_file)
+#         return relationship_paths
     
-    @staticmethod
-    def initialize_generator(node_paths,relationship_paths,
-                            node_properties:dict,
-                            edge_properties:dict,
-                            node_filtering:dict,
-                            node_target_property:str,
-                            edge_target_property:str,
-                            undirected:bool=True):
+#     @staticmethod
+#     def initialize_generator(node_paths,relationship_paths,
+#                             node_properties:dict,
+#                             edge_properties:dict,
+#                             node_filtering:dict,
+#                             node_target_property:str,
+#                             edge_target_property:str,
+#                             undirected:bool=True):
         
-        generator=PyTorchGeometricHeteroDataGenerator()
-        generator.add_nodes(node_paths, 
-                            node_properties=node_properties, 
-                            node_filtering=node_filtering,
-                            target_property=node_target_property)
-        generator.add_relationships(relationship_paths, 
-                                    edge_properties, 
-                                    edge_target_property, 
-                                    undirected)
-        return generator
+#         generator=PyTorchGeometricHeteroDataGenerator()
+#         generator.add_nodes(node_paths, 
+#                             node_properties=node_properties, 
+#                             node_filtering=node_filtering,
+#                             target_property=node_target_property)
+#         generator.add_relationships(relationship_paths, 
+#                                     edge_properties, 
+#                                     edge_target_property, 
+#                                     undirected)
+#         return generator
 
 
 if __name__ == "__main__":
@@ -479,7 +521,7 @@ if __name__ == "__main__":
 
     import pandas as pd
     import os
-    material_graph=MaterialGraph()
+    material_graph=MaterialGraph(skip_init=False)
     graph_dir = material_graph.graph_dir
     nodes_dir = material_graph.node_dir
     relationship_dir = material_graph.relationship_dir
@@ -491,9 +533,78 @@ if __name__ == "__main__":
     node_files=material_graph.get_node_filepaths()
     relationship_files=material_graph.get_relationship_filepaths()
 
-    # Example of using pyGHeteroDataGenerator
-    # node_encoders=NodeEncoders()
+    node_path=node_files[2]
+
+    df=pd.read_parquet(node_path)
+
+    df.to_csv(node_path.replace('.parquet','.csv'))
+
+    # # Example of using pyGHeteroDataGenerator
     # generator=PyTorchGeometricHeteroDataGenerator()
+
+    # node_properties={
+    #     'ELEMENT':[
+    #         'group',
+    #         'row',
+    #         'Z',
+    #         # 'symbol',
+    #         # 'long_name',
+    #         'A',
+    #         'atomic_radius_calculated',
+    #         'van_der_waals_radius',
+    #         'mendeleev_no',
+    #         'electrical_resistivity',
+    #         'velocity_of_sound',
+    #         'reflectivity',
+    #         'refractive_index',
+    #         'poissons_ratio',
+    #         'molar_volume',
+    #         'thermal_conductivity',
+    #         'boiling_point',
+    #         'melting_point',
+    #         'critical_temperature',
+    #         'superconduction_temperature',
+    #         'liquid_range',
+    #         'bulk_modulus',
+    #         'youngs_modulus',
+    #         'rigidity_modulus',
+    #         'vickers_hardness',
+    #         'density_of_solid',
+    #         'coefficient_of_linear_thermal_expansion',
+    #         'block',
+    #         'electron_affinity',
+    #         'X',
+    #         'atomic_mass',
+    #         'atomic_mass_number',
+    #         'atomic_radius',
+    #         'average_anionic_radius',
+    #         'average_cationic_radius',
+    #         'average_ionic_radius',
+    #         'ground_state_term_symbol',
+    #         'is_actinoid',
+    #         'is_alkali',
+    #         'is_alkaline',
+    #         'is_chalcogen',
+    #         'is_halogen',
+    #         'is_lanthanoid',
+    #         'is_metal',
+    #         'is_metalloid',
+    #         'is_noble_gas',
+    #         'is_post_transition_metal',
+    #         'is_quadrupolar',
+    #         'is_rare_earth',
+    #         'is_rare_earth_metal',
+    #         'is_transition_metal',
+    #         'iupac_ordering',
+    #         'max_oxidation_state',
+    #         'min_oxidation_state',
+    #         'valence',
+    #         'name',
+    #         # 'type',
+    #     ]
+    # }
+
+    # generator.add_node_type(node_path=node_path, columns=node_properties['ELEMENT'])
     # encoder_mapping,_,_=node_encoders.get_element_encoder(element_node_path)
     # generator.add_node(element_node_path,encoder_mapping=encoder_mapping )
     # # generator.add_edge(material_crystal_system_path)

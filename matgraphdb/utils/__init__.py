@@ -2,7 +2,7 @@
 from matgraphdb.utils.config import FILE, PKG_DIR, ROOT, DATA_DIR, EXTERNAL_DATA_DIR
 
 # Impot config settings
-from matgraphdb.utils.config import CONFIG, MP_API_KEY, N_CORES, OPENAI_API_KEY
+from matgraphdb.utils.config import CONFIG, N_CORES
 
 # Database paths
 from matgraphdb.utils.config import (MP_DIR, DB_DIR, DATASETS_DIR, GRAPH_DIR, NODE_DIR, RELATIONSHIP_DIR, SIMILARITY_DIR,

@@ -27,7 +27,7 @@ from matgraphdb.data.parquet_schemas import MATERIAL_PARQUET_SCHEMA
 from matgraphdb.utils import get_logger
 
 logger=get_logger(__name__, console_out=False, log_level='info')
-    
+
 class DBManager:
     def __init__(self, directory_path=DB_DIR, calc_path=DB_CALC_DIR, n_cores=N_CORES):
         """
