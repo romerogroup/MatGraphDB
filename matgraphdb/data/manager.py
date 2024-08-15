@@ -14,12 +14,12 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER, GLOBAL_PROP_FILE,ENCODING_DIR, EXTERNAL_DATA_DIR, MP_DIR
+from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES, GLOBAL_PROP_FILE,ENCODING_DIR, EXTERNAL_DATA_DIR, MP_DIR
 
 from matgraphdb.calculations.mat_calcs.bonding_calc import calculate_cutoff_bonds,calculate_electric_consistent_bonds,calculate_geometric_consistent_bonds,calculate_geometric_electric_consistent_bonds
 from matgraphdb.calculations.mat_calcs.bond_stats_calc import calculate_bond_orders_sum,calculate_bond_orders_sum_squared_differences
 from matgraphdb.calculations.mat_calcs.chemenv_calc import calculate_chemenv_connections
-from matgraphdb.calculations.mat_calcs.embeddings import generate_composition_embeddings,generate_matminer_embeddings#,generate_openai_embeddings,extract_text_from_json
+from matgraphdb.calculations.mat_calcs.embeddings import generate_composition_embeddings, generate_matminer_embeddings
 from matgraphdb.calculations.mat_calcs.wyckoff_calc import calculate_wyckoff_positions
 from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 from matgraphdb.utils.periodic_table import atomic_symbols
@@ -95,25 +95,10 @@ class DBManager:
             return {}
 
     def load_data(self):
-        def load_data_tasks(json_file):
-            """
-            Loads the data tasks.
-
-            Returns:
-                dict: A dictionary of data tasks.
-            """
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-            except Exception as e:
-                logger.debug(f"Error processing file: {e}")
-                return None
-
-            return data
         files=self.database_files()
-        results=self.process_task(load_data_tasks,files)
+        results=self.process_task(MPTasks.load_data_tasks,files)
         return results
-
+        
     def create_material(self,
                         # Do type hinting composition can either be a string or a dictionary
                         composition:Union[str,dict,Composition] =None,
@@ -238,39 +223,10 @@ class DBManager:
     
     def check_property(self, property_name):
         """Check if a given property exists in all JSON files and categorize them."""
-        def check_property_task(json_file, property_name=''):
-            """
-            Check if a given property exists in the data loaded from a JSON file.
-
-            Args:
-                file (str): The path to the JSON file.
-                property_name (str, optional): The name of the property to check. Defaults to ''.
-
-            Returns:
-                bool: True if the property exists and is not None, False otherwise.
-            """
-
-            mpid=json_file.split('/')[-1].split('.')[0]
-            try:
-                with open(json_file, 'r') as f:
-                    data = json.load(f)
-            except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-                data={}
-                
-            check=True
-            if property_name not in data:
-                check=False
-                return check
-
-            if data[property_name] is None:
-                check=False
-    
-            return check
         
         database_files = self.database_files()
-        print("Processing files from : ",self.directory_path + os.sep + '*.json')
-        results=self.process_task(check_property_task, database_files, property_name=property_name)
+        logger.info("Processing files from : ",self.directory_path + os.sep + '*.json')
+        results=self.process_task(MPTasks.check_property_task, database_files, property_name=property_name)
 
         success = []
         failed = []
@@ -284,30 +240,11 @@ class DBManager:
  
     def check_chargemol(self):
         """Check if a given property exists in all JSON files and categorize them."""
-        def check_chargemol_task(dir):
-            """
-            Check if the chargemol task has been completed.
-
-            Args:
-                dir (str): The directory path where the chargemol task output is expected.
-
-            Returns:
-                bool: True if the chargemol task has been completed and the output file exists, False otherwise.
-            """
-            check = True
-
-            file_path = os.path.join(dir, 'chargemol', 'DDEC6_even_tempered_bond_orders.xyz')
-
-            if os.path.exists(file_path):
-                check = True
-            else:
-                check = False
-
-            return check
+        
         
         calc_dirs = self.calculation_dirs()
         print("Processing files from : ",self.calculation_path + os.sep + 'mp-*')
-        results=self.process_task(check_chargemol_task, calc_dirs)
+        results=self.process_task(MPTasks.check_chargemol_task, calc_dirs)
 
         success = []
         failed = []
@@ -321,46 +258,10 @@ class DBManager:
         return success, failed
    
     def collect_chargemol_info(self):
-        def collect_chargemol_info_task(dir):
-            """Check if a given property exists in the data."""
-            material_id=dir.split(os.sep)[-1]
-            json_file=os.path.join(self.directory_path,material_id+'.json')
-            bond_orders_file = os.path.join(dir,'chargemol','DDEC6_even_tempered_bond_orders.xyz')
-            squared_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rsquared_moments.xyz')
-            cubed_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rcubed_moments.xyz')
-            fourth_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rfourth_moments.xyz')
-            atomic_charges_file = os.path.join(dir,'chargemol','DDEC6_even_tempered_net_atomic_charges.xyz')
-            overlap_population_file = os.path.join(dir,'chargemol','overlap_populations.xyz')
-            
-
-            bond_order_info=parse_chargemol_bond_orders(file=bond_orders_file)
-            net_atomic_charges_info=parse_chargemol_net_atomic_charges(file=atomic_charges_file)
-            overlap_population_info=parse_chargemol_overlap_populations(file=overlap_population_file)
-            squared_moments_info=parse_chargemol_atomic_moments(file=squared_moments_file)
-            cubed_moments_info=parse_chargemol_atomic_moments(file=cubed_moments_file)
-            fourth_moments_info=parse_chargemol_atomic_moments(file=fourth_moments_file)
-
-            with open(json_file, 'r') as file:
-                data = json.load(file)
-
-            data['chargemol_bonding_connections'] = bond_order_info[0]
-            data['chargemol_bonding_orders'] = bond_order_info[1]
-            # data['chargemol_net_atomic_charges'] = net_atomic_charges_info
-            # data['chargemol_overlap_populations'] = overlap_population_info
-            data['chargemol_squared_moments'] = squared_moments_info
-            data['chargemol_cubed_moments'] = cubed_moments_info
-            data['chargemol_fourth_moments'] = fourth_moments_info
-
-            with open(json_file,'w') as f:
-                json.dump(data, f, indent=4)
-
-            if bond_order_info is None:
-                LOGGER.error(f"Error processing file {material_id}: Chargemol Bonding Orders calculation failed")
-
-            return None
+        
         calc_dirs = self.calculation_dirs()
-        self.process_task(collect_chargemol_info_task, calc_dirs)
-        LOGGER.info(f"Finished collection Chargemol information")
+        self.process_task(MPTasks.collect_chargemol_info_task, calc_dirs, directory_path=self.calculation_path)
+        logger.info(f"Finished collection Chargemol information")
         return None
     
     def chemenv_calc(self,from_scratch=False):
@@ -376,109 +277,21 @@ class DBManager:
         Returns:
         None
         """
-        def chemenv_task(json_file, from_scratch=False):
-
-            # Load data from JSON file
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                    struct = Structure.from_dict(data['structure'])
-            except Exception as e:
-                LOGGER.error(f"Error processing file {json_file}: {e}")
-                return None
-
-
-
-            # Extract material project ID from file name
-            mpid = json_file.split(os.sep)[-1].split('.')[0]
-
-            coordination_environments=data.get('coordination_environments_multi_weight')
-            nearest_neighbors=data.get('coordination_multi_connections')
-            coordination_numbers=data.get('coordination_multi_numbers')
-            # Check if calculation is needed
-            if coordination_environments is None or from_scratch:
-                coordination_environments, nearest_neighbors, coordination_numbers = calculate_chemenv_connections(struct)
-                # Update the database with computed values
-                data['coordination_environments_multi_weight'] = coordination_environments
-                data['coordination_multi_connections'] = nearest_neighbors
-                data['coordination_multi_numbers'] = coordination_numbers
-            
-
-                with open(json_file,'w') as f:
-                    json.dump(data, f, indent=4)
-        
-
-            if coordination_environments is None:
-                LOGGER.error(f"Error processing file {mpid}: Coordination Environments calculation failed")
-
-            return None
-  
-        LOGGER.info(f"Starting collection ChemEnv Calculations")
+        logger.info(f"Starting collection ChemEnv Calculations")
         # Process the database with the defined function
         files=self.database_files()
-        self.process_task(chemenv_task,files,from_scratch=from_scratch)
-        LOGGER.info(f"Finished collection ChemEnv Calculations")
+        self.process_task(MPTasks.chemenv_task,files,from_scratch=from_scratch)
+        logger.info(f"Finished collection ChemEnv Calculations")
 
         return None
 
     def bonding_calc(self):
-        def bonding_task(json_file):
-            # Load data from JSON file
-            mpid=json_file.split('/')[-1].split('.')[0]
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                    structure=Structure.from_dict(data['structure'])
-            except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-                return None
-            
-
-            geo_coord_connections=None
-            elec_coord_connections=None
-            chargemol_bond_orders=None
-            if 'coordination_multi_connections' in data:
-                geo_coord_connections = data['coordination_multi_connections']
-            if 'chargemol_bonding_connections' in data:
-                elec_coord_connections = data['chargemol_bonding_connections']
-                chargemol_bond_orders = data['chargemol_bonding_orders']
-
-            final_geo_connections, final_bond_orders = calculate_geometric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
-            data['geometric_consistent_bond_connections']=final_geo_connections
-            data['geometric_consistent_bond_orders']=final_bond_orders
-
-            final_elec_connections, final_bond_orders = calculate_electric_consistent_bonds(elec_coord_connections, chargemol_bond_orders)
-            data['electric_consistent_bond_connections']=final_elec_connections
-            data['electric_consistent_bond_orders']=final_bond_orders
-
-            final_geo_elec_connections, final_bond_orders = calculate_geometric_electric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
-            data['geometric_electric_consistent_bond_connections']=final_geo_elec_connections
-            data['geometric_electric_consistent_bond_orders']=final_bond_orders
-
-            final_cutoff_connections = calculate_cutoff_bonds(structure)
-            data['bond_cutoff_connections']=final_cutoff_connections
-
-            with open(json_file,'w') as f:
-                json.dump(data, f, indent=4)
-
-            error_messge=""
-            if final_geo_connections is None:
-                error_messge+="| Geometric Consistent Bonding |"
-            if final_elec_connections is None:
-                error_messge+="| Electric Consistent Bonding |"
-            if final_geo_elec_connections is None:
-                error_messge+="| Geometric Electric Consistent Bonding |"
-            if final_cutoff_connections is None:
-                error_messge+="| Bond Cutoff |"
-            if len(error_messge)>0:
-                LOGGER.error(f"Error processing file {mpid}: {error_messge} calculation failed")
-
-            return None
-        LOGGER.info(f"Starting collection Bonding Calculations")
+        
+        logger.info(f"Starting collection Bonding Calculations")
         # Process the database with the defined function
         files=self.database_files()
-        self.process_task(bonding_task,files)
-        LOGGER.info(f"Finished collection Bonding Calculations")
+        self.process_task(MPTasks.bonding_task,files)
+        logger.info(f"Finished collection Bonding Calculations")
 
         return None
     
@@ -492,87 +305,7 @@ class DBManager:
         Returns:
         None
         """
-        def bond_orders_sum_task(json_file):
-            """
-            Calculates the sum and count of bond orders for a given file.
-
-            Args:
-                file (str): The path to the JSON file containing the database.
-
-            Returns:
-                tuple: A tuple containing two numpy arrays. The first array represents the sum of bond orders
-                    between different elements, and the second array represents the count of bond orders.
-
-            Raises:
-                Exception: If there is an error processing the file.
-
-            """
-            mpid = json_file.split(os.sep)[-1].split('.')[0]
-            try:
-                # Load database from JSON file
-                with open(json_file) as f:
-                    data = json.load(f)
-            except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-                data={}
-            
-            bond_orders=None
-            bond_connections=None
-            site_element_names=None
-            if 'chargemol_bonding_orders' in data:
-                bond_orders = data["chargemol_bonding_orders"]
-            if 'chargemol_bonding_connections' in data:
-                bond_connections = data["chargemol_bonding_connections"]
-            if 'structure' in data:
-                site_element_names = [x['label'] for x in data['structure']['sites']]
-
-
-            bond_orders_sum, n_bond_orders = calculate_bond_orders_sum(bond_orders, bond_connections, site_element_names)
-
-            if bond_orders is None or bond_connections is None or site_element_names is None:
-                LOGGER.error(f"Error processing file {mpid}: Bond Orders Stats calculation failed")
-
-            return bond_orders_sum, n_bond_orders
-
-        def bond_orders_sum_squared_differences_task(json_file):
-            """
-            Calculate the sum_squared_differences of bond orders for a given material.
-
-            Parameters:
-            file (str): The path to the JSON file containing the material information.
-
-            Returns:
-            bond_orders_sum_squared_differences (numpy.ndarray): The sum_squared_differences of bond orders between different elements.
-            1 (int): A placeholder value indicating the function has completed successfully.
-            """
-            mpid = json_file.split(os.sep)[-1].split('.')[0]
-            try:
-                # Load database from JSON file
-                with open(json_file) as f:
-                    data = json.load(f)
-            except Exception as e:
-                LOGGER.error(f"Error processing file {json_file}: {e}")
-                data={}
-
-            with open(GLOBAL_PROP_FILE) as f:
-                global_data = json.load(f)
-                bond_orders_avg=np.array(global_data['bond_orders_avg'])
-                n_bond_orders=np.array(global_data['n_bond_orders'])
-
-
-            bond_orders=None
-            bond_connections=None
-            site_element_names=None
-            if 'chargemol_bonding_orders' in data:
-                bond_orders = data["chargemol_bonding_orders"]
-            if 'chargemol_bonding_connections' in data:
-                bond_connections = data["chargemol_bonding_connections"]
-            if 'structure' in data:
-                site_element_names = [x['label'] for x in data['structure']['sites']]
-
-            bond_orders_sum_squared_differences = calculate_bond_orders_sum_squared_differences(bond_orders, bond_connections, site_element_names, bond_orders_avg, n_bond_orders)
-
-            return bond_orders_sum_squared_differences
+       
 
         ELEMENTS = atomic_symbols[1:]
         n_elements = len(ELEMENTS)
@@ -581,14 +314,14 @@ class DBManager:
         bond_orders_std = np.zeros(shape=(n_elements, n_elements))
 
 
-        LOGGER.info(f"Starting collection Bond Orders Sum Calculations")
+        logger.info(f"Starting collection Bond Orders Sum Calculations")
         # Process the database with the defined function
         files=self.database_files()
-        results=self.process_task(bond_orders_sum_task,files)
-        LOGGER.info(f"Finished collection Bond Orders Sum Calculations")
+        results=self.process_task(MPTasks.bond_orders_sum_task,files)
+        logger.info(f"Finished collection Bond Orders Sum Calculations")
         # Initialize arrays for bond order calculations
         
-        LOGGER.info("Starting calculation of bond order average")
+        logger.info("Starting calculation of bond order average")
         # Calculate the average of the bond orders in the database
         for result in results:
             bond_orders_avg += result[0] 
@@ -601,11 +334,11 @@ class DBManager:
         with open(GLOBAL_PROP_FILE,'w') as f:
             json.dump(global_data, f)
             
-        LOGGER.info("Finished calculation of bond order average")
+        logger.info("Finished calculation of bond order average")
 
-        LOGGER.info("Starting calculation of bond order standard deviation")
+        logger.info("Starting calculation of bond order standard deviation")
         # Calculate the standard deviation of the bond orders in the database
-        results=self.process_task(bond_orders_sum_squared_differences_task,files)
+        results=self.process_task(MPTasks.bond_orders_sum_squared_differences_task,files)
 
         for result in results:
             #This results in the material database sum of the sum of squared differences for materials
@@ -616,68 +349,21 @@ class DBManager:
         with open(GLOBAL_PROP_FILE) as f:
             global_data = json.load(f)
             global_data['bond_orders_std'] = bond_orders_std.tolist()
-        LOGGER.info("Finished calculation of bond order standard deviation")
+        logger.info("Finished calculation of bond order standard deviation")
 
-        LOGGER.info("Saving bond order average and standard deviation to global property file")
+        logger.info("Saving bond order average and standard deviation to global property file")
         with open(GLOBAL_PROP_FILE, 'w') as f:
             json.dump(global_data, f)
 
-        LOGGER.info("Finished calculation of bond order statistics")
+        logger.info("Finished calculation of bond order statistics")
         return None
 
-    def _get_property_task(self, json_file, property_name='structure'):
-        """
-        Get the structure for a given json file.
-
-        Args:
-            json_file (str): The path to the json file.
-
-        Returns:
-            list: A list of structures.
-        """
-
-        try:
-            with open(json_file) as f:
-                data = json.load(f)
-                property = data.get(property_name)
-
-                
-        except Exception as e:
-            LOGGER.error(f"Error processing file {json_file}: {e}")
-
-        return property
-    
-    def _get_structure_task(self,json_file):
-        """
-        Get the structure for a given json file.
-
-        Args:
-            json_file (str): The path to the json file.
-
-        Returns:
-            list: A list of structures.
-        """
-        structure=None
-        material_id=None
-        nsites=None
-        try:
-            with open(json_file) as f:
-                data = json.load(f)
-                structure = Structure.from_dict(data['structure'])
-                material_id=json_file.split(os.sep)[-1].split('.')[0]
-                nsites=data['nsites']
-                
-        except Exception as e:
-            LOGGER.error(f"Error processing file {json_file}: {e}")
-
-        return structure, material_id, nsites
-    
     def generate_composition_embeddings(self):
 
         material_ids=[]
         files=self.database_files()
 
-        results=self.process_task(self._get_structure_task,files)
+        results=self.process_task(MPTasks.get_structure_task,files)
         material_ids=[]
         structures=[]
         compositions=[]
@@ -708,34 +394,12 @@ class DBManager:
         return None
 
     def generate_matminer_embeddings(self,feature_set=['element_property']):
-        def generate_matminer_embeddings_task(file_embedding_tuple):
-            """
-            Generates the Wyckoff positions for all materials in the database.
-            Returns:
-                None
-            """
-            json_file,embedding_dict=file_embedding_tuple
-            mpid=json_file.split(os.sep)[-1].split('.')[0]
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-
-                if 'feature_vectors' not in data:
-                    data['feature_vectors']={}
-
-                data['feature_vectors'].update(embedding_dict['feature_vectors'])
-
-                with open(json_file,'w') as f:
-                    json.dump(data, f, indent=None)
-            except Exception as e:
-                print(f"Error processing file {mpid}: {e}")
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-                return None
+        
         
         files=self.database_files()
 
         print("Featchering structures")
-        results=self.process_task(self._get_structure_task,files)
+        results=self.process_task(MPTasks.get_structure_task,files)
         material_ids=[]
         structures=[]
         for result in results:
@@ -762,67 +426,10 @@ class DBManager:
                             }
             json_embedding_tuples.append((json_file,embedding_dict))
         print("Storing embeddings")
-        self.process_task(generate_matminer_embeddings_task,json_embedding_tuples)
+        self.process_task(MPTasks.generate_matminer_embeddings_task,json_embedding_tuples)
         
         
 
-        return None
-
-    def generate_openai_embeddings(self,
-                                model="text-embedding-3-small",
-                                embedding_encoding = "cl100k_base"
-                               ):
-        """
-        Main function for processing database and generating embeddings using OpenAI models.
-
-        This function performs the following steps:
-        1. Sets up the parameters for the models and cost per token.
-        2. Initializes the OpenAI client using the API key.
-        3. Processes the database and extracts raw JSON text.
-        4. Calculates the total number of tokens and the cost.
-        5. Retrieves the mp_ids from the database directory.
-        6. Creates a dataframe of the results and adds the ada_embedding column.
-        7. Creates a dataframe of the embeddings.
-        8. Saves the embeddings to a CSV file.
-
-        Args:
-            model (str): The name of the OpenAI model to use for embedding. Default is "text-embedding-3-small". 
-                            Possible values are "text-embedding-3-small", "text-embedding-3-large", and "ada v2".
-            embedding_encoding (str): The name of the encoding to use for embedding. Default is "cl100k_base".
-
-        Returns:
-            None
-        """
-        def extract_text_from_json_task(json_file):
-            """
-            Extracts specific text data from a JSON file and returns it as a compact JSON string.
-
-            Args:
-                json_file (str): The path to the JSON file.
-
-            Returns:
-                str: A compact JSON string containing the extracted text data.
-            """
-            compact_json_text = extract_text_from_json(json_file)
-            return compact_json_text
-        LOGGER.info("Starting collection OpenAI Embeddings")
-        # Get the mp_ids
-
-        LOGGER.info("Processing files from : ",self.database_files())
-        files=self.database_files()
-        material_ids=[ file.split(os.sep)[-1].split('.')[0] for file in files if file.endswith('.json')]
-        # Extracting raw json text from the database
-        results=self.process_task(self.extract_text_from_json_task,files)
-        LOGGER.info("Finished processing database")
-
-        LOGGER.info("Starting calculation of OpenAI Embeddings")
-        # Create a dataframe of the embeddings
-        df_embeddings=generate_openai_embeddings(model=model,embedding_encoding=embedding_encoding)
-        LOGGER.info("Finished calculation of OpenAI Embeddings")
-
-        # Save the embeddings to a csv file
-        df_embeddings.to_csv(os.path.join(ENCODING_DIR,model + ".csv"), index=True)
-        LOGGER.info("Finished collection OpenAI Embeddings")
         return None
 
     def generate_wyckoff_positions(self):
@@ -832,38 +439,13 @@ class DBManager:
         Returns:
             None
         """
-        def wyckoff_calc_task(json_file):
-            """
-            Perform Wyckoff calculations on all materials in the database.
-
-            Returns:
-                None
-            """
-            mpid=json_file.split(os.sep)[-1].split('.')[0]
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                    struct = Structure.from_dict(data['structure'])
-            except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-                return None
-            
-            wyckoffs=None
-            if 'wyckoffs' not in data:
-                wyckoffs=calculate_wyckoff_positions(struct)
-                data['wyckoffs']=wyckoffs
-
-            with open(json_file,'w') as f:
-                json.dump(data, f, indent=4)
-            
-            if wyckoffs is None:
-                LOGGER.error(f"Error processing file {mpid}: Wyckoff Positions calculation failed")
+        
                 
-        LOGGER.info("Starting collection Wyckoff Positions")
+        logger.info("Starting collection Wyckoff Positions")
 
         files=self.database_files()
-        results=self.process_task(wyckoff_calc_task,files)
-        LOGGER.info("Finished processing database")
+        results=self.process_task(MPTasks.wyckoff_calc_task,files)
+        logger.info("Finished processing database")
         return None
 
     def merge_oxidation_states_doc(self):
@@ -877,54 +459,18 @@ class DBManager:
         Returns:
             None
         """
-        def merge_oxidation_states_doc_task(json_file, directory_path=''):
-            """
-            Merges external oxidation_states doc from materials project into the database.
-
-            This function merges external tasks into the database. It iterates over the database files and checks if the
-            corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
-            been completed, the task is merged into the database.
-
-            Returns:
-                None
-            """
-            with open(json_file) as f:
-                new_data = json.load(f)
-            try:
-                mpid = new_data['material_id']
-
-                main_json_file = os.path.join(directory_path,f'{mpid}.json')
-                # Check if main json file exists
-                if os.path.exists(main_json_file):
-                    with open(main_json_file) as f:
-                        main_data = json.load(f)
-                else:
-                    main_data={}
-                main_data['oxidation_states']={}
-                main_data['oxidation_states']["possible_species"]=new_data["possible_species"]
-                main_data['oxidation_states']['possible_valences']=new_data['possible_valences']
-                main_data['oxidation_states']['average_oxidation_states']=new_data['average_oxidation_states']
-                main_data['oxidation_states']['method']=new_data['method']
-
-                with open(main_json_file,'w') as f:
-                    json.dump(main_data, f, indent=4)
-
-                LOGGER.info("Finished processing database")
-            except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
-
-            return None
         
-        LOGGER.info("Starting merging external database")
+        
+        logger.info("Starting merging external database")
         json_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','oxidation_states')
         if not os.path.exists(json_dir):
             raise FileNotFoundError(f"Directory {json_dir} does not exist")
         
         json_files=glob(os.path.join(json_dir,'*.json'))
 
-        results=self.process_task(merge_oxidation_states_doc_task, json_files, directory_path=self.directory_path)
+        results=self.process_task(MPTasks.merge_oxidation_states_doc_task, json_files, directory_path=self.directory_path)
 
-        LOGGER.info("Finished merging external database")
+        logger.info("Finished merging external database")
         return None
     
     def merge_elasticity_doc(self):
@@ -938,7 +484,110 @@ class DBManager:
         Returns:
             None
         """
-        def merge_elasticity_doc_task(json_file):
+        
+    
+        logger.info("Starting merging external database")
+        json_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','elasticity')
+        if not os.path.exists(json_dir):
+            raise FileNotFoundError(f"Directory {json_dir} does not exist")
+        
+        json_files=glob(os.path.join(json_dir,'*.json'))
+
+        results=self.process_task(MPTasks.merge_elasticity_doc_task, json_files, directory_path=self.directory_path)
+
+        logger.info("Finished merging external database")
+        return None
+    
+    def merge_summary_doc(self):
+        """
+        Merges json_database doc from materials project into the database.
+
+        This function merges external tasks into the database. It iterates over the database files and checks if the
+        corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
+        been completed, the task is merged into the database.
+
+        Returns:
+            None
+        """
+        
+        logger.info("Starting merging external database")
+        json_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','json_database')
+        if not os.path.exists(json_dir):
+            raise FileNotFoundError(f"Directory {json_dir} does not exist")
+        
+        json_files=glob(os.path.join(json_dir,'*.json'))
+
+        results=self.process_task(MPTasks.merge_summary_doc_task, json_files, directory_path=self.directory_path)
+
+        logger.info("Finished merging external database")
+        return None
+
+    def create_parquet_file(self):
+        """
+        Generates the a parquet file for all materials in the database.
+        Returns:
+            None
+        """
+
+        # Process the database with the defined function
+        files=self.database_files()
+        results=self.process_task(MPTasks.create_parquet_file_task,files)
+        parquet_table=None
+        main_data={}
+        # Get all possible keys from the files
+        for i,result in enumerate(results):
+            data=result
+            if data is not None:
+                for key,value in data.items():
+                    if key not in main_data.keys():
+                        main_data[key]=[]
+        # Putting all the data in the main data
+        for i,result in enumerate(results):
+            data=result
+            if data is not None:
+                # populate the main data if it has a value
+                for key,value in data.items():
+                    main_data[key].extend(value)
+
+                # If the key does not exist in the main data, add it with None value
+                for key,value in main_data.items():
+                    if key not in data.keys():
+                        main_data[key].extend([None])
+
+        parquet_table=pa.Table.from_pydict(main_data,schema=MATERIAL_PARQUET_SCHEMA)
+
+        pq.write_table(parquet_table, os.path.join(MP_DIR, 'materials_database.parquet'))
+        logger.info("Database saved to parquet file")
+
+        metadata = pq.read_metadata( os.path.join(MP_DIR, 'materials_database.parquet'))
+        all_columns = []
+
+        logger.info("Column names")
+        for filed_schema in metadata.schema:
+            
+            # Only want top column names
+            max_defintion_level=filed_schema.max_definition_level
+            if max_defintion_level!=1:
+                continue
+  
+            logger.info(filed_schema.name)
+            all_columns.append(filed_schema.name)
+        return None
+
+class MPTasks:
+    
+    def bonding_task(json_file):
+            # Load data from JSON file
+            mpid=json_file.split('/')[-1].split('.')[0]
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    structure=Structure.from_dict(data['structure'])
+            except Exception as e:
+                logger.error(f"Error processing file {mpid}: {e}")
+                return None
+            
+    def merge_elasticity_doc_task(json_file, directory_path=''):
             """
             Merges external elacticity doc from materials project into the database.
 
@@ -954,7 +603,7 @@ class DBManager:
             try:
                 mpid = new_data['material_id']
 
-                main_json_file = os.path.join(self.directory_path,f'{mpid}.json')
+                main_json_file = os.path.join(directory_path,f'{mpid}.json')
                 # Check if main json file exists
                 if os.path.exists(main_json_file):
                     with open(main_json_file) as f:
@@ -986,36 +635,51 @@ class DBManager:
                 with open(main_json_file,'w') as f:
                     json.dump(main_data, f, indent=4)
 
-                LOGGER.info("Finished processing database")
+                logger.info("Finished processing database")
             except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
+                logger.error(f"Error processing file {mpid}: {e}")
 
             return None
     
-        LOGGER.info("Starting merging external database")
-        json_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','elasticity')
-        if not os.path.exists(json_dir):
-            raise FileNotFoundError(f"Directory {json_dir} does not exist")
-        
-        json_files=glob(os.path.join(json_dir,'*.json'))
+    def merge_oxidation_states_doc_task(json_file, directory_path=''):
+            """
+            Merges external oxidation_states doc from materials project into the database.
 
-        results=self.process_task(merge_elasticity_doc_task, json_files)
+            This function merges external tasks into the database. It iterates over the database files and checks if the
+            corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
+            been completed, the task is merged into the database.
 
-        LOGGER.info("Finished merging external database")
-        return None
-    
-    def merge_summary_doc(self):
-        """
-        Merges json_database doc from materials project into the database.
+            Returns:
+                None
+            """
+            with open(json_file) as f:
+                new_data = json.load(f)
+            try:
+                mpid = new_data['material_id']
 
-        This function merges external tasks into the database. It iterates over the database files and checks if the
-        corresponding task has been completed. If the task has not been completed, it is skipped. If the task has
-        been completed, the task is merged into the database.
+                main_json_file = os.path.join(directory_path,f'{mpid}.json')
+                # Check if main json file exists
+                if os.path.exists(main_json_file):
+                    with open(main_json_file) as f:
+                        main_data = json.load(f)
+                else:
+                    main_data={}
+                main_data['oxidation_states']={}
+                main_data['oxidation_states']["possible_species"]=new_data["possible_species"]
+                main_data['oxidation_states']['possible_valences']=new_data['possible_valences']
+                main_data['oxidation_states']['average_oxidation_states']=new_data['average_oxidation_states']
+                main_data['oxidation_states']['method']=new_data['method']
 
-        Returns:
-            None
-        """
-        def merge_summary_doc_task(self, json_file):
+                with open(main_json_file,'w') as f:
+                    json.dump(main_data, f, indent=4)
+
+                logger.info("Finished processing database")
+            except Exception as e:
+                logger.error(f"Error processing file {mpid}: {e}")
+
+            return None
+            
+    def merge_summary_doc_task(json_file, directory_path=''):
             """
             Merges external summary doc from materials project into the database.
 
@@ -1031,7 +695,7 @@ class DBManager:
             try:
                 mpid = new_data['material_id']
 
-                main_json_file = os.path.join(self.directory_path,f'{mpid}.json')
+                main_json_file = os.path.join(directory_path,f'{mpid}.json')
                 # Check if main json file exists
                 if os.path.exists(main_json_file):
                     with open(main_json_file) as f:
@@ -1103,24 +767,12 @@ class DBManager:
                 with open(main_json_file,'w') as f:
                     json.dump(main_data, f, indent=4)
 
-                LOGGER.info("Finished processing database")
+                logger.info("Finished processing database")
             except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
+                logger.error(f"Error processing file {mpid}: {e}")
             return None
-        
-        LOGGER.info("Starting merging external database")
-        json_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','json_database')
-        if not os.path.exists(json_dir):
-            raise FileNotFoundError(f"Directory {json_dir} does not exist")
-        
-        json_files=glob(os.path.join(json_dir,'*.json'))
 
-        results=self.process_task(merge_summary_doc_task, json_files)
-
-        LOGGER.info("Finished merging external database")
-        return None
-
-    def create_parquet_file_task(self, json_file):
+    def create_parquet_file_task(json_file):
         """
         Gets all material as a python dictionary in the database.
         Returns:
@@ -1255,60 +907,159 @@ class DBManager:
         except Exception as e:
             logger.debug(f"Error processing file {json_file}: {e}")
             return None
+    
+    def generate_matminer_embeddings_task(file_embedding_tuple):
+            """
+            Generates the Wyckoff positions for all materials in the database.
+            Returns:
+                None
+            """
+            json_file,embedding_dict=file_embedding_tuple
+            mpid=json_file.split(os.sep)[-1].split('.')[0]
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
 
-    def create_parquet_file(self):
-        """
-        Generates the a parquet file for all materials in the database.
-        Returns:
-            None
-        """
+                if 'feature_vectors' not in data:
+                    data['feature_vectors']={}
 
-        # Process the database with the defined function
-        files=self.database_files()
-        results=self.process_task(self.create_parquet_file_task,files)
-        parquet_table=None
-        main_data={}
-        # Get all possible keys from the files
-        for i,result in enumerate(results):
-            data=result
-            if data is not None:
-                for key,value in data.items():
-                    if key not in main_data.keys():
-                        main_data[key]=[]
-        # Putting all the data in the main data
-        for i,result in enumerate(results):
-            data=result
-            if data is not None:
-                # populate the main data if it has a value
-                for key,value in data.items():
-                    main_data[key].extend(value)
+                data['feature_vectors'].update(embedding_dict['feature_vectors'])
 
-                # If the key does not exist in the main data, add it with None value
-                for key,value in main_data.items():
-                    if key not in data.keys():
-                        main_data[key].extend([None])
-
-        parquet_table=pa.Table.from_pydict(main_data,schema=MATERIAL_PARQUET_SCHEMA)
-
-        pq.write_table(parquet_table, os.path.join(MP_DIR, 'materials_database.parquet'))
-        logger.info("Database saved to parquet file")
-
-        metadata = pq.read_metadata( os.path.join(MP_DIR, 'materials_database.parquet'))
-        all_columns = []
-
-        logger.info("Column names")
-        for filed_schema in metadata.schema:
+                with open(json_file,'w') as f:
+                    json.dump(data, f, indent=None)
+            except Exception as e:
+                print(f"Error processing file {mpid}: {e}")
+                logger.error(f"Error processing file {mpid}: {e}")
+                return None
             
-            # Only want top column names
-            max_defintion_level=filed_schema.max_definition_level
-            if max_defintion_level!=1:
-                continue
-  
-            logger.info(filed_schema.name)
-            all_columns.append(filed_schema.name)
-        return None
+    def get_property_task(json_file, property_name='structure'):
+        """
+        Get the structure for a given json file.
 
-class MPTasks:
+        Args:
+            json_file (str): The path to the json file.
+
+        Returns:
+            list: A list of structures.
+        """
+
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+                property = data.get(property_name)
+
+                
+        except Exception as e:
+            logger.error(f"Error processing file {json_file}: {e}")
+
+        return property
+    
+    def get_structure_task(json_file):
+        """
+        Get the structure for a given json file.
+
+        Args:
+            json_file (str): The path to the json file.
+
+        Returns:
+            list: A list of structures.
+        """
+        structure=None
+        material_id=None
+        nsites=None
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+                structure = Structure.from_dict(data['structure'])
+                material_id=json_file.split(os.sep)[-1].split('.')[0]
+                nsites=data['nsites']
+                
+        except Exception as e:
+            logger.error(f"Error processing file {json_file}: {e}")
+
+        return structure, material_id, nsites
+    
+    def bond_orders_sum_task(json_file):
+        """
+        Calculates the sum and count of bond orders for a given file.
+
+        Args:
+            file (str): The path to the JSON file containing the database.
+
+        Returns:
+            tuple: A tuple containing two numpy arrays. The first array represents the sum of bond orders
+                between different elements, and the second array represents the count of bond orders.
+
+        Raises:
+            Exception: If there is an error processing the file.
+
+        """
+        mpid = json_file.split(os.sep)[-1].split('.')[0]
+        try:
+            # Load database from JSON file
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error processing file {mpid}: {e}")
+            data={}
+        
+        bond_orders=None
+        bond_connections=None
+        site_element_names=None
+        if 'chargemol_bonding_orders' in data:
+            bond_orders = data["chargemol_bonding_orders"]
+        if 'chargemol_bonding_connections' in data:
+            bond_connections = data["chargemol_bonding_connections"]
+        if 'structure' in data:
+            site_element_names = [x['label'] for x in data['structure']['sites']]
+
+
+        bond_orders_sum, n_bond_orders = calculate_bond_orders_sum(bond_orders, bond_connections, site_element_names)
+
+        if bond_orders is None or bond_connections is None or site_element_names is None:
+            logger.error(f"Error processing file {mpid}: Bond Orders Stats calculation failed")
+
+        return bond_orders_sum, n_bond_orders
+
+    def bond_orders_sum_squared_differences_task(json_file):
+        """
+        Calculate the sum_squared_differences of bond orders for a given material.
+
+        Parameters:
+        file (str): The path to the JSON file containing the material information.
+
+        Returns:
+        bond_orders_sum_squared_differences (numpy.ndarray): The sum_squared_differences of bond orders between different elements.
+        1 (int): A placeholder value indicating the function has completed successfully.
+        """
+        mpid = json_file.split(os.sep)[-1].split('.')[0]
+        try:
+            # Load database from JSON file
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error processing file {json_file}: {e}")
+            data={}
+
+        with open(GLOBAL_PROP_FILE) as f:
+            global_data = json.load(f)
+            bond_orders_avg=np.array(global_data['bond_orders_avg'])
+            n_bond_orders=np.array(global_data['n_bond_orders'])
+
+
+        bond_orders=None
+        bond_connections=None
+        site_element_names=None
+        if 'chargemol_bonding_orders' in data:
+            bond_orders = data["chargemol_bonding_orders"]
+        if 'chargemol_bonding_connections' in data:
+            bond_connections = data["chargemol_bonding_connections"]
+        if 'structure' in data:
+            site_element_names = [x['label'] for x in data['structure']['sites']]
+
+        bond_orders_sum_squared_differences = calculate_bond_orders_sum_squared_differences(bond_orders, bond_connections, site_element_names, bond_orders_avg, n_bond_orders)
+
+        return bond_orders_sum_squared_differences
     
     def bonding_task(json_file):
             # Load data from JSON file
@@ -1318,9 +1069,220 @@ class MPTasks:
                     data = json.load(f)
                     structure=Structure.from_dict(data['structure'])
             except Exception as e:
-                LOGGER.error(f"Error processing file {mpid}: {e}")
+                logger.error(f"Error processing file {mpid}: {e}")
+                return None
+            
+
+            geo_coord_connections=None
+            elec_coord_connections=None
+            chargemol_bond_orders=None
+            if 'coordination_multi_connections' in data:
+                geo_coord_connections = data['coordination_multi_connections']
+            if 'chargemol_bonding_connections' in data:
+                elec_coord_connections = data['chargemol_bonding_connections']
+                chargemol_bond_orders = data['chargemol_bonding_orders']
+
+            final_geo_connections, final_bond_orders = calculate_geometric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
+            data['geometric_consistent_bond_connections']=final_geo_connections
+            data['geometric_consistent_bond_orders']=final_bond_orders
+
+            final_elec_connections, final_bond_orders = calculate_electric_consistent_bonds(elec_coord_connections, chargemol_bond_orders)
+            data['electric_consistent_bond_connections']=final_elec_connections
+            data['electric_consistent_bond_orders']=final_bond_orders
+
+            final_geo_elec_connections, final_bond_orders = calculate_geometric_electric_consistent_bonds(geo_coord_connections, elec_coord_connections, chargemol_bond_orders)
+            data['geometric_electric_consistent_bond_connections']=final_geo_elec_connections
+            data['geometric_electric_consistent_bond_orders']=final_bond_orders
+
+            final_cutoff_connections = calculate_cutoff_bonds(structure)
+            data['bond_cutoff_connections']=final_cutoff_connections
+
+            with open(json_file,'w') as f:
+                json.dump(data, f, indent=4)
+
+            error_messge=""
+            if final_geo_connections is None:
+                error_messge+="| Geometric Consistent Bonding |"
+            if final_elec_connections is None:
+                error_messge+="| Electric Consistent Bonding |"
+            if final_geo_elec_connections is None:
+                error_messge+="| Geometric Electric Consistent Bonding |"
+            if final_cutoff_connections is None:
+                error_messge+="| Bond Cutoff |"
+            if len(error_messge)>0:
+                logger.error(f"Error processing file {mpid}: {error_messge} calculation failed")
+
+            return None
+    
+    def chemenv_task(json_file, from_scratch=False):
+
+            # Load data from JSON file
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    struct = Structure.from_dict(data['structure'])
+            except Exception as e:
+                logger.error(f"Error processing file {json_file}: {e}")
                 return None
 
+
+
+            # Extract material project ID from file name
+            mpid = json_file.split(os.sep)[-1].split('.')[0]
+
+            coordination_environments=data.get('coordination_environments_multi_weight')
+            nearest_neighbors=data.get('coordination_multi_connections')
+            coordination_numbers=data.get('coordination_multi_numbers')
+            # Check if calculation is needed
+            if coordination_environments is None or from_scratch:
+                coordination_environments, nearest_neighbors, coordination_numbers = calculate_chemenv_connections(struct)
+                # Update the database with computed values
+                data['coordination_environments_multi_weight'] = coordination_environments
+                data['coordination_multi_connections'] = nearest_neighbors
+                data['coordination_multi_numbers'] = coordination_numbers
+            
+
+                with open(json_file,'w') as f:
+                    json.dump(data, f, indent=4)
+        
+
+            if coordination_environments is None:
+                logger.error(f"Error processing file {mpid}: Coordination Environments calculation failed")
+
+            return None
+    
+    def wyckoff_calc_task(json_file):
+            """
+            Perform Wyckoff calculations on all materials in the database.
+
+            Returns:
+                None
+            """
+            mpid=json_file.split(os.sep)[-1].split('.')[0]
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                    struct = Structure.from_dict(data['structure'])
+            except Exception as e:
+                logger.error(f"Error processing file {mpid}: {e}")
+                return None
+            
+            wyckoffs=None
+            if 'wyckoffs' not in data:
+                wyckoffs=calculate_wyckoff_positions(struct)
+                data['wyckoffs']=wyckoffs
+
+            with open(json_file,'w') as f:
+                json.dump(data, f, indent=4)
+            
+            if wyckoffs is None:
+                logger.error(f"Error processing file {mpid}: Wyckoff Positions calculation failed")
+
+    def collect_chargemol_info_task(dir, directory_path=''):
+        """Check if a given property exists in the data."""
+        material_id=dir.split(os.sep)[-1]
+        json_file=os.path.join(directory_path, material_id+'.json')
+        bond_orders_file = os.path.join(dir,'chargemol','DDEC6_even_tempered_bond_orders.xyz')
+        squared_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rsquared_moments.xyz')
+        cubed_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rcubed_moments.xyz')
+        fourth_moments_file = os.path.join(dir,'chargemol','DDEC_atomic_Rfourth_moments.xyz')
+        atomic_charges_file = os.path.join(dir,'chargemol','DDEC6_even_tempered_net_atomic_charges.xyz')
+        overlap_population_file = os.path.join(dir,'chargemol','overlap_populations.xyz')
+        
+
+        bond_order_info=parse_chargemol_bond_orders(file=bond_orders_file)
+        net_atomic_charges_info=parse_chargemol_net_atomic_charges(file=atomic_charges_file)
+        overlap_population_info=parse_chargemol_overlap_populations(file=overlap_population_file)
+        squared_moments_info=parse_chargemol_atomic_moments(file=squared_moments_file)
+        cubed_moments_info=parse_chargemol_atomic_moments(file=cubed_moments_file)
+        fourth_moments_info=parse_chargemol_atomic_moments(file=fourth_moments_file)
+
+        with open(json_file, 'r') as file:
+            data = json.load(file)
+
+        data['chargemol_bonding_connections'] = bond_order_info[0]
+        data['chargemol_bonding_orders'] = bond_order_info[1]
+        # data['chargemol_net_atomic_charges'] = net_atomic_charges_info
+        # data['chargemol_overlap_populations'] = overlap_population_info
+        data['chargemol_squared_moments'] = squared_moments_info
+        data['chargemol_cubed_moments'] = cubed_moments_info
+        data['chargemol_fourth_moments'] = fourth_moments_info
+
+        with open(json_file,'w') as f:
+            json.dump(data, f, indent=4)
+
+        if bond_order_info is None:
+            logger.error(f"Error processing file {material_id}: Chargemol Bonding Orders calculation failed")
+
+        return None
+    
+    def check_chargemol_task(dir):
+            """
+            Check if the chargemol task has been completed.
+
+            Args:
+                dir (str): The directory path where the chargemol task output is expected.
+
+            Returns:
+                bool: True if the chargemol task has been completed and the output file exists, False otherwise.
+            """
+            check = True
+
+            file_path = os.path.join(dir, 'chargemol', 'DDEC6_even_tempered_bond_orders.xyz')
+
+            if os.path.exists(file_path):
+                check = True
+            else:
+                check = False
+
+            return check
+    
+    def check_property_task(json_file, property_name=''):
+        """
+        Check if a given property exists in the data loaded from a JSON file.
+
+        Args:
+            file (str): The path to the JSON file.
+            property_name (str, optional): The name of the property to check. Defaults to ''.
+
+        Returns:
+            bool: True if the property exists and is not None, False otherwise.
+        """
+
+        mpid=json_file.split('/')[-1].split('.')[0]
+        try:
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error processing file {mpid}: {e}")
+            data={}
+            
+        check=True
+        if property_name not in data:
+            check=False
+            return check
+
+        if data[property_name] is None:
+            check=False
+
+        return check
+    
+    def load_data_tasks(json_file):
+        """
+        Loads the data tasks.
+
+        Returns:
+            dict: A dictionary of data tasks.
+        """
+        try:
+            with open(json_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.debug(f"Error processing file: {e}")
+            return None
+
+        return data
+    
 
 def get_data(data, key, default=None):
     return [data.get(key, default)]
