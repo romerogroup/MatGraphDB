@@ -19,7 +19,6 @@ import pyarrow.parquet as pq
 from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES, GLOBAL_PROP_FILE, ENCODING_DIR, EXTERNAL_DATA_DIR, MP_DIR
 
 from matgraphdb.utils.periodic_table import atomic_symbols
-from matgraphdb.data.parquet_schemas import MATERIAL_PARQUET_SCHEMA
 from matgraphdb.utils import get_logger
 
 logger=get_logger(__name__, console_out=False, log_level='info')
@@ -67,7 +66,6 @@ class Database:
     def current_index_counter(self, value):
         self.metadata['current_index_counter']=value
         
-
     def create(self, data):
         """
         Creates a material in the database.
@@ -81,7 +79,22 @@ class Database:
         if not isinstance(data, dict):
             raise ValueError("data must be a dictionary")
         filepath=self._save_data(data)
-        # self._save_state()
+        self._save_state()
+        return filepath
+    
+    def _create_many_task(self, data, index):
+        """
+        Creates a material in the database.
+
+        Args:
+            data (dict): The data of the material to be created.
+
+        Returns:
+            str: The filepath of the created material.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("data must be a dictionary")
+        filepath=self._save_data(data,m_id=index)
         return filepath
 
     def create_many(self, data_list):
@@ -94,7 +107,17 @@ class Database:
         Returns:
             list: A list of filepaths of the created materials.
         """
-        return self.process_task(self.create, data_list)
+        data_index_list=[(data,'m-' + str(self.current_index_counter + i) ) for i,data in enumerate(data_list)]
+        results=self.process_task(self._create_many_task, data_index_list)
+
+        # properties=[]
+        # for result in results:
+        #     for property_name in result:
+        #         if result is None:
+        #             properties.append(property_name)
+        self.current_index_counter+=len(data_index_list)
+        self._save_state()
+        return results
 
     def read(self, m_id):
         """
@@ -109,7 +132,7 @@ class Database:
         logger.info(f"Reading material | {m_id}")
         return self.load(m_id=m_id)
     
-    def read_many(self, m_ids):
+    def read_many(self, m_ids=None):
         """
         Reads many materials from the database.
 
@@ -120,9 +143,11 @@ class Database:
             list: A list of dictionaries representing the data of the materials.
         """
         logger.info(f"Reading multiple materials")
+        if m_ids is None:
+            m_ids=self.get_m_ids()
         return self.process_task(self.read, m_ids)
 
-    def update(self, data, m_id):
+    def update(self, data, m_id, update_state=True):
         """
         Updates a material in the database.
 
@@ -136,7 +161,10 @@ class Database:
         if not isinstance(data, dict):
             raise ValueError("data must be a dictionary")
         filepath=self._save_data(data, m_id=m_id)
-        
+        if update_state:
+            logger.info(f"Updating db state")
+            self._save_state()
+        return filepath
 
     def update_many(self, data_list, m_ids):
         """
@@ -153,8 +181,15 @@ class Database:
         if len(data_list)!=len(m_ids):
             raise ValueError("data_list and m_ids must be the same length")
         
+
         mp_list=[(data,m_id) for data,m_id in zip(data_list,m_ids)]
-        self.process_task(self.update, mp_list)
+
+        logger.info(f"Attempting to update {len(mp_list)} materials")
+        self.process_task(self.update, mp_list, update_state=False)
+
+        logger.info(f"Successfully updated {len(mp_list)} materials")
+
+        self._save_state()
         return filepaths
     
     def delete(self, m_id):
@@ -262,7 +297,13 @@ class Database:
         logger.info(f"Process full database using {self.n_cores} cores")
         logger.info(f"Using {self.n_cores} cores")
         with Pool(self.n_cores) as p:
-            results=p.map(partial(func,**kwargs), list)
+            # multi-arg functions
+            if isinstance(list[0], tuple):
+                logger.info(f"Using starmap")
+                results=p.starmap(partial(func,**kwargs), list)
+            else:
+                logger.info(f"Using map")
+                results=p.map(partial(func,**kwargs), list)
         return results
     
     def load(self, m_id=None, filepath=None):
@@ -312,24 +353,22 @@ class Database:
         """
         if m_id is None:
             m_id=self._get_new_index()
-            data['id']=m_id
-        
+        data['id']=m_id
         filepath=os.path.join(self.db_dir,f"{m_id}.json")
 
+        # Check if the file already exists and update it if it does
+        existing_data={}
         logger.info(f"Attempting to saving material | {m_id} | {filepath}")
+        if os.path.exists(filepath):
+            with open(filepath) as f:
+                existing_data = json.load(f)
+        existing_data.update(data)
 
-        property_names=list(data.keys())
-
+        logger.info(f"Attempting to saving material | {m_id} | {filepath}")
         with open(filepath, 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(existing_data, f, indent=4)
 
         logger.info(f"Successfully saving material | {m_id}")
-
-
-        for property_name in property_names:
-            if property_name not in self.metadata['properties']:
-                logger.info(f"New property detected. Saving property name to metadata | {property_name}")
-                self.metadata['properties'].append(property_name)
 
         return filepath
     
@@ -337,9 +376,7 @@ class Database:
         """
         Safely increments the current index counter using a lock.
         """
-        with self.lock:
-            current_index = self.current_index_counter
-            self.current_index_counter = current_index + 1
+        self.current_index_counter += 1
         return self.current_index_counter
     
     def _get_new_index(self):
@@ -410,9 +447,8 @@ class Database:
         self.metadata=self.get_metadata()
         if self.metadata:
             for key in self.metadata.keys():
-                print(key)
                 setattr(self, key, self.metadata[key])
-            logger.info(f"Successfully loaded state from.")
+            logger.info(f"Successfully loaded state.")
             return self.metadata
         
         logger.info(f"No state found. Creating new state.")
@@ -452,16 +488,25 @@ if __name__=='__main__':
     db=Database(root_dir=os.path.join('data','raw','test'),n_cores=6)
     print(db.get_metadata())
 
-    data_list=[{'test':i} for i in range(1000)]
+    # data_list=[{'test1':i} for i in range(1000)]
+    # db.create_many(data_list)
 
 
-    print(db._get_id())
 
-    print(uuid.uuid4())
+    data_list=[{'test2':i} for i in range(1000)]
+    m_ids=[f'm-{i}' for i in range(1000)]
+    db.update_many(data_list,m_ids)
+
+    # print(db._get_id())
+
+    # print(uuid.uuid4())
     # print(len(data_list))
     # db.create_many(data_list)
 
-    # print(db._index_counter)
+
+    # db.update_many(data_list,m_ids)
+
+    # # print(db._index_counter)
 
     # db.create_material(composition='Li2O')
     # db.create_material(composition='Li2O')
