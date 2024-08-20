@@ -1,4 +1,4 @@
-from matgraphdb.graph.graph_generator import GraphGenerator
+from matgraphdb.graph_kit.graph_generator import GraphGenerator
 
 def main():
     generator=GraphGenerator(from_scratch=True,skip_main_init=False)

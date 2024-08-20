@@ -1,5 +1,159 @@
 import json
-from itertools import combinations,combinations_with_replacement
+from itertools import combinations, combinations_with_replacement
+
+import numpy as np
+
+S_COLUMNS=np.arange(1,3)
+P_COLUMNS=np.arange(27,33)
+D_COLUMNS=np.arange(17,27)
+F_COLUMNS=np.arange(3,17)
+
+def get_group_period_edge_index(df):
+    """
+    Returns a list of edge indexes for the given dataframe.
+
+    Args:
+        df (pandas.DataFrame): The dataframe to get the edge indexes from.
+
+    Returns:
+        list: A list of edge indexes.
+    """
+    if 'atomic_number' not in df.columns:
+        raise ValueError("Dataframe must contain 'atomic_number' column")
+    if 'extended_group' not in df.columns:
+        raise ValueError("Dataframe must contain 'extended_group' column")
+    if 'period' not in df.columns:
+        raise ValueError("Dataframe must contain 'period' column")
+    if 'symbol' not in df.columns:
+        raise ValueError("Dataframe must contain 'symbol' column")
+    
+    edge_index=[]
+    for irow, row in df.iterrows():
+        symbol=row['symbol']
+        atomic_number=row['atomic_number']
+        extended_group=row['extended_group']
+        period=row['period']
+        
+        if extended_group in S_COLUMNS:
+            # Hydrogen
+            if period==1:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(None,None)
+
+            # Lithium 
+            elif extended_group==1 and period==2:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(None,1)
+            # Francium
+            elif extended_group==1 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(None,1)
+            # Beryllium
+            elif extended_group==2 and period==2:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Radium
+            elif extended_group==2 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            elif extended_group==1:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(None,1)
+            else:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(-1,1)
+
+        if extended_group in P_COLUMNS:
+            # Helium
+            if period==1:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(None,None)
+            # Boron 
+            elif extended_group==27 and period==2:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Nihonium
+            elif extended_group==27 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            # Neon
+            elif extended_group==32 and period==2:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,None)
+            # Oganesson
+            elif extended_group==32 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,None)
+            elif extended_group==32:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(-1,None)
+            else:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(-1,1)
+        
+        if extended_group in D_COLUMNS:
+            # Scandium
+            if extended_group==17 and period==4:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Lawrencium
+            elif extended_group==17 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            # Zinc
+            elif extended_group==26 and period==4:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Copernicium
+            elif extended_group==26 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            else:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(-1,1)
+
+        if extended_group in F_COLUMNS:
+            # Lanthanum
+            if extended_group==3 and period==6:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Actinium
+            elif extended_group==3 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            # Zinc
+            elif extended_group==16 and period==6:
+                period_neighbors=(None,1)
+                atomic_number_neighbors=(-1,1)
+            # Copernicium
+            elif extended_group==16 and period==7:
+                period_neighbors=(-1,None)
+                atomic_number_neighbors=(-1,1)
+            else:
+                period_neighbors=(-1,1)
+                atomic_number_neighbors=(-1,1)
+
+        
+        for neighbor_period in period_neighbors:
+            current_period=period
+            
+            if neighbor_period is not None:
+                current_period+=neighbor_period
+
+                matching_indexes = df[(df['period'] == current_period) & (df['extended_group'] == extended_group)].index.values
+                if len(matching_indexes)!=0:
+
+                    edge_index.append((irow,matching_indexes[0]))
+
+        for neighbor_atomic_number in atomic_number_neighbors:
+            current_atomic_number=atomic_number
+            
+            if neighbor_atomic_number is not None:
+                current_atomic_number+=neighbor_atomic_number
+                matching_indexes = df[df['atomic_number'] == current_atomic_number].index.values
+                if len(matching_indexes)!=0:
+                    edge_index.append((irow,matching_indexes[0]))
+    return edge_index
 
 
 pymatgen_properties={

@@ -1,0 +1,1852 @@
+{
+    "nsites": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 632.6109619140625,
+            "r2": 0.4125897690705804
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 620.9987182617188,
+            "r2": 0.42337230141859483
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 629.5956420898438,
+            "r2": 0.4153896413357021
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 464.3709411621094,
+            "r2": 0.5688088520588187
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 459.1980285644531,
+            "r2": 0.5736121695820329
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 475.09515380859375,
+            "r2": 0.5588508927803006
+        }
+    },
+    "nelements": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.1820075809955597,
+            "r2": 0.7810152021826422
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.16957056522369385,
+            "r2": 0.7959789549756345
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.16593965888023376,
+            "r2": 0.8003475401134675
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.02897302433848381,
+            "r2": 0.9651407266017576
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.028740646317601204,
+            "r2": 0.9654203174683876
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0831018015742302,
+            "r2": 0.9000149839631059
+        }
+    },
+    "volume": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 184130.90625,
+            "r2": 0.39425329255265884
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 184902.46875,
+            "r2": 0.39171500415116434
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 182420.03125,
+            "r2": 0.39988163833331347
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 157016.578125,
+            "r2": 0.4834529837079069
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 156495.171875,
+            "r2": 0.48516822391542314
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 149671.6875,
+            "r2": 0.5076158944783916
+        }
+    },
+    "density": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.1679314374923706,
+            "r2": 0.8581728728587183
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.1928831338882446,
+            "r2": 0.8551428788135638
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.1471526622772217,
+            "r2": 0.8606961184454476
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.6609697937965393,
+            "r2": 0.9197354813000695
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.759311318397522,
+            "r2": 0.9077934250488253
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.6943942904472351,
+            "r2": 0.9156765932164054
+        }
+    },
+    "density_atomic": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 9.644047737121582,
+            "r2": 0.835598288693627
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 9.611287117004395,
+            "r2": 0.8361567473004115
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 9.82530403137207,
+            "r2": 0.832508412156512
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7.840755462646484,
+            "r2": 0.8663389429850976
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6.916233539581299,
+            "r2": 0.8820992269569559
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6.826115608215332,
+            "r2": 0.8836354675874186
+        }
+    },
+    "formula_pretty": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.0036699569729182484,
+            "precision": 0.0015313594320803048,
+            "recall": 0.0036699569729182484,
+            "f1": 0.0015439655895679073,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.003416856492027335,
+            "precision": 1.8291909637570127e-05,
+            "recall": 0.003416856492027335,
+            "f1": 3.638614754913614e-05,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.0037965072133637054,
+            "precision": 0.0002137921460109075,
+            "recall": 0.0037965072133637054,
+            "f1": 0.0003788552139047779,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.0021513540875727666,
+            "precision": 1.045839848119446e-05,
+            "recall": 0.0021513540875727666,
+            "f1": 2.0815605855854878e-05,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.002277904328018223,
+            "precision": 1.4482397921496637e-05,
+            "recall": 0.002277904328018223,
+            "f1": 2.877181440393856e-05,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.0021513540875727666,
+            "precision": 1.6125669968578935e-05,
+            "recall": 0.0021513540875727666,
+            "f1": 3.2011395613774205e-05,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "e_electronic": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.13273620605469,
+            "r2": -0.0003239882857166698
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.11200714111328,
+            "r2": -0.00012853792495581828
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.062255859375,
+            "r2": 0.0003404188601920932
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.11878204345703,
+            "r2": -0.00019248317762587952
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.19871520996094,
+            "r2": -0.0009457456186177104
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 106.09197998046875,
+            "r2": 6.0180055843517266e-05
+        }
+    },
+    "e_ionic": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25183666.0,
+            "r2": -0.0015913821895989777
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25183624.0,
+            "r2": -0.0015896928201539762
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25182346.0,
+            "r2": -0.00153886358063815
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25182692.0,
+            "r2": -0.0015525455876961303
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25183530.0,
+            "r2": -0.0015859211072875024
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184484.0,
+            "r2": -0.001624017558907509
+        }
+    },
+    "e_total": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184076.0,
+            "r2": -0.0015751611492564876
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184336.0,
+            "r2": -0.00158548869987718
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184448.0,
+            "r2": -0.0015899248736703786
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184086.0,
+            "r2": -0.0015755460851691883
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184160.0,
+            "r2": -0.0015784936469782629
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 25184326.0,
+            "r2": -0.0015851016312875554
+        }
+    },
+    "energy_per_atom": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.5254361033439636,
+            "r2": 0.8404101342804575
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.5379562377929688,
+            "r2": 0.8366074064562058
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.5645915269851685,
+            "r2": 0.8285175148429684
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.24035724997520447,
+            "r2": 0.9269966759299378
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.2539769411087036,
+            "r2": 0.9228599844573547
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.250711053609848,
+            "r2": 0.9238519377211676
+        }
+    },
+    "energy_above_hull": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0001662920112721622,
+            "r2": 0.2258539716429836
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.00017279166786465794,
+            "r2": 0.19559588016991925
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.00018299950170330703,
+            "r2": 0.14807480822205454
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.00016805178893264383,
+            "r2": 0.2176616444216095
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0001685165916569531,
+            "r2": 0.21549778163073563
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0002510628546588123,
+            "r2": -0.168783301616362
+        }
+    },
+    "formation_energy_per_atom": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.12785643339157104,
+            "r2": 0.8865570866185304
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.12701623141765594,
+            "r2": 0.8873025693353033
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.134805366396904,
+            "r2": 0.8803915265657374
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0547727532684803,
+            "r2": 0.9514018955953109
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.04172493517398834,
+            "r2": 0.9629788031697282
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.04230060800909996,
+            "r2": 0.9624680294372561
+        }
+    },
+    "band_gap": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.9182583093643188,
+            "r2": 0.6700970472199554
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.9248034358024597,
+            "r2": 0.6677455991357462
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.8880414962768555,
+            "r2": 0.6809530852944012
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.5834802985191345,
+            "r2": 0.7903728557687058
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.5860812067985535,
+            "r2": 0.7894384289938072
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.6029180884361267,
+            "r2": 0.783389435269647
+        }
+    },
+    "vbm": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.3058418035507202,
+            "r2": 0.7530297600030501
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.3336080312728882,
+            "r2": 0.7477784046009653
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.3198505640029907,
+            "r2": 0.7503803261818371
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.9802349805831909,
+            "r2": 0.8146108596927634
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.9494644403457642,
+            "r2": 0.8204304070240885
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.0224789381027222,
+            "r2": 0.8066213879397237
+        }
+    },
+    "cbm": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2.2569615840911865,
+            "r2": 0.4719256321097275
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2.352102756500244,
+            "r2": 0.44966496381834575
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2.1191656589508057,
+            "r2": 0.5041665892049546
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.7561982870101929,
+            "r2": 0.5890921311413798
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.61183762550354,
+            "r2": 0.6228690555827707
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.5979628562927246,
+            "r2": 0.6261154023191804
+        }
+    },
+    "efermi": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "crystal_system": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.5489749430523918,
+            "precision": 0.5598570487465944,
+            "recall": 0.5489749430523918,
+            "f1": 0.5498572771785715,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.5432801822323462,
+            "precision": 0.5514138037122293,
+            "recall": 0.5432801822323462,
+            "f1": 0.5430219689195793,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.5348013161225006,
+            "precision": 0.5554399156282116,
+            "recall": 0.5348013161225006,
+            "f1": 0.5251534763243527,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.6070615034168565,
+            "precision": 0.6129426334526031,
+            "recall": 0.6070615034168565,
+            "f1": 0.6032004135995374,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.6169324221716022,
+            "precision": 0.6218447587478089,
+            "recall": 0.6169324221716022,
+            "f1": 0.6167962534613998,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.6009870918754746,
+            "precision": 0.6154498837911099,
+            "recall": 0.6009870918754746,
+            "f1": 0.5996492078986484,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "space_group": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2762.353759765625,
+            "r2": 0.5774076837871602
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2831.251953125,
+            "r2": 0.566867476928788
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2892.033447265625,
+            "r2": 0.5575689426587055
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2506.291015625,
+            "r2": 0.6165808405202393
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2498.613525390625,
+            "r2": 0.617755367545476
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2380.556884765625,
+            "r2": 0.6358160301167829
+        }
+    },
+    "point_group": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.45937737281700836,
+            "precision": 0.4513344671564593,
+            "recall": 0.45937737281700836,
+            "f1": 0.43184156222470627,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.46519868387749935,
+            "precision": 0.4683823804965324,
+            "recall": 0.46519868387749935,
+            "f1": 0.43756911253922437,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.46519868387749935,
+            "precision": 0.460546716342292,
+            "recall": 0.46519868387749935,
+            "f1": 0.4368652059801935,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.5267021007339914,
+            "precision": 0.5326620380180432,
+            "recall": 0.5267021007339914,
+            "f1": 0.5082624817311713,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.5339154644393824,
+            "precision": 0.542258903766132,
+            "recall": 0.5339154644393824,
+            "f1": 0.5129802699850299,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.5278410528980005,
+            "precision": 0.518619497577803,
+            "recall": 0.5278410528980005,
+            "f1": 0.5038774507187217,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "hall_symbol": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.38281447734750695,
+            "precision": 0.36562279632750155,
+            "recall": 0.38281447734750695,
+            "f1": 0.35077901672364187,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.3806631232599342,
+            "precision": 0.36456424687254557,
+            "recall": 0.3806631232599342,
+            "f1": 0.34682153622119566,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.3744621614781068,
+            "precision": 0.36704955171895476,
+            "recall": 0.3744621614781068,
+            "f1": 0.3373886463717111,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.45051885598582636,
+            "precision": 0.43877866436060675,
+            "recall": 0.45051885598582636,
+            "f1": 0.4198700998391221,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.4510250569476082,
+            "precision": 0.44682608013308794,
+            "recall": 0.4510250569476082,
+            "f1": 0.4198008643069456,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.4536826119969628,
+            "precision": 0.4453468897239472,
+            "recall": 0.4536826119969628,
+            "f1": 0.4183541088996034,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_gap_direct": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_metal": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_magnetic": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_stable": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "ordering": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": 0.8027081751455328,
+            "precision": 0.7853186610079541,
+            "recall": 0.8027081751455328,
+            "f1": 0.782929962326465,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": 0.7992913186535054,
+            "precision": 0.7822359584894252,
+            "recall": 0.7992913186535054,
+            "f1": 0.7835952061003311,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": 0.797519615287269,
+            "precision": 0.7797760849710399,
+            "recall": 0.797519615287269,
+            "f1": 0.7779034403273201,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": 0.865350544166034,
+            "precision": 0.8506553870815056,
+            "recall": 0.865350544166034,
+            "f1": 0.8517206322900025,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": 0.8654770944064794,
+            "precision": 0.8547487943049176,
+            "recall": 0.8654770944064794,
+            "f1": 0.8538252412324268,
+            "mse": null,
+            "r2": null
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": 0.8675018982536067,
+            "precision": 0.8591788029632191,
+            "recall": 0.8675018982536067,
+            "f1": 0.854330591556336,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "total_magnetization": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 76.98123931884766,
+            "r2": 0.4350101604615071
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 73.82978820800781,
+            "r2": 0.4581397018182731
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 70.06207275390625,
+            "r2": 0.48579214006235527
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 71.19903564453125,
+            "r2": 0.47744760908395667
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 64.81632232666016,
+            "r2": 0.5242924087342574
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 64.8370132446289,
+            "r2": 0.5241405081496909
+        }
+    },
+    "total_magnetization_normalized_vol": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0003051365492865443,
+            "r2": 0.5675361635611095
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0002830020966939628,
+            "r2": 0.5989068838091052
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0002935919910669327,
+            "r2": 0.5838980612488958
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0002066235465463251,
+            "r2": 0.7071566563269862
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0002374567266087979,
+            "r2": 0.663457426631487
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.00020939897513017058,
+            "r2": 0.7032230948847369
+        }
+    },
+    "num_magnetic_sites": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 12.18241024017334,
+            "r2": 0.5040899226627846
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 12.242701530456543,
+            "r2": 0.5016356418245993
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 11.81633472442627,
+            "r2": 0.5189917391567795
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 10.93857479095459,
+            "r2": 0.554722805116827
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 12.860248565673828,
+            "r2": 0.4764971116652027
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 11.203948020935059,
+            "r2": 0.5439202769537533
+        }
+    },
+    "num_unique_magnetic_sites": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 11.015386581420898,
+            "r2": 0.2113150612845005
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 11.13322925567627,
+            "r2": 0.2028777755247062
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 11.152791023254395,
+            "r2": 0.2014771607491319
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 10.533980369567871,
+            "r2": 0.24578299379600044
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 10.68230152130127,
+            "r2": 0.23516341857045364
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 10.649953842163086,
+            "r2": 0.2374795006395054
+        }
+    },
+    "g_reuss": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1909.26123046875,
+            "r2": 0.009110145239046075
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1900.381103515625,
+            "r2": 0.013718827326941296
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1688.1485595703125,
+            "r2": 0.12386567383129266
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1944.447265625,
+            "r2": -0.009150979024021844
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1945.6446533203125,
+            "r2": -0.009772484619439359
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1883.706787109375,
+            "r2": 0.02237280294906374
+        }
+    },
+    "g_voigt": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1175.554443359375,
+            "r2": 0.28110990340518793
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1224.10791015625,
+            "r2": 0.2514178808964297
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1108.990478515625,
+            "r2": 0.32181594069158614
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1172.766357421875,
+            "r2": 0.2828149882897031
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1257.4652099609375,
+            "r2": 0.231018870595322
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1107.2200927734375,
+            "r2": 0.32289870452501757
+        }
+    },
+    "g_vrh": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1176.3656005859375,
+            "r2": 0.264459555382222
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1270.3692626953125,
+            "r2": 0.20568230833177836
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1117.7081298828125,
+            "r2": 0.301136030909544
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1600.6981201171875,
+            "r2": -0.0008607806256923922
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1403.245849609375,
+            "r2": 0.12259918444265194
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1243.299072265625,
+            "r2": 0.22260837129938482
+        }
+    },
+    "k_reuss": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7329.42578125,
+            "r2": -0.1187810816146746
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7316.244140625,
+            "r2": -0.11676906026580403
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7304.8466796875,
+            "r2": -0.11502931942531602
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7305.88232421875,
+            "r2": -0.11518729098295655
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7317.9375,
+            "r2": -0.11702758876705777
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7324.19873046875,
+            "r2": -0.117983274581144
+        }
+    },
+    "k_voigt": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6909.3720703125,
+            "r2": -0.1385848863344996
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6912.255859375,
+            "r2": -0.13906013266257378
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6918.54736328125,
+            "r2": -0.14009691204172658
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6943.28173828125,
+            "r2": -0.14417277940771833
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6922.81640625,
+            "r2": -0.14080035752733622
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6912.55126953125,
+            "r2": -0.13910870950983778
+        }
+    },
+    "k_vrh": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6971.95458984375,
+            "r2": -0.13312160713085763
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6985.73681640625,
+            "r2": -0.1353616051830353
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6975.734375,
+            "r2": -0.13373591541873942
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6978.4599609375,
+            "r2": -0.1341788620210791
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6965.13818359375,
+            "r2": -0.13201383752617946
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 6968.46337890625,
+            "r2": -0.13255411688748153
+        }
+    },
+    "homogeneous_poisson": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0317656435072422,
+            "r2": -0.04912811161991493
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.031697385013103485,
+            "r2": -0.04687402188356482
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.03184759244322777,
+            "r2": -0.051834764251984744
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.03052515536546707,
+            "r2": -0.008158581727641279
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.03096367046236992,
+            "r2": -0.022641371863427295
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.030252978205680847,
+            "r2": 0.0008307411513770457
+        }
+    },
+    "universal_anisotropy": {
+        "fastrp-embedding-gc-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150426.859375,
+            "r2": -0.0015321593026962343
+        },
+        "fastrp-embedding-ec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150407.0,
+            "r2": -0.0013999643051709754
+        },
+        "fastrp-embedding-gec-chemenvElement": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150461.53125,
+            "r2": -0.001763294052658626
+        },
+        "fastrp-embedding-gc-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150266.40625,
+            "r2": -0.00046388910513228687
+        },
+        "fastrp-embedding-ec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150278.625,
+            "r2": -0.0005452557353207155
+        },
+        "fastrp-embedding-gec-element-chemenv": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 150383.359375,
+            "r2": -0.0012425755888449963
+        }
+    }
+}

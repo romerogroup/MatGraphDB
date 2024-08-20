@@ -3,7 +3,7 @@ import pstats
 
 
 def main():
-    from matgraphdb.graph.graph_generator import GraphGenerator
+    from matgraphdb.graph_kit.graph_generator import GraphGenerator
 
     generator=GraphGenerator(from_scratch=False)
 

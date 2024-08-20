@@ -1,6 +1,6 @@
 import os
 
-from matgraphdb.graph.material_graph import MaterialGraph
+from matgraphdb.graph_kit.graphs import MaterialGraph
 from matgraphdb.utils import GRAPH_DIR
 
 def main():

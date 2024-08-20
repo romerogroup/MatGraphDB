@@ -1,0 +1,372 @@
+{
+    "nsites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 971.5169677734375,
+            "r2": 0.15037120239670032
+        }
+    },
+    "nelements": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.34616562724113464,
+            "r2": 0.5632340618973826
+        }
+    },
+    "volume": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 487892.65625,
+            "r2": -0.5446517166081124
+        }
+    },
+    "density": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2.9245424270629883,
+            "r2": 0.637379622776983
+        }
+    },
+    "density_atomic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 29.956214904785156,
+            "r2": 0.4610750735364869
+        }
+    },
+    "formula_pretty": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.002277904328018223,
+            "precision": 1.551712678159718e-05,
+            "recall": 0.002277904328018223,
+            "f1": 3.0702426187899945e-05,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "e_electronic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 5885.1826171875,
+            "r2": -0.016009940099959374
+        }
+    },
+    "e_ionic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 766.4022216796875,
+            "r2": -0.16598870673305388
+        }
+    },
+    "e_total": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 7286.3984375,
+            "r2": -0.06900611920348787
+        }
+    },
+    "energy_per_atom": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.1296392679214478,
+            "r2": 0.6560103235991035
+        }
+    },
+    "energy_above_hull": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.00019635255739558488,
+            "r2": 0.11250804604608111
+        }
+    },
+    "formation_energy_per_atom": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.26769980788230896,
+            "r2": 0.7639737314051436
+        }
+    },
+    "band_gap": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 1.7201924324035645,
+            "r2": 0.3954492628901505
+        }
+    },
+    "vbm": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 2.5484938621520996,
+            "r2": 0.5324213381149523
+        }
+    },
+    "cbm": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 3.0570473670959473,
+            "r2": 0.2689555547832173
+        }
+    },
+    "efermi": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "crystal_system": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.5831435079726651,
+            "precision": 0.6039707691504789,
+            "recall": 0.5831435079726651,
+            "f1": 0.5822810198052226,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "space_group": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.41305998481397116,
+            "precision": 0.41312420097624086,
+            "recall": 0.41305998481397116,
+            "f1": 0.3832852151364316,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "point_group": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.49898759807643633,
+            "precision": 0.4787958673504765,
+            "recall": 0.49898759807643633,
+            "f1": 0.46045655077996833,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "hall_symbol": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.41014932928372566,
+            "precision": 0.40699517885608455,
+            "recall": 0.41014932928372566,
+            "f1": 0.3792593958041824,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_gap_direct": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_metal": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_magnetic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "is_stable": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "ordering": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": 0.8383953429511516,
+            "precision": 0.8365971761015725,
+            "recall": 0.8383953429511516,
+            "f1": 0.8217029271675965,
+            "mse": null,
+            "r2": null
+        }
+    },
+    "total_magnetization": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 129.7867431640625,
+            "r2": 0.0771418849520018
+        }
+    },
+    "total_magnetization_normalized_vol": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.0004122423706576228,
+            "r2": 0.39780255751541704
+        }
+    },
+    "num_magnetic_sites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 20.6092586517334,
+            "r2": 0.1700947391997243
+        }
+    },
+    "num_unique_magnetic_sites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 10.967841148376465,
+            "r2": 0.09368148418981348
+        }
+    },
+    "g_reuss": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 4371.0224609375,
+            "r2": -0.7050747293471142
+        }
+    },
+    "g_voigt": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 4173.9033203125,
+            "r2": -1.310890296861444
+        }
+    },
+    "g_vrh": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 4074.232177734375,
+            "r2": -1.042713519176269
+        }
+    },
+    "k_reuss": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 14592.771484375,
+            "r2": -1.5889649042228307
+        }
+    },
+    "k_voigt": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 15000.302734375,
+            "r2": -1.7843331037625303
+        }
+    },
+    "k_vrh": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 14745.169921875,
+            "r2": -1.690024950152464
+        }
+    },
+    "homogeneous_poisson": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 0.007950829342007637,
+            "r2": -0.04645127144362715
+        }
+    },
+    "universal_anisotropy": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 823.4173583984375,
+            "r2": -0.000647030221408329
+        }
+    }
+}

@@ -1,0 +1,120 @@
+{
+    "nsites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {
+            "accuracy": null,
+            "precision": null,
+            "recall": null,
+            "f1": null,
+            "mse": 548.8569946289062,
+            "r2": 0.5200035710392024
+        }
+    },
+    "nelements": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "volume": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "density": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "density_atomic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "formula_pretty": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "e_electronic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "e_ionic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "e_total": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "energy_per_atom": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "energy_above_hull": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "formation_energy_per_atom": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "band_gap": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "vbm": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "cbm": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "efermi": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "crystal_system": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "space_group": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "point_group": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "hall_symbol": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "is_gap_direct": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "is_metal": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "is_magnetic": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "is_stable": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "ordering": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "total_magnetization": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "total_magnetization_normalized_vol": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "num_magnetic_sites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "num_unique_magnetic_sites": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "g_reuss": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "g_voigt": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "g_vrh": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "k_reuss": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "k_voigt": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "k_vrh": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "homogeneous_poisson": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    },
+    "universal_anisotropy": {
+        "fastrp-embedding-gec-element-chemenv-weighted": {}
+    }
+}

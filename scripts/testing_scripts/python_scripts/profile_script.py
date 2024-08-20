@@ -5,7 +5,7 @@ import pstats
 
 
 def main():
-    from matgraphdb.graph.node_types import NodeTypes
+    from matgraphdb.graph_kit.node_types import NodeTypes
     nodes=NodeTypes()
     names=nodes.get_chemenv_element_nodes()
     # print(names[:10])
