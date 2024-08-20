@@ -120,6 +120,7 @@ class OxidationStatesEncoder:
 
             if len(row)==0:
                 embedding=[0,0,0,0,0]
+                values.append(embedding)
                 continue
 
             mean=calculate_mean(row)

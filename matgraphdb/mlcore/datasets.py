@@ -1,73 +1,165 @@
 from glob import glob
+import io
 import os
 from typing import List, Union
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 import torch
 from torch.utils.data import Dataset
 from torch_geometric.data import HeteroData,InMemoryDataset
 import torch_geometric.transforms as T 
 
-# from matgraphdb.mlcore.encoders import EdgeEncoders, NodeEncoders
-from matgraphdb.mlcore.encoders import (CategoricalEncoder, ClassificationEncoder, IdentityEncoder,
-                                        ListIdentityEncoder, BooleanEncoder, ElementsEncoder,
-                                        CompositionEncoder,SpaceGroupOneHotEncoder)
+from matgraphdb.mlcore.encoders import *
 from matgraphdb.graph.material_graph import MaterialGraph
 
 from matgraphdb.utils import get_child_logger
 
 logger=get_child_logger(__name__, console_out=False, log_level='debug')
 
+def get_parquet_field_metadata(path, columns=None):
+    parquet_file = pq.ParquetFile(path)
+    field_metadata={}
+    for field in parquet_file.metadata.schema.to_arrow_schema():
+        name=field.name
 
-# load node csv file and map index to continuous index
-def load_node_csv(path, index_col, 
-                  feature_encoders={}, 
-                  target_encoders={}, 
-                  node_filter={}, 
-                  **kwargs):
-    """Load a node csv file and map the index to a continuous index.
+        if columns and name not in columns:
+            continue
 
-    Args:
-        path (str): The path to the node csv file.
-        index_col (str): The name of the index column.
-        target_col (str, optional): The name of the target column.
-        encoders (dict, optional): A dictionary mapping column names 
-                                to encoders. Defaults to None.
+        field_metadata[name]={}
+        for key,value in field.metadata.items():
+            field_metadata[name][key.decode('utf-8')]=value.decode('utf-8')
+    return field_metadata
 
-    Returns:
-        tuple: A tuple containing the encoded data and the mapping.
-    """
-    df = pd.read_csv(path, index_col=index_col, **kwargs)#.drop(axis=1, index=0)
+def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}):
+    if target_columns is None:
+        target_columns=[]
+    if feature_columns is None:
+        feature_columns=[]
 
+    
+
+    all_columns=feature_columns+target_columns
+
+    if 'name' not in all_columns:
+        all_columns.append('name')
+
+    # Getting field metadata for all columns
+    field_metadata=get_parquet_field_metadata(path,columns=all_columns)
+
+    # Reading all columns into single dataframe
+    df = pd.read_parquet(path, columns=all_columns)
+    names=df['name']
+    df = df.drop(columns=['name'])
+    all_columns.remove('name')
+    column_names=list(df.columns)
+
+    logger.info(f"Dataframe shape: {df.shape}")
+    logger.info(f"Column names: {column_names}")
+
+    # Ensure all columns have no NaN values, otherwise drop them
+    df.dropna(subset=df.columns, inplace=True)
+
+    logger.info(f"Dataframe shape after removing NaN values: {df.shape}")
+
+    # Apply data filter to the nodes
+    for key, (min_value, max_value) in filter.items():
+        df = df[(df[key] >= min_value) & (df[key] <= max_value)]
+
+    logger.info(f"Dataframe shape after applying node filter: {df.shape}")
+
+    # Applying encoders to the nodes
+    xs, ys = [], []
+    feature_names, target_names = [], []
+    for column_name in column_names:
+        tmp_names=[]
+        # Applying custom encoder if provided, 
+        # otherwise use default encoder inside parquet feild metadata
+        if column_name in custom_encoders:
+            if isinstance(custom_encoders[column_name],str):
+                encoder=eval(custom_encoders[column_name])
+            else:
+                encoder=custom_encoders[column_name]
+        else:
+            encoder=eval(field_metadata[column_name]['encoder'])
+
+        encoded_values=encoder(df[column_name])
+
+        # Getting feature names from encoder. Some encoders return multiple feature 
+        # columns due to the nature of the encoder
+        encoder_feature_names=None
+        if hasattr(encoder,'column_names'):
+            encoder_feature_names=encoder.column_names
+
+        # Generating feature names
+        if encoder_feature_names:
+            for feature_name in encoder_feature_names:
+                tmp_names.append(f"{column_name}_{feature_name}")
+        elif encoded_values.shape[1]>1:
+            for i in range(encoded_values.shape[1]):
+                tmp_names.append(f"{column_name}_{i}")
+        else:
+            tmp_names.append(column_name)
+
+        # Filtering values into features or targets
+        if column_name in feature_columns:
+            xs.append(encoded_values)
+            feature_names.extend(tmp_names)
+        if column_name in target_columns:
+            ys.append(encoded_values)
+            target_names.extend(tmp_names)
+
+    # Concatenate features and targets
+    x=None
+    if xs:
+        x = torch.cat(xs, dim=-1)
+    target=None
+    if ys:
+        target = torch.cat(ys, dim=-1)
+
+    
+    index_name_map = {i:name for i, name in enumerate(names)}
+
+    return x, target, index_name_map, feature_names, target_names
+
+def load_relationship_parquet(path, 
+                            feature_columns=[], 
+                            target_columns=[],
+                            custom_encoders={}, 
+                            filter={}):
+    
+    all_columns=feature_columns+target_columns
+
+    # Getting field metadata for all columns
+    field_metadata=get_parquet_field_metadata(path,columns=all_columns)
+    
+    edge_name=os.path.basename(path).split('.')[0]
+    src_name,edge_type,dst_name=edge_name.split('-')
+    src_column_name=f'{src_name}-START_ID'
+    dst_column_name=f'{dst_name}-END_ID'
+    type_column_name='TYPE'
+
+    # Reading all columns into single dataframe
+    df = pd.read_parquet(path)
+
+    edge_index_df=df[[src_column_name,dst_column_name]]
+    df=df.drop(columns=[src_column_name,dst_column_name,type_column_name])
 
     column_names=list(df.columns)
 
+    logger.info(f"Dataframe shape: {df.shape}")
+    logger.info(f"Column names: {column_names}")
 
-    if feature_encoders != {}:
-        for name in feature_encoders.keys():
-            if 'float[]' in name:
-                values=[]
-                for row in df[name]:
-                    values.append([float(i) for i in row.split(';')])
-                values = np.array(values)
-                nan_mask = np.isnan(values)
+    # Ensure all columns have no NaN values, otherwise drop them
+    for col in column_names:
+        df=df.dropna(subset=[col])
 
-                # Determine which rows contain at least one NaN
-                rows_with_nan = nan_mask.any(axis=1)
+    logger.info(f"Dataframe shape after removing NaN values: {df.shape}")
 
-                # Get indices of rows with at least one NaN
-                row_indices = np.where(rows_with_nan)[0]
-
-                if row_indices.size > 0:
-                    # Drop rows that contain NaN values
-                    df = df.drop(index=df.index[row_indices])
-
-                
-    
-    if node_filter != {}:
-        
-        for key, value in node_filter.items():
+    # Apply data filter to the nodes
+    if filter != {}:
+        for key, value in filter.items():
             for name in column_names:
                 if key in name:
                     column = name
@@ -75,187 +167,168 @@ def load_node_csv(path, index_col,
             min_value, max_value = value
             df = df[(df[column] >= min_value) & (df[column] <= max_value)]
 
-    target = None
-    if target_encoders != None:
-        ys=[]
-        for col, encoder in target_encoders.items():
-            df=df.dropna(subset=[col])
-            ys.append(encoder(df[col]))
+    logger.info(f"Dataframe shape after applying filter: {df.shape}")
 
-        # Checks if target_property exists in the dataframe
-        if ys:
-            target = torch.cat(ys, dim=-1)
-    x = None
-    if feature_encoders != {}:
-        xs = [encoder(df[col]) for col, encoder in feature_encoders.items()]
-        x = torch.cat(xs, dim=-1)
-    
-    names=df['name:string']
+    # Applying encoders to the nodes
+    xs=[]
+    ys=[]
+    feature_names=[]
+    target_names=[]
+    for column_name in column_names:
+        tmp_names=[]
+        # Applying custom encoder if provided, 
+        # otherwise use default encoder inside parquet feild metadata
+        if column_name in custom_encoders:
+            if isinstance(custom_encoders[column_name],str):
+                encoder=eval(custom_encoders[column_name])
+            else:
+                encoder=custom_encoders[column_name]
+        else:
+            encoder=eval(field_metadata[column_name]['encoder'])
+
+        tmp_values=encoder(df[column_name])
+
+        # Getting feature names from encoder. Some encoders return multiple feature 
+        # columns due to the nature of the encoder
+        encoder_feature_names=None
+        if hasattr(encoder,'column_names'):
+            encoder_feature_names=encoder.column_names
+
+        # Generating feature names
+        if encoder_feature_names:
+            for feature_name in encoder_feature_names:
+                tmp_names.append(f"{column_name}_{feature_name}")
+        elif tmp_values.shape[1]>1:
+            for i in range(tmp_values.shape[1]):
+                tmp_names.append(f"{column_name}_{i}")
+        else:
+            tmp_names.append(column_name)
+
+        # Filtering values into features or targets
+        if column_name in feature_columns:
+            xs.append(tmp_values)
+            feature_names.extend(tmp_names)
+        if column_name in target_columns:
+            ys.append(tmp_values)
+            target_names.extend(tmp_names)
+
+    # Concatenate features and targets
+    edge_attr=None
+    if xs:
+        edge_attr = torch.cat(xs, dim=-1)
+    target=None
+    if ys:
+        target = torch.cat(ys, dim=-1)
+    edge_index=torch.from_numpy(edge_index_df.values).T
+
     # Create maping from original index to unqique index after removing posssible nan values
-    mapping = {index: i for i, index in enumerate(df.index.unique())}
-    name_mapping = {i:name for i, name in enumerate(names)}
-    return x, target, mapping, name_mapping
+    index_name_mapping = {index: i for i, index in enumerate(df.index.unique())}
 
-def load_edge_csv(path, src_index_col, dst_index_col, node_id_mappings, 
-                  feature_encoders={}, 
-                  target_encoders={},  
-                  **kwargs):
-    df = pd.read_csv(path, **kwargs)
+    return edge_index, edge_attr, target, index_name_mapping, feature_names, target_names
 
-    edge_type=os.path.basename(path).split('.')[0].lower()
-    src_node_name,edge_type_name,dst_node_name=edge_type.split('-')
-    src_mapping=node_id_mappings[src_node_name]
-    dst_mapping=node_id_mappings[dst_node_name]
-
-
-
-    edges_in_graph_mask=df[src_index_col].isin(src_mapping.keys()) & df[dst_index_col].isin(dst_mapping.keys())
-    # filtered_df = df[edges_in_graph_mask]
-    filtered_df = pd.DataFrame(df[edges_in_graph_mask].to_dict())
-
-    edge_index=None
-    edge_attr = None
-    filtered_df['src_mapped'] = filtered_df[src_index_col].map(src_mapping)
-    filtered_df['dst_mapped'] = filtered_df[dst_index_col].map(dst_mapping)
-
-    edge_index = torch.tensor([filtered_df['src_mapped'].tolist(),
-                               filtered_df['dst_mapped'].tolist()])
-    
-
-    target = None
-    if target_encoders != None:
-        ys=[]
-        for col, encoder in target_encoders.items():
-            df=df.dropna(subset=[col])
-            ys.append(encoder(df[col]))
-
-        # Checks if target_property exists in the dataframe
-        if ys:
-            target = torch.cat(ys, dim=-1)
-    
-    if feature_encoders != {}:
-        edge_attrs = [encoder(filtered_df[col]) for col, encoder in feature_encoders.items()]
-        edge_attr = torch.cat(edge_attrs, dim=-1)
-
-    return edge_index, edge_attr, target
-
-def load_node_parquet(path, columns=None):
-    df = pd.read_parquet(path, columns=columns)
-
-    print(df.head())
-    columns=df.columns
-
-    print(df['is_rare_earth'])
-    cols_with_nan={ key:[] for key in columns}
-
-    # for irow, row in df.iterrows():
-    #     name=row['name']
-
-    #     for col in columns:
-    #         if row[col].isnull():
-    #             cols_with_nan[col].append(name)
-    cols_with_nan={}
-    for col in columns:
-        nan_rows=df[df[col].isnull()]
-
-        cols_with_nan[col] = [row['name'] for irow, row in nan_rows.iterrows()]
-    
-    for col in cols_with_nan:
-        print(col, cols_with_nan[col])
-
-    # for col in columns:
-        
-    #     print(col , df[col].isnull().any())
-
-        
-
-        # xs = [encoder(df[col]) for col, encoder in feature_encoders.items()]
-        # x = torch.cat(xs, dim=-1)
-
-
-    return df
 
 class PyTorchGeometricHeteroDataGenerator:
     def __init__(self):
         self.data = HeteroData()
         self.node_id_mappings={}
 
-    def add_node_type(self, node_path, columns=None,
-                feature_encoder_mapping={}, 
-                target_encoder_mapping={}, 
-                node_filter={}):
-        
+        logger.info(f"Initializing PyTorchGeometricHeteroDataGenerator")
+
+    def add_node_type(self, node_path, 
+                    feature_columns=[], 
+                    target_columns=[],
+                    custom_encoders={}, 
+                    filter={}):
+        logger.info(f"Adding node type: {node_path}")
 
 
         node_name=os.path.basename(node_path).split('.')[0]
-        df=load_node_parquet(node_path, columns=columns)
-        # x, target, mapping, name_mapping = load_node_csv(node_path, 
-        #                             index_col=0,
-        #                             feature_encoders=feature_encoder_mapping,
-        #                             target_encoders=target_encoder_mapping,
-        #                             node_filter=node_filter)
+
+        x,target,index_name_map,feature_names,target_names=load_node_parquet(node_path, 
+                                                                    feature_columns=feature_columns, 
+                                                                    target_columns=target_columns,
+                                                                    custom_encoders=custom_encoders,
+                                                                    filter=filter)
         
-        # self.data[node_name].node_id=torch.arange(len(mapping))
-        # self.data[node_name].names=list(name_mapping.values())
-        # if x is not None:
-        #     self.data[node_name].x = x
-        #     self.data[node_name].property_names=[key.split(':')[0] for key in list(feature_encoder_mapping.keys())]
-        # else:
-        #     self.data[node_name].num_nodes=len(mapping)
+        logger.info(f"{node_name} feature shape: {x.shape}")
+        logger.info(f"{node_name} feature names: {len(feature_names)}")
+        
+        logger.info(f"{node_name} index name map: {feature_names}")
+        logger.info(f"{node_name} target name map: {target_names}")
 
-        # if target is not None:
-        #     self.data[node_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
-        #     out_channels=target.shape[1]
-        #     self.data[node_name].out_channels = out_channels
 
-        #     if out_channels==1:
-        #         self.data[node_name].y=target
-        #     else:
-        #         self.data[node_name].y=torch.argmax(target, dim=1)
+        self.data[node_name].node_id=torch.arange(len(index_name_map))
+        self.data[node_name].names=list(index_name_map.values())
+        if x is not None:
+            self.data[node_name].x = x
+            self.data[node_name].feature_names=feature_names
+        else:
+            self.data[node_name].num_nodes=len(index_name_map)
 
-        # return mapping
+        if target is not None:
+            
+            self.data[node_name].y_label_name=target_columns
+            out_channels=target.shape[1]
+            self.data[node_name].out_channels = out_channels
 
-    def add_edge(self, edge_path, node_id_mappings, 
-                feature_encoder_mapping={},
-                target_encoder_mapping={},
+            if out_channels==1:
+                self.data[node_name].y=target
+                self.data[node_name].y_names=target_names
+            else:
+                self.data[node_name].y=torch.argmax(target, dim=1)
+
+            logger.info(f"{node_name} target shape: {target.shape}")
+            logger.info(f"{node_name} out channels: {out_channels}")
+        
+        logger.info(f"Node {node_name} added to the graph")
+        
+        self.node_id_mappings.update({node_name:index_name_map})
+
+        return index_name_map
+
+    def add_edge_type(self, edge_path,
+                feature_columns=[], 
+                target_columns=[],
+                custom_encoders={}, 
+                filter={},
                 undirected=True):
+        
+        edge_name=os.path.basename(edge_path).split('.')[0]
+
+        src_name,edge_type,dst_name=edge_name.split('-')
         
         graph_dir=os.path.dirname(os.path.dirname(edge_path))
         node_dir=os.path.join(graph_dir,'nodes')
 
-        # Getting Node indicies and node type
-        edge_name=os.path.basename(edge_path).split('.')[0].lower()
-        src_name,edge_type,dst_name=edge_name.split('-')
+        logger.info(f"Edge name | {edge_name}")
+        logger.info(f"Edge type | {edge_type}")
+        logger.info(f"Edge src name | {src_name}")
+        logger.info(f"Edge dst name | {dst_name}")
+        logger.info(f"Graph dir | {graph_dir}")
+        logger.info(f"Node dir | {node_dir}")
 
-        src_path=os.path.join(node_dir,f'{src_name}.csv')
-        dst_path=os.path.join(node_dir,f'{dst_name}.csv')
+        edge_index, edge_attr, target, index_name_map, feature_names, target_names = load_relationship_parquet(edge_path, 
+                                                                                            feature_columns=feature_columns, 
+                                                                                            target_columns=target_columns,
+                                                                                            custom_encoders=custom_encoders, 
+                                                                                            filter=filter)
+        
+        logger.info(f"Edge index shape: {edge_index.shape}")
+        logger.info(f"Edge attr shape: {edge_attr.shape}")
+        logger.info(f"Index name map: {index_name_map}")
+        logger.info(f"Feature names: {feature_names}")
+        logger.info(f"Target names: {target_names}")
 
-        src_df=pd.read_csv(src_path,index_col=0)
-        dst_df=pd.read_csv(dst_path,index_col=0)
-
-        src_node_id_name = src_df.index.name.strip(')').split('(')[-1]
-        dst_node_id_name = dst_df.index.name.strip(')').split('(')[-1]
-
-        src_index_col=f":START_ID({src_node_id_name})"
-        dst_index_col=f":END_ID({dst_node_id_name})"
-
-
-        edge_index, edge_attr, target = load_edge_csv(edge_path, 
-                                            src_index_col, 
-                                            dst_index_col,
-                                            node_id_mappings,
-                                            feature_encoders=feature_encoder_mapping,
-                                            target_encoders=target_encoder_mapping)
-
+        
         self.data[src_name,edge_type,dst_name].edge_index=edge_index
         self.data[src_name,edge_type,dst_name].edge_attr=edge_attr
-
-        self.data[src_name,edge_type,dst_name].property_names=[key.split(':')[0] for key in list(feature_encoder_mapping.keys())]
+        self.data[src_name,edge_type,dst_name].property_names=feature_names
 
         if target is not None:
-            self.data[src_name,edge_type,dst_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
+            logger.info(f"Target shape: {target.shape}")
+            self.data[src_name,edge_type,dst_name].y_label_name=target_names
             out_channels=target.shape[1]
-            self.data[src_name,edge_type,dst_name].out_channels = out_channels
+            self.data[src_name,edge_type,dst_name].out_channels=out_channels
 
             if out_channels==1:
                 self.data[src_name,edge_type,dst_name].y=target
@@ -264,13 +337,14 @@ class PyTorchGeometricHeteroDataGenerator:
 
 
         if undirected:
+            
             row, col = edge_index
             rev_edge_index = torch.stack([col, row], dim=0)
             self.data[dst_name,f'rev_{edge_type}',src_name].edge_index=rev_edge_index
             self.data[dst_name,f'rev_{edge_type}',src_name].edge_attr=edge_attr
 
             if target is not None:
-                self.data[dst_name,f'rev_{edge_type}',src_name].y_label_name=list(target_encoder_mapping.keys())[0].split(':')[0]
+                self.data[dst_name,f'rev_{edge_type}',src_name].y_label_name=target_names
                 out_channels=target.shape[1]
                 self.data[dst_name,f'rev_{edge_type}',src_name].out_channels = out_channels
 
@@ -280,245 +354,41 @@ class PyTorchGeometricHeteroDataGenerator:
                 else:
                     self.data[src_name,edge_type,dst_name].y=torch.argmax(target, dim=1)
 
-    def add_node_types(self, 
-                node_paths, 
-                node_properties:dict={},
-                node_filtering:dict={},
-                target_property:str=None):
-        
-        node_encoders=NodeEncoders()
-        for i,node_path in enumerate(node_paths):
-            node_name=os.path.basename(node_path).split('.')[0]
-
-            
-            # Get the node filter for the node
-            if node_name in node_filtering.keys():
-                node_filter=node_filtering[node_name]
-            else:
-                node_filter={}
-
-            # Get the properties for the node that are in node_properties
-            if node_name in node_properties.keys():
-                properties_to_keep=node_properties[node_name]['properties']
-            else:
-                properties_to_keep=[]
-                
-            # Get the encoder mapping for the node if use_node_properties is True
-            feature_encoder_mapping={}
-            if properties_to_keep!=[]:
-                feature_encoder_mapping,_,_=node_encoders.get_encoder(node_path,**node_properties[node_name]['scale'])
-                keys=list(feature_encoder_mapping.keys())
-                for key in keys:
-                    property_name=key.split(':')[0]
-                    if property_name not in properties_to_keep:
-                        feature_encoder_mapping.pop(key)
-
-            # Get the target encoder mapping for the node if target_property is not None
-            if target_property is not None:
-                target_encoder_mapping,_,_=node_encoders.get_encoder(node_path)
-                keys=list(target_encoder_mapping.keys())
-                for key in keys:
-                    property_name=key.split(':')[0]
-                    if property_name != target_property and target_property:
-                        target_encoder_mapping.pop(key)
-
-                
-            # Add the node to the graph
-            mapping=self.add_node(
-                                node_path, 
-                                feature_encoder_mapping=feature_encoder_mapping,
-                                target_encoder_mapping=target_encoder_mapping,
-                                node_filter=node_filter,
-                                )
-            self.node_id_mappings.update({node_name:mapping})
-
-        return None
-    
-    def add_relationships(self, relationship_paths, edge_properties, target_property:str=None, undirected=True):
-        if self.node_id_mappings=={}:
-            raise Exception("Node ID mappings must be created before adding relationships. Call add_nodes first")
-        
-        edge_encoders=EdgeEncoders()
-        for i,relationship_path in enumerate(relationship_paths):
-
-            feature_encoder_mapping={}
-            if len(list(edge_properties.keys()))!=0:
-                feature_encoder_mapping=edge_encoders.get_weight_edge_encoder(relationship_path,
-                                                                            **edge_properties['weight']['scale'])
-            
-
-            # Get the target encoder mapping for the node if target_property is not None
-            target_encoder_mapping={}
-            if target_property is not None:
-                target_encoder_mapping=edge_encoders.get_weight_edge_encoder(relationship_path)
-                keys=list(target_encoder_mapping.keys())
-                for key in keys:
-                    property_name=key.split(':')[0]
-                    if property_name != target_property and target_property:
-                        target_encoder_mapping.pop(key)
-
-            self.add_edge(relationship_path,
-                        self.node_id_mappings,
-                        feature_encoder_mapping=feature_encoder_mapping,
-                        target_encoder_mapping=target_encoder_mapping,
-                        undirected=undirected)
-        return None
-
-
-
-# class MaterialGraphDataset:
-#     MAIN_GRAPH_DIR = GraphGenerator().main_graph_dir
-#     MAIN_NODES_DIR = os.path.join(MAIN_GRAPH_DIR,'nodes')
-#     MAIN_RELATIONSHIP_DIR = os.path.join(MAIN_GRAPH_DIR,'relationships')
-
-#     def __init__(self,data):
-#         self.data=data
-
-#     @classmethod
-#     def ec_element_chemenv(cls, sub_graph_path=None, 
-#                                 node_properties:dict={},
-#                                 node_filtering:dict={},
-#                                 edge_properties:dict={},
-#                                 node_target_property:str=None,
-#                                 edge_target_property:str=None,
-#                                 undirected=True):
-        
-#         if sub_graph_path is None:
-#             node_dir=cls.MAIN_NODES_DIR
-#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-#         else:
-#             node_dir=os.path.join(sub_graph_path,'nodes')
-#             relationship_dir=os.path.join(sub_graph_path,'relationships')
-
-#         node_names=['element','chemenv','material']
-#         relationship_names=['electric_connects','has','can_occur']
-#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
-
-#         # Get the relationship paths of the nodes
-#         relationship_paths = cls.get_relationship_paths(node_names, 
-#                                                         relationship_names, 
-#                                                         relationship_dir)
-        
-#         generator=cls.initialize_generator(node_paths,relationship_paths,
-#                             node_properties=node_properties,
-#                             edge_properties=edge_properties,
-#                             node_filtering=node_filtering,
-#                             node_target_property=node_target_property,
-#                             edge_target_property=edge_target_property,
-#                             undirected=undirected)
+        logger.info(f"Adding {edge_type} edge | {src_name} -> {dst_name}")
         
         
+        logger.info(f"undirected: {undirected}")
 
-#         return cls(generator.data)
+    def save_graph(self, filepath, use_buffer=False):
+        file_type=filepath.split('.')[-1]
 
-#     @classmethod
-#     def gc_element_chemenv(cls, sub_graph_path=None, 
-#                                 node_properties:dict={},
-#                                 node_filtering:dict={},
-#                                 edge_properties:dict={},
-#                                 node_target_property:str=None,
-#                                 edge_target_property:str=None,
-#                                 undirected=True):
+        if file_type!='pt':
+            raise ValueError("Only .pt files are supported")
         
-#         if sub_graph_path is None:
-#             node_dir=cls.MAIN_NODES_DIR
-#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-#         else:
-#             node_dir=os.path.join(sub_graph_path,'nodes')
-#             relationship_dir=os.path.join(sub_graph_path,'relationships')
+        if use_buffer==True:
+            buffer = io.BytesIO()
+            torch.save(self.data, buffer)
+        else:
+            torch.save(self.data, filepath)
 
-#         node_names=['element','chemenv','material']
-#         relationship_names=['geometric_connects','has','can_occur']
-#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
-
-#         # Get the relationship paths of the nodes
-#         relationship_paths = cls.get_relationship_paths(node_names, 
-#                                                         relationship_names, 
-#                                                         relationship_dir)
-
-#         generator=cls.initialize_generator(node_paths,relationship_paths,
-#                             node_properties=node_properties,
-#                             edge_properties=edge_properties,
-#                             node_filtering=node_filtering,
-#                             node_target_property=node_target_property,
-#                             edge_target_property=edge_target_property,
-#                             undirected=undirected)
-
-#         return cls(generator.data)
-    
-#     @classmethod
-#     def gec_element_chemenv(cls, 
-#                             sub_graph_path=None, 
-#                             node_properties:dict={},
-#                             node_filtering:dict={},
-#                             edge_properties:dict={},
-#                             node_target_property:str=None,
-#                             edge_target_property:str=None,
-#                             undirected=True):
+    def load_graph(self, filepath, use_buffer=False):
+        file_type=filepath.split('.')[-1]
+        if file_type!='pt':
+            raise ValueError("Only .pt files are supported")
         
-#         if sub_graph_path is None:
-#             node_dir=cls.MAIN_NODES_DIR
-#             relationship_dir=cls.MAIN_RELATIONSHIP_DIR
-#         else:
-#             node_dir=os.path.join(sub_graph_path,'nodes')
-#             relationship_dir=os.path.join(sub_graph_path,'relationships')
+        if use_buffer==True:
+            with open(filepath, 'rb') as f:
+                buffer = io.BytesIO(f.read())
+            self.data=torch.load(buffer, weights_only=False)
+        else:
+            self.data=torch.load(filepath, weights_only=False)
 
-#         node_names=['element','chemenv','material']
-#         relationship_names=['geometric_electric_connects','has','can_occur']
-#         node_paths=[os.path.join(node_dir,f'{node_name}.csv') for node_name in node_names]
-        
-#         # Get the relationship paths of the nodes
-#         relationship_paths = cls.get_relationship_paths(node_names, 
-#                                                         relationship_names, 
-#                                                         relationship_dir)
+        return self.data
 
-#         generator=cls.initialize_generator(node_paths,relationship_paths,
-#                             node_properties=node_properties,
-#                             edge_properties=edge_properties,
-#                             node_filtering=node_filtering,
-#                             node_target_property=node_target_property,
-#                             edge_target_property=edge_target_property,
-#                             undirected=undirected)
-
-#         return cls(generator.data)
-
-#     @staticmethod
-#     def get_relationship_paths(node_names, relationship_names, relationship_dir):
-#         """ Get the paths to the relationship files corredponding to the node used in the graph. """
-#         relationship_files=glob(os.path.join(relationship_dir,'*.csv'))
-
-#         relationship_paths=[]
-#         for relationship_file in relationship_files:
-#             edge_name=os.path.basename(relationship_file).split('.')[0].lower()
-#             src_name,edge_type,dst_name=edge_name.split('-')
-#             if src_name in node_names and dst_name in node_names and edge_type in relationship_names:
-#                 relationship_paths.append(relationship_file)
-#         return relationship_paths
-    
-#     @staticmethod
-#     def initialize_generator(node_paths,relationship_paths,
-#                             node_properties:dict,
-#                             edge_properties:dict,
-#                             node_filtering:dict,
-#                             node_target_property:str,
-#                             edge_target_property:str,
-#                             undirected:bool=True):
-        
-#         generator=PyTorchGeometricHeteroDataGenerator()
-#         generator.add_nodes(node_paths, 
-#                             node_properties=node_properties, 
-#                             node_filtering=node_filtering,
-#                             target_property=node_target_property)
-#         generator.add_relationships(relationship_paths, 
-#                                     edge_properties, 
-#                                     edge_target_property, 
-#                                     undirected)
-#         return generator
 
 
 if __name__ == "__main__":
     
-
     import pandas as pd
     import os
     material_graph=MaterialGraph(skip_init=False)
@@ -533,189 +403,209 @@ if __name__ == "__main__":
     node_files=material_graph.get_node_filepaths()
     relationship_files=material_graph.get_relationship_filepaths()
 
+    print('-'*100)
+    print('Nodes')
+    print('-'*100)
+    for i,node_file in enumerate(node_files):
+        print(i,node_file)
+    print('-'*100)
+    print('Relationships')
+    print('-'*100)
+    for i,relationship_file in enumerate(relationship_files):
+        print(i,relationship_file)
+    print('-'*100)
+
+
     node_path=node_files[2]
+    edge_path=relationship_files[3]
 
-    df=pd.read_parquet(node_path)
+    # node_path=node_files[5]
+    # df=pd.read_parquet(node_path)
 
-    df.to_csv(node_path.replace('.parquet','.csv'))
+    node_path=node_files[0]
+    # df=pd.read_parquet(node_path)
+    # # for x in df.columns:
+    # #     print(f"'{x}',")
+    # df.to_csv(node_path.replace('.parquet','.csv'))
 
-    # # Example of using pyGHeteroDataGenerator
-    # generator=PyTorchGeometricHeteroDataGenerator()
+    # df=pd.read_parquet(edge_path)
+    # df.to_csv(edge_path.replace('.parquet','.csv'))
 
-    # node_properties={
-    #     'ELEMENT':[
-    #         'group',
-    #         'row',
-    #         'Z',
-    #         # 'symbol',
-    #         # 'long_name',
-    #         'A',
-    #         'atomic_radius_calculated',
-    #         'van_der_waals_radius',
-    #         'mendeleev_no',
-    #         'electrical_resistivity',
-    #         'velocity_of_sound',
-    #         'reflectivity',
-    #         'refractive_index',
-    #         'poissons_ratio',
-    #         'molar_volume',
-    #         'thermal_conductivity',
-    #         'boiling_point',
-    #         'melting_point',
-    #         'critical_temperature',
-    #         'superconduction_temperature',
-    #         'liquid_range',
-    #         'bulk_modulus',
-    #         'youngs_modulus',
-    #         'rigidity_modulus',
-    #         'vickers_hardness',
-    #         'density_of_solid',
-    #         'coefficient_of_linear_thermal_expansion',
-    #         'block',
-    #         'electron_affinity',
-    #         'X',
-    #         'atomic_mass',
-    #         'atomic_mass_number',
-    #         'atomic_radius',
-    #         'average_anionic_radius',
-    #         'average_cationic_radius',
-    #         'average_ionic_radius',
-    #         'ground_state_term_symbol',
-    #         'is_actinoid',
-    #         'is_alkali',
-    #         'is_alkaline',
-    #         'is_chalcogen',
-    #         'is_halogen',
-    #         'is_lanthanoid',
-    #         'is_metal',
-    #         'is_metalloid',
-    #         'is_noble_gas',
-    #         'is_post_transition_metal',
-    #         'is_quadrupolar',
-    #         'is_rare_earth',
-    #         'is_rare_earth_metal',
-    #         'is_transition_metal',
-    #         'iupac_ordering',
-    #         'max_oxidation_state',
-    #         'min_oxidation_state',
-    #         'valence',
-    #         'name',
-    #         # 'type',
-    #     ]
-    # }
 
-    # generator.add_node_type(node_path=node_path, columns=node_properties['ELEMENT'])
-    # encoder_mapping,_,_=node_encoders.get_element_encoder(element_node_path)
-    # generator.add_node(element_node_path,encoder_mapping=encoder_mapping )
-    # # generator.add_edge(material_crystal_system_path)
+    # Example of using pyGHeteroDataGenerator
+    generator=PyTorchGeometricHeteroDataGenerator()
+
+    node_properties={
+        'CHEMENV':[
+            'coordination',
+            'name',
+        ],
+        'ELEMENT':[
+            'abundance_universe',
+            'abundance_solar',
+            'abundance_meteor',
+            'abundance_crust',
+            'abundance_ocean',
+            'abundance_human',
+            'atomic_mass',
+            'atomic_number',
+            'block',
+            # 'boiling_point',
+            'critical_pressure',
+            'critical_temperature',
+            'density_stp',
+            'electron_affinity',
+            'electronegativity_pauling',
+            'extended_group',
+            'heat_specific',
+            'heat_vaporization',
+            'heat_fusion',
+            'heat_molar',
+            'magnetic_susceptibility_mass',
+            'magnetic_susceptibility_molar',
+            'magnetic_susceptibility_volume',
+            'melting_point',
+            'molar_volume',
+            'neutron_cross_section',
+            'neutron_mass_absorption',
+            'period',
+            'phase',
+            'radius_calculated',
+            'radius_empirical',
+            'radius_covalent',
+            'radius_vanderwaals',
+            'refractive_index',
+            'speed_of_sound',
+            # 'valence_electrons',
+            'conductivity_electric',
+            'electrical_resistivity',
+            'modulus_bulk',
+            'modulus_shear',
+            'modulus_young',
+            'poisson_ratio',
+            'coefficient_of_linear_thermal_expansion',
+            'hardness_vickers',
+            'hardness_brinell',
+            'hardness_mohs',
+            'superconduction_temperature',
+            'is_actinoid',
+            'is_alkali',
+            'is_alkaline',
+            'is_chalcogen',
+            'is_halogen',
+            'is_lanthanoid',
+            'is_metal',
+            'is_metalloid',
+            'is_noble_gas',
+            'is_post_transition_metal',
+            'is_quadrupolar',
+            'is_rare_earth_metal',
+            'experimental_oxidation_states',
+            'name',
+            'type',
+        ],
+        'MATERIAL':[
+            'nsites',
+            'nelements',
+            'volume',
+            'density',
+            'density_atomic',
+            'crystal_system',
+            # 'space_group',
+            # 'point_group',
+            'a',
+            'b',
+            'c',
+            'alpha',
+            'beta',
+            'gamma',
+            'unit_cell_volume',
+            # 'energy_per_atom',
+            # 'formation_energy_per_atom',
+            # 'energy_above_hull',
+            # 'band_gap',
+            # 'cbm',
+            # 'vbm',
+            # 'efermi',
+            # 'is_stable',
+            # 'is_gap_direct',
+            # 'is_metal',
+            # 'is_magnetic',
+            # 'ordering',
+            # 'total_magnetization',
+            # 'total_magnetization_normalized_vol',
+            # 'num_magnetic_sites',
+            # 'num_unique_magnetic_sites',
+            # 'e_total',
+            # 'e_ionic',
+            # 'e_electronic',
+            # 'sine_coulomb_matrix',
+            # 'element_fraction',
+            # 'element_property',
+            # 'xrd_pattern',
+            # 'uncorrected_energy_per_atom',
+            # 'equilibrium_reaction_energy_per_atom',
+            # 'n',
+            # 'e_ij_max',
+            # 'weighted_surface_energy_EV_PER_ANG2',
+            # 'weighted_surface_energy',
+            # 'weighted_work_function',
+            # 'surface_anisotropy',
+            # 'shape_factor',
+            # 'elasticity-k_vrh',
+            # 'elasticity-k_reuss',
+            # 'elasticity-k_voigt',
+            # 'elasticity-g_vrh',
+            # 'elasticity-g_reuss',
+            # 'elasticity-g_voigt',
+            # 'elasticity-sound_velocity_transverse',
+            # 'elasticity-sound_velocity_longitudinal',
+            # 'elasticity-sound_velocity_total',
+            # 'elasticity-sound_velocity_acoustic',
+            # 'elasticity-sound_velocity_optical',
+            # 'elasticity-thermal_conductivity_clarke',
+            # 'elasticity-thermal_conductivity_cahill',
+            # 'elasticity-young_modulus',
+            # 'elasticity-universal_anisotropy',
+            # 'elasticity-homogeneous_poisson',
+            # 'elasticity-debye_temperature',
+            # 'elasticity-state',
+            'name',
+        ]
+    }
+
+
+    relationship_properties={
+        'ELEMENT-CAN_OCCUR-CHEMENV':[
+            'weight',
+            ]
+        }
+
+
+    # generator.add_node_type(node_path=node_files[0], 
+    #                         feature_columns=node_properties['CHEMENV'],
+    #                         target_columns=[])
+    
+    # generator.add_node_type(node_path=node_files[2], 
+    #                         feature_columns=node_properties['ELEMENT'],
+    #                         target_columns=[])
+
+    # # # generator.add_node_type(node_path=node_path, 
+    # # #                         feature_columns=node_properties['MATERIAL'],
+    # # #                         target_columns=['elasticity-k_vrh'])
+    
+    # generator.add_edge_type(edge_path=edge_path,
+    #                     feature_columns=relationship_properties['ELEMENT-CAN_OCCUR-CHEMENV'], 
+    #                     # target_columns=['weight'],
+    #                     # custom_encoders={}, 
+    #                     # node_filter={},
+    #                     undirected=True)
+    
+
     # print(generator.data)
 
-    # node_filtering={}
+    # generator.save_graph(filepath=os.path.join('data','raw','main.pt'))
 
+    generator.load_graph(filepath=os.path.join('data','raw','main.pt'))
 
-    ################################################################################################
-    # Example of using MaterialGraphDataset
-    
-    # node_filtering={
-    #     'material':{
-    #         'k_vrh':(0,300),
-    #         },
-    #     }
-    # node_properties={
-    # 'element':
-    #     {
-    #     'properties' :[
-    #             'atomic_number',
-    #             'group',
-    #             'row',
-    #             'atomic_mass'
-    #             ],
-    #     'scale': {
-    #             # 'robust_scale': True,
-    #             # 'standardize': True,
-    #             'normalize': True
-    #         }
-    #     },
-    # 'material':
-    #         {   
-    #     'properties':[
-    #         'nelements',
-    #         'nsites',
-    #         'crystal_system',
-    #         'volume',
-    #         'density',
-    #         'density_atomic',
-    #         ],
-    #     'scale': {
-    #             # 'robust_scale': True,
-    #             'standardize': True,
-    #             # 'normalize': True
-    #         }
-    #         }
-    #     }
-
-    # edge_properties={
-    #     'weight':
-    #         {
-    #         'properties':[
-    #             'weight'
-    #             ],
-    #         'scale': {
-    #             # 'robust_scale': True,
-    #             # 'standardize': True,
-    #             # 'normalize': True
-    #         }
-    #     }
-    #     }
-
-    
-    # target_property='k_vrh'
-    # # Example of using MaterialGraphDataset
-    # graph_dataset=MaterialGraphDataset.ec_element_chemenv(
-    #                                                     node_properties=node_properties,
-    #                                                     node_filtering=node_filtering,
-    #                                                     edge_properties=edge_properties,
-    #                                                     node_target_property=target_property,
-    #                                                     edge_target_property=None,
-    #                                                     )
-    
-    # data=graph_dataset.data
-
-    # print(data)
-    # print(data['element'].x[:10])    
-
-
-    # print('material node target property')
-    # print(f"Min: {data['material'].y.min()} | Max: {data['material'].y.max()} | Mean: {data['material'].y.mean()} | Std: {data['material'].y.std()} | Median: {data['material'].y.median()}")
-    # print('-'*200)
-
-    # print('element node')
-    # print(data['element'].property_names)
-    # for icol in range(data['element'].x.shape[1]):
-    #     print(f"Column {icol} | Min: {data['element'].x[:,icol].min()} | Max: {data['element'].x[:,icol].max()} | Mean: {data['element'].x[:,icol].mean()} | Std: {data['element'].x[:,icol].std()} | Median: {data['element'].x[:,icol].median()}")
-    # print('-'*200)
-
-    # print('material node')
-    # print(data['material'].property_names)
-    # for icol in range(data['material'].x.shape[1]):
-    #     print(f"Column {icol} | Min: {data['material'].x[:,icol].min()} | Max: {data['material'].x[:,icol].max()} | Mean: {data['material'].x[:,icol].mean()} | Std: {data['material'].x[:,icol].std()} | Median: {data['material'].x[:,icol].median()}")
-    # print('-'*200)
-
-    # print('element','electric_connects','element')
-    # edge_attr=data['element','electric_connects','element'].edge_attr
-    # print(data['element','electric_connects','element'].property_names)
-    # for icol in range(edge_attr.shape[1]):
-    #     print(f"Column {icol} | Min: {edge_attr[:,icol].min()} | Max: {edge_attr[:,icol].max()} | Mean: {edge_attr[:,icol].mean()} | Std: {edge_attr[:,icol].std()} | Median: {edge_attr[:,icol].median()}")
-    # print('-'*200)
-
-
-
-    # print(dir(graph_dataset.data))
-
-
-    # # print(graph_dataset.data.edge_stores)
-    # print(graph_dataset.data.edge_items())
-    # # print(graph_dataset.data.node_items())
-    # # print(graph_dataset.data.node_types)
-    # print(graph_dataset.data.edge_types)
-    
+    print(generator.data)   
