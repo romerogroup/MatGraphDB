@@ -1,12 +1,10 @@
-from glob import glob
 import io
 import os
 
 import pandas as pd
 import pyarrow.parquet as pq
 import torch
-from torch_geometric.data import HeteroData, Data
-import torch_geometric.transforms as T
+from torch_geometric.data import HeteroData
 
 from matgraphdb.graph_kit.pyg.encoders import *
 from matgraphdb.graph_kit.graphs import GraphManager

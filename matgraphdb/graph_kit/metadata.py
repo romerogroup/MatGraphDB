@@ -41,12 +41,6 @@ class RelationshipTypes(Enum):
     CHEMENV_ELECTRIC_CONNECTS_CHEMENV=f'{NodeTypes.CHEMENV.value}-ELECTRIC_CONNECTS-{NodeTypes.CHEMENV.value}'
     CHEMENV_GEOMETRIC_ELECTRIC_CONNECTS_CHEMENV=f'{NodeTypes.CHEMENV.value}-GEOMETRIC_ELECTRIC_CONNECTS-{NodeTypes.CHEMENV.value}'
 
-
-
-
-
-
-
 t_string=pa.string()
 t_int=pa.int64()
 t_float=pa.float64()
