@@ -1951,13 +1951,13 @@ class MaterialGraph:
         self.nodes=self.relationships.nodes
 
     def get_node_filepaths(self):
-        node_files=[os.path.join(self.node_dir,node_file) for node_file in os.listdir(self.node_dir)]
+        node_files=glob(os.path.join(self.node_dir,'*.parquet'))
         for node_file in node_files:
             logger.debug(f"Node file: {node_file}")
         return node_files
     
     def get_relationship_filepaths(self):
-        relationship_files=[os.path.join(self.relationship_dir,relationship_file) for relationship_file in os.listdir(self.relationship_dir)]
+        relationship_files=glob(os.path.join(self.relationship_dir,'*.parquet'))
         for relationship_file in relationship_files:
             logger.debug(f"Relationship file: {relationship_file}")
         return relationship_files
@@ -2389,11 +2389,11 @@ if __name__=='__main__':
     ################################################################################################
     # Nodes with columns
     ################################################################################################
+    node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
     # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    # nodes=Nodes(node_dir=node_dir,skip_init=True)
+    nodes=Nodes(node_dir=node_dir,skip_init=True)
     # # df=nodes.get_material_nodes()
-    # df=nodes.get_element_nodes()
+    df=nodes.get_element_nodes()
     # print(df.head())
     # properties=nodes.get_property_names(node_type='MATERIAL')
     # print(properties)
@@ -2479,14 +2479,14 @@ if __name__=='__main__':
 
 
 
-    relationship_dir=os.path.join('data','production','materials_project','graph_database','main','relationships')
-    relationships=Relationships(relationship_dir=relationship_dir,
-                                node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes'), 
-                                skip_init=True)
+    # relationship_dir=os.path.join('data','production','materials_project','graph_database','main','relationships')
+    # relationships=Relationships(relationship_dir=relationship_dir,
+    #                             node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes'), 
+    #                             skip_init=True)
     
-    neo4j_dir=os.path.join('data','production','materials_project','graph_database','neo4j_csv','relationships')
-    relationships.to_neo4j(relationship_path=os.path.join(relationship_dir,'MATERIAL-HAS-CRYSTAL_SYSTEM.parquet'), 
-                           save_path=neo4j_dir)
+    # neo4j_dir=os.path.join('data','production','materials_project','graph_database','neo4j_csv','relationships')
+    # relationships.to_neo4j(relationship_path=os.path.join(relationship_dir,'MATERIAL-HAS-CRYSTAL_SYSTEM.parquet'), 
+    #                        save_path=neo4j_dir)
 
  
 
