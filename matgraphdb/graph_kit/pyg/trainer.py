@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from matgraphdb.mlcore.pyg.callbacks import EarlyStopping, MetricsTacker, Checkpointer
-from matgraphdb.mlcore.pyg.models import WeightedRandomClassifier, MajorityClassClassifier
+from matgraphdb.graph_kit.pyg.callbacks import EarlyStopping, MetricsTacker, Checkpointer
+from matgraphdb.graph_kit.pyg.models import WeightedRandomClassifier, MajorityClassClassifier
 from matgraphdb.utils import ML_DIR,ML_SCRATCH_RUNS_DIR
 from matgraphdb.utils import LOGGER
 
