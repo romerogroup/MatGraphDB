@@ -3,23 +3,14 @@ import multiprocessing
 import os
 import json
 from glob import glob
-from typing import Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
 import uuid
 
-
-import pandas as pd
-import numpy as np
-from pymatgen.core import Structure, Composition
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-import pyarrow as pa
-import pyarrow.parquet as pq
-
 from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES, GLOBAL_PROP_FILE, ENCODING_DIR, EXTERNAL_DATA_DIR, MP_DIR
-
-from matgraphdb.utils.periodic_table import atomic_symbols
 from matgraphdb.utils import get_logger
+from matgraphdb.utils.periodic_table import atomic_symbols
+
 
 logger=get_logger(__name__, console_out=False, log_level='info')
 

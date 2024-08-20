@@ -163,3 +163,6 @@ material_property_schema_list=[
     pa.field('elasticity-state', t_string, metadata={'encoder':'ClassificationEncoder()'}),
     pa.field('name', t_string, metadata={'encoder':'ClassificationEncoder()'}),
     pa.field('type', t_string, metadata={'encoder':'ClassificationEncoder()'})]
+
+
+MATERIAL_PARQUET_SCHEMA = pa.schema(material_property_schema_list)

@@ -1,15 +1,16 @@
-
-
-
 from glob import glob
 import os
 import shutil
 import json
+from dotenv import load_dotenv
 
 from mp_api.client import MPRester
 
-from matgraphdb.utils import DATA_DIR, MP_API_KEY, EXTERNAL_DATA_DIR
+from matgraphdb.utils import DATA_DIR, EXTERNAL_DATA_DIR
 
+load_dotenv()
+
+MP_API_KEY=os.getenv('MP_API_KEY')
 
 def chunk_list(input_list, chunk_size):
     # Create an empty list to hold the chunks

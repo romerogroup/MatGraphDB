@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from matgraphdb.data.manager import DatabaseManager
+from matgraphdb.data.manager import DBManager
 
 import subprocess
 
@@ -29,7 +29,7 @@ def launch_failed_chargemol_calcs():
     Returns:
         None
     """
-    db = DatabaseManager()
+    db = DBManager()
     success, failed = db.check_chargemol()
 
     slurm_scripts = []

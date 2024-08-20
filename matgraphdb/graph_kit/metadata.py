@@ -1,7 +1,7 @@
 from enum import Enum
 
 import pyarrow as pa
-from matgraphdb.data.utils import material_property_schema_list
+from matgraphdb.data.utils import MATERIAL_PARQUET_SCHEMA
 
 class NodeTypes(Enum):
     ELEMENT='ELEMENT'
@@ -252,7 +252,6 @@ def get_relationship_schema(relationship_type:RelationshipTypes):
 
 ##############################################################################################################################
 
-MATERIAL_PARQUET_SCHEMA = pa.schema(material_property_schema_list)
 LATTICE_PARQUET_SCHEMA = pa.schema(lattice_property_schema_list)
 SITE_PARQUET_SCHEMA = pa.schema(site_property_schema_list)
 ELEMENT_PARQUET_SCHEMA = pa.schema(element_property_schema_list)
