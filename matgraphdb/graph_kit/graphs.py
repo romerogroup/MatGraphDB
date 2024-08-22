@@ -2008,12 +2008,14 @@ class GraphManager:
         return relationship_files
     
     def list_nodes(self):
-        node_names=[node_file.split('.')[0] for node_file in os.listdir(self.node_dir)]
+        node_files=glob(os.path.join(self.node_dir,'*.parquet'))
+        node_names=[os.path.basename(node_file).split('.')[0] for node_file in node_files]
         logger.debug(f"Node names: {node_names}")
         return node_names
 
     def list_relationships(self):
-        relationship_names=[relationship_file.split('.')[0] for relationship_file in os.listdir(self.relationship_dir)]
+        relationship_files=glob(os.path.join(self.relationship_dir,'*.parquet'))
+        relationship_names=[os.path.basename(relationship_file).split('.')[0] for relationship_file in relationship_files]
         logger.debug(f"Relationship names: {relationship_names}")
         return relationship_names
     

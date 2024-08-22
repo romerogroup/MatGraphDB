@@ -2,19 +2,27 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch_geometric.nn import  SAGEConv
 class FeedFoward(nn.Module):
     """ a simple linear layer followed by a non-linearity """
 
-    def __init__(self, n_embd):
+    def __init__(self, n_embd, dropout=0.0):
         super().__init__()
-        dropout=0.2
-        self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
-            nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
-        )
+
+
+        if dropout>0.0:
+            self.net = nn.Sequential(
+                nn.Linear(n_embd, 4 * n_embd),
+                nn.ReLU(),
+                nn.Linear(4 * n_embd, n_embd),
+                nn.Dropout(dropout),
+            )
+        else:
+            self.net = nn.Sequential(
+                nn.Linear(n_embd, 4 * n_embd),
+                nn.ReLU(),
+                nn.Linear(4 * n_embd, n_embd),
+            )
         self.ln=nn.LayerNorm(n_embd)
 
     def forward(self, x):
@@ -52,6 +60,55 @@ class MultiLayerPerceptron(nn.Module):
         out=self.output_layer(out)
         return out
     
+class Block(nn.Module):
+    """Conv Block: communication followed by computation"""
+    def __init__(self, in_channels, out_channels,
+                graph_conv=SAGEConv,
+                ffwd_params={
+                    'dropout': 0.0,
+                    },
+                conv_params={
+                    'aggr': 'add',
+                    'normalize': False,
+                    'root_weight': False,
+                    'project': False,
+                    'bias': True},
+                ):
+        super().__init__()
+
+        self.comm=graph_conv(in_channels, out_channels, **conv_params)
+        self.ffwd = FeedFoward(out_channels, **ffwd_params)
+
+    def forward(self, x):
+        x = self.comm(x, x)
+        x = self.ffwd(x)
+        return x
+
+class StackedConv(nn.Module):
+    def __init__(self, n_embd, 
+                num_layers=1,
+                graph_conv=SAGEConv,
+                conv_params={
+                    'aggr': 'add',
+                    'normalize': False,
+                    'root_weight': False,
+                    'project': False,
+                    'bias': True},
+                ):
+        super().__init__()
+
+        self.activtion=F.relu
+        self.convs = nn.ModuleList([
+            graph_conv(n_embd, n_embd, **conv_params)
+            for _ in range(num_layers - 2)
+        ])
+
+    def forward(self, x, edge_index, **kwargs):
+        for conv in self.convs:
+            x = self.activtion(conv(x, edge_index, **kwargs))
+        return x
+
+    
 class LinearRegressor(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(LinearRegressor, self).__init__()
@@ -88,7 +145,7 @@ class MajorityClassClassifier(nn.Module):
 
 
 def test_baseline_classifiers():
-    from matgraphdb.mlcore.metrics import ClassificationMetrics
+    from matgraphdb.graph_kit.pyg.metrics import ClassificationMetrics
     # Assuming class_weights for 3 classes
     class_counts= torch.tensor([2.0,4.0,6.0])
 

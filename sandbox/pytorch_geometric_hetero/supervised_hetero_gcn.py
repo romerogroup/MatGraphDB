@@ -6,12 +6,13 @@ from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import  SAGEConv, GCNConv, GraphConv, to_hetero
 
 
-from matgraphdb.mlcore.models import MultiLayerPerceptron
-from matgraphdb.mlcore.datasets import MaterialGraphDataset
-from matgraphdb.mlcore.metrics import ClassificationMetrics,RegressionMetrics
+from matgraphdb.graph_kit.pyg.models import MultiLayerPerceptron
+from matgraphdb.graph_kit.data import DataGenerator
+from matgraphdb.graph_kit.pyg.metrics import ClassificationMetrics,RegressionMetrics
 
 class StackedGraphConvLayers(nn.Module):
-    def __init__(self, in_channels, hidden_channels, num_layers,normalize=False, dropout=0.2 ):
+    def __init__(self, in_channels, hidden_channels, num_layers, 
+                normalize=False, dropout=0.2 ):
         super(StackedGraphConvLayers, self).__init__()
         self.dropout=dropout
         self.conv1 = GraphConv(in_channels, hidden_channels)
@@ -204,27 +205,7 @@ properties=[]
 for node_type in properties_per_node_type.keys():
     properties.extend(properties_per_node_type[node_type])
 
-if CONNECTION_TYPE=='GEOMETRIC_CONNECTS':
-    graph_dataset=MaterialGraphDataset.gc_element_chemenv(
-                                            use_weights=True,
-                                            use_node_properties=True,
-                                            properties=properties,
-                                            target_property=TARGET_PROPERTY
-                                            )
-elif CONNECTION_TYPE=='ELECTRIC_CONNECTS':
-    graph_dataset=MaterialGraphDataset.ec_element_chemenv(
-                                            use_weights=True,
-                                            use_node_properties=True,
-                                            properties=properties,
-                                            target_property=TARGET_PROPERTY
-                                            )
-elif CONNECTION_TYPE=='GEOMETRIC_ELECTRIC_CONNECTS':
-    graph_dataset=MaterialGraphDataset.gec_element_chemenv(
-                                            use_weights=True,
-                                            use_node_properties=True,
-                                            properties=properties,
-                                            target_property=TARGET_PROPERTY
-                                            )
+
 
 data=graph_dataset.data
 OUT_CHANNELS=data[NODE_TYPE].out_channels

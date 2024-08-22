@@ -32,8 +32,6 @@ def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encode
     if feature_columns is None:
         feature_columns=[]
 
-    
-
     all_columns=feature_columns+target_columns
 
     if 'name' not in all_columns:
@@ -49,9 +47,6 @@ def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encode
     all_columns.remove('name')
     column_names=list(df.columns)
 
-    logger.info(f"Dataframe shape: {df.shape}")
-    logger.info(f"Column names: {column_names}")
-
     # Ensure all columns have no NaN values, otherwise drop them
     df.dropna(subset=df.columns, inplace=True)
 
@@ -62,6 +57,8 @@ def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encode
         df = df[(df[key] >= min_value) & (df[key] <= max_value)]
 
     logger.info(f"Dataframe shape after applying node filter: {df.shape}")
+    logger.info(f"Dataframe shape: {df.shape}")
+    logger.info(f"Column names: {column_names}")
 
     # Applying encoders to the nodes
     xs, ys = [], []
@@ -112,33 +109,53 @@ def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encode
     if ys:
         target = torch.cat(ys, dim=-1)
 
-    
-    index_name_map = {i:name for i, name in enumerate(names)}
-
+    # This maps the original index to the name of the node. 
+    # This is needed since we filter out nodes that contain NaN.
+    index_name_map = {index: names[index] for i, index in enumerate(df.index.unique())}
     return x, target, index_name_map, feature_names, target_names
 
-def load_relationship_parquet(path, 
+def load_relationship_parquet(path, node_id_mappings,
                             feature_columns=[], 
                             target_columns=[],
                             custom_encoders={}, 
                             filter={}):
+    
     
     all_columns=feature_columns+target_columns
 
     # Getting field metadata for all columns
     field_metadata=get_parquet_field_metadata(path,columns=all_columns)
     
+    # Getting relationship information
     edge_name=os.path.basename(path).split('.')[0]
     src_name,edge_type,dst_name=edge_name.split('-')
     src_column_name=f'{src_name}-START_ID'
     dst_column_name=f'{dst_name}-END_ID'
+    src_index_name_mapping=node_id_mappings[src_name]
+    dst_index_name_mapping=node_id_mappings[dst_name]
+
+    # This maps the reduced index to the original index. 
+    # Again this is because we filter out nodes that contain NaN.
+    src_index_translation={index:reduced_index for reduced_index,index in enumerate(src_index_name_mapping.keys())}
+    dst_index_translation={index:reduced_index for reduced_index,index in enumerate(dst_index_name_mapping.keys())}
+    
     type_column_name='TYPE'
 
     # Reading all columns into single dataframe
     df = pd.read_parquet(path)
 
-    edge_index_df=df[[src_column_name,dst_column_name]]
-    df=df.drop(columns=[src_column_name,dst_column_name,type_column_name])
+    edges_in_graph_mask=df[src_column_name].isin(src_index_name_mapping.keys()) & df[dst_column_name].isin(dst_index_name_mapping.keys())
+    df = pd.DataFrame(df[edges_in_graph_mask].to_dict())
+
+    edge_index=None
+    edge_attr = None
+    df['src_mapped'] = df[src_column_name].map(src_index_translation)
+    df['dst_mapped'] = df[dst_column_name].map(dst_index_translation)
+
+    edge_index = torch.tensor([df['src_mapped'].tolist(),
+                               df['dst_mapped'].tolist()])
+
+    df=df.drop(columns=[src_column_name,dst_column_name,type_column_name,'src_mapped','dst_mapped'])
 
     column_names=list(df.columns)
 
@@ -213,7 +230,7 @@ def load_relationship_parquet(path,
     target=None
     if ys:
         target = torch.cat(ys, dim=-1)
-    edge_index=torch.from_numpy(edge_index_df.values).T
+
 
     # Create maping from original index to unqique index after removing posssible nan values
     index_name_mapping = {index: i for i, index in enumerate(df.index.unique())}
@@ -223,6 +240,8 @@ def load_relationship_parquet(path,
 class DataGenerator:
     def __init__(self):
         self.hetero_data = HeteroData()
+
+        # This is need to map if nodes are filtered out.
         self.node_id_mappings={}
 
         logger.info(f"Initializing DataGenerator")
@@ -299,10 +318,16 @@ class DataGenerator:
                 custom_encoders={}, 
                 filter={},
                 undirected=True):
-        
+
         edge_name=os.path.basename(edge_path).split('.')[0]
 
         src_name,edge_type,dst_name=edge_name.split('-')
+
+        if src_name not in self.node_id_mappings:
+            raise Exception(f"Node {src_name} not found in node ID mappings. Call add_node_type first")
+
+        if dst_name not in self.node_id_mappings:
+            raise Exception(f"Node {dst_name} not found in node ID mappings. Call add_node_type first")
         
         graph_dir=os.path.dirname(os.path.dirname(edge_path))
         node_dir=os.path.join(graph_dir,'nodes')
@@ -315,6 +340,7 @@ class DataGenerator:
         logger.info(f"Node dir | {node_dir}")
 
         edge_index, edge_attr, target, index_name_map, feature_names, target_names = load_relationship_parquet(edge_path, 
+                                                                                            self.node_id_mappings,
                                                                                             feature_columns=feature_columns, 
                                                                                             target_columns=target_columns,
                                                                                             custom_encoders=custom_encoders, 
@@ -326,7 +352,6 @@ class DataGenerator:
         logger.info(f"Feature names: {feature_names}")
         logger.info(f"Target names: {target_names}")
 
-        
         self.hetero_data[src_name,edge_type,dst_name].edge_index=edge_index
         self.hetero_data[src_name,edge_type,dst_name].edge_attr=edge_attr
         self.hetero_data[src_name,edge_type,dst_name].property_names=feature_names
@@ -595,7 +620,7 @@ if __name__ == "__main__":
             # 'elasticity-homogeneous_poisson',
             # 'elasticity-debye_temperature',
             # 'elasticity-state',
-            'name',
+            # 'name',
         ]
     }
 
@@ -607,21 +632,26 @@ if __name__ == "__main__":
 
         'ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT':[
             'weight',
+            ],
+        'MATERIAL-HAS-ELEMENT':[
+            'weight',
             ]
         }
 
-    # generator=DataGenerator()
+    generator=DataGenerator()
     # # generator.add_node_type(node_path=node_files[0], 
     # #                         feature_columns=node_properties['CHEMENV'],
     # #                         target_columns=[])
     
-    # generator.add_node_type(node_path=node_files[2], 
-    #                         feature_columns=node_properties['ELEMENT'],
-    #                         target_columns=[])
+    generator.add_node_type(node_path=node_files[2], 
+                            feature_columns=node_properties['ELEMENT'],
+                            target_columns=[])
 
-    # # # # generator.add_node_type(node_path=node_path, 
-    # # # #                         feature_columns=node_properties['MATERIAL'],
-    # # # #                         target_columns=['elasticity-k_vrh'])
+    generator.add_node_type(node_path=node_files[5], 
+                            feature_columns=node_properties['MATERIAL'],
+                            target_columns=['elasticity-k_vrh'],
+                            # filter={'elasticity-k_vrh':(0,300)}
+                            )
     
     # generator.add_edge_type(edge_path=edge_path,
     #                     feature_columns=relationship_properties['ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT'], 
@@ -629,9 +659,19 @@ if __name__ == "__main__":
     #                     # custom_encoders={}, 
     #                     # node_filter={},
     #                     undirected=True)
-    
+    generator.add_edge_type(edge_path='Z:/Research_Projects/crystal_generation_project/MatGraphDB/data/production/materials_project/graph_database/main/relationships/MATERIAL-HAS-ELEMENT.parquet',
+                        feature_columns=relationship_properties['MATERIAL-HAS-ELEMENT'],
+                        # target_columns=['weight'],
+                        # custom_encoders={}, 
+                        # node_filter={},
+                        undirected=True)
 
-    # # print(generator.data)
+    print(generator.hetero_data)
+
+    print(generator.hetero_data['MATERIAL'].node_id)
+
+
+
 
     # # generator.save_graph(filepath=os.path.join('data','raw','main.pt'))
 
@@ -643,19 +683,19 @@ if __name__ == "__main__":
     # Creating graph node embeddings
     ##############################################################################################################################
 
-    generator=DataGenerator()
-    generator.add_node_type(node_path=node_files[2], 
-                            feature_columns=node_properties['ELEMENT'],
-                            target_columns=[])
-    generator.add_edge_type(edge_path=relationship_files[8],
-                        feature_columns=relationship_properties['ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT'], 
-                        # target_columns=['weight'],
-                        # custom_encoders={}, 
-                        # node_filter={},
-                        undirected=True)
-    print(generator.hetero_data)
-    data=generator.homo_data
-    print(data)
+    # generator=DataGenerator()
+    # generator.add_node_type(node_path=node_files[2], 
+    #                         feature_columns=node_properties['ELEMENT'],
+    #                         target_columns=[])
+    # generator.add_edge_type(edge_path=relationship_files[8],
+    #                     feature_columns=relationship_properties['ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT'], 
+    #                     # target_columns=['weight'],
+    #                     # custom_encoders={}, 
+    #                     # node_filter={},
+    #                     undirected=True)
+    # print(generator.hetero_data)
+    # data=generator.homo_data
+    # print(data)
 
 
     
