@@ -1,10 +1,6 @@
 import os
-import random
-
-import numpy as np
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 
-from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,14 +12,6 @@ from matgraphdb.graph_kit.pyg.metrics import ClassificationMetrics,RegressionMet
 
 from matgraphdb.graph_kit.data import DataGenerator
 from matgraphdb.graph_kit.graphs import GraphManager
-
-
-random.seed(42)
-np.random.seed(42)
-
-torch.manual_seed(42)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(42) 
 
 DEVICE =  "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
 # DEVICE = torch.device("cpu")
@@ -207,9 +195,6 @@ relationship_properties={
     'ELEMENT-GEOMETRIC_ELECTRIC_CONNECTS-ELEMENT':[
         'weight',
         ],
-    'ELEMENT-GROUP_PERIOD_CONNECTS-ELEMENT':[
-        'weight',
-        ],
     'CHEMENV-GEOMETRIC_ELECTRIC_CONNECTS-CHEMENV':[
          'weight',
       ],
@@ -249,13 +234,6 @@ generator.add_edge_type(edge_path='Z:/Research_Projects/crystal_generation_proje
                         # custom_encoders={}, 
                         # node_filter={},
                         undirected=True)
-
-# generator.add_edge_type(edge_path='Z:/Research_Projects/crystal_generation_project/MatGraphDB/data/production/materials_project/graph_database/main/relationships/ELEMENT-GROUP_PERIOD_CONNECTS-ELEMENT.parquet',
-#                         feature_columns=relationship_properties['ELEMENT-GROUP_PERIOD_CONNECTS-ELEMENT'],
-#                         # target_columns=['weight'],
-#                         # custom_encoders={}, 
-#                         # node_filter={},
-#                         undirected=True)
 
 generator.add_edge_type(edge_path='Z:/Research_Projects/crystal_generation_project/MatGraphDB/data/production/materials_project/graph_database/main/relationships/MATERIAL-HAS-CHEMENV.parquet',
                         feature_columns=relationship_properties['MATERIAL-HAS-CHEMENV'],
@@ -361,8 +339,8 @@ class HeteroConvModel(nn.Module):
 
         # Initialize and convert GraphSAGE to heterogeneous
         self.graph_conv= GraphSAGE( n_embd, n_embd, n_conv_layers, **conv_params)
-        self.stacked_conv = to_hetero(self.graph_conv, metadata=data.metadata())
-        # self.stacked_conv = to_hetero_with_bases(model, metadata, bases=3)
+        # self.stacked_conv = to_hetero(self.graph_conv, metadata=data.metadata())
+        self.stacked_conv = to_hetero_with_bases(self.graph_conv, metadata=data.metadata(), num_bases=3)
 
         self.fwd2_dict = nn.ModuleDict()
         for node_type in data.node_types:
@@ -417,7 +395,7 @@ TRAIN_PROPORTION = 0.8
 TEST_PROPORTION = 0.1
 VAL_PROPORTION = 0.1
 LEARNING_RATE = 0.001
-N_EPCOHS = 400
+N_EPCOHS = 1000
 
 N_EMBD=128
 OUT_CHANNELS = 1
@@ -441,9 +419,9 @@ model=HeteroConvModel(hetero_data,
                 prediction_node_type=NODE_TYPE,
                 n_conv_layers=NUM_LAYERS,
                 aggr='add',
-                dropout=0.3,
+                dropout=0.0,
                 conv_params={
-                    'dropout': 0.3,
+                    'dropout': 0.0,
                     'act': 'relu',
                     'act_first': True},
                 device=DEVICE)
@@ -568,34 +546,3 @@ for epoch in range(N_EPCOHS):
                 else:
                     metrics_str+=f", {split}-{key}: {value[0]:.2f}"
         print(metrics_str)
-
-
-
-def parity_plot(data, model, node_type=NODE_TYPE):
-    from sklearn.metrics import mean_squared_error, r2_score
-    model.eval()
-    out = model(data)
-    mask = data[node_type].test_mask
-    pred = out[mask].to('cpu').detach().numpy()
-    ground_truth = data[node_type].y[mask].to('cpu').detach().numpy()
-
-    # Calculate metrics
-    mse = mean_squared_error(ground_truth, pred)
-    r2 = r2_score(ground_truth, pred)
-
-    # Create the scatter plot
-    plt.scatter(ground_truth, pred, s=10)
-    plt.plot([0, 300], [0, 300], color='red', linestyle='--')
-    plt.xlabel('Ground Truth')
-    plt.ylabel('Prediction')
-
-    # Add MSE and R-squared to the plot
-    plt.text(0.05, 0.95, f'MSE: {mse:.4f}\nRMSE: {mse**0.5:.4f}\nR²: {r2:.4f}', 
-             transform=plt.gca().transAxes, 
-             fontsize=12, 
-             verticalalignment='top')
-
-    plt.show()
-
-
-parity_plot(hetero_data, model=model, node_type=NODE_TYPE)
