@@ -276,7 +276,8 @@ class DataGenerator:
                                                                     custom_encoders=custom_encoders,
                                                                     filter=filter)
         
-        logger.info(f"{node_name} feature shape: {x.shape}")
+        if x is not None:
+            logger.info(f"{node_name} feature shape: {x.shape}")
         logger.info(f"{node_name} feature names: {len(feature_names)}")
         
         # logger.info(f"{node_name} index name map: {feature_names}")
