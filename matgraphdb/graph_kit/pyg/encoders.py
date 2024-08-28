@@ -64,8 +64,7 @@ class ListIdentityEncoder:
     def __call__(self, df):
         values=[]
         for irow,row in enumerate(df):
-            embedding=[float(i) for i in row.split(';')]
-            values.append(embedding)
+            values.append(row)
         values=np.array(values)
 
         tensor=torch.from_numpy(values).to(self.dtype)
