@@ -26,7 +26,7 @@ def get_parquet_field_metadata(path, columns=None):
             field_metadata[name][key.decode('utf-8')]=value.decode('utf-8')
     return field_metadata
 
-def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}):
+def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}, keep_nan=False):
     if target_columns is None:
         target_columns=[]
     if feature_columns is None:
@@ -48,7 +48,8 @@ def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encode
     column_names=list(df.columns)
 
     # Ensure all columns have no NaN values, otherwise drop them
-    df.dropna(subset=df.columns, inplace=True)
+    if not keep_nan:
+        df.dropna(subset=df.columns, inplace=True)
 
     logger.info(f"Dataframe shape after removing NaN values: {df.shape}")
 
@@ -264,7 +265,8 @@ class DataGenerator:
                     feature_columns=[], 
                     target_columns=[],
                     custom_encoders={}, 
-                    filter={}):
+                    filter={},
+                    keep_nan=False):
         logger.info(f"Adding node type: {node_path}")
 
 
@@ -274,7 +276,8 @@ class DataGenerator:
                                                                     feature_columns=feature_columns, 
                                                                     target_columns=target_columns,
                                                                     custom_encoders=custom_encoders,
-                                                                    filter=filter)
+                                                                    filter=filter,
+                                                                    keep_nan=keep_nan)
         
         if x is not None:
             logger.info(f"{node_name} feature shape: {x.shape}")
@@ -348,8 +351,8 @@ class DataGenerator:
                                                                                             filter=filter)
         
         logger.info(f"Edge index shape: {edge_index.shape}")
-        logger.info(f"Edge attr shape: {edge_attr.shape}")
-        logger.info(f"Index name map: {index_name_map}")
+        if edge_attr is not None:
+            logger.info(f"Edge attr shape: {edge_attr.shape}")
         logger.info(f"Feature names: {feature_names}")
         logger.info(f"Target names: {target_names}")
 

@@ -20,6 +20,7 @@ from matgraphdb.graph_kit.utils import is_in_range, is_in_list
 
 logger=get_logger(__name__, console_out=False, log_level='debug')
 
+#TODO: Have it so users can pass Nodes and Relationships into GraphManager
 class Nodes:
 
     def __init__(self, 
@@ -46,7 +47,14 @@ class Nodes:
             logger.info(f"Initializing nodes")
             self.initialize_nodes()
 
-    def get_element_nodes(self, columns=None, **kwargs):
+    def get_element_nodes(self, columns=None, 
+                        base_element_csv='imputed_periodic_table_values.csv',
+                        from_scratch=False,
+                        **kwargs):
+        csv_files = glob(os.path.join(PKG_DIR,'utils',"*.csv"))
+        csv_filenames = [os.path.basename(file) for file in csv_files]
+        if base_element_csv not in csv_filenames:
+            raise ValueError(f"base_element_csv must be one of the following: {csv_filenames}")
         warnings.filterwarnings("ignore", category=UserWarning)
         node_type=NodeTypes.ELEMENT.value
 
@@ -54,14 +62,14 @@ class Nodes:
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
 
         logger.info(f"No node file found. Attemping to create {node_type} nodes")
 
-        df=pd.read_csv(os.path.join(PKG_DIR,'utils','imputed_periodic_table_values.csv'),index_col=0)#, encoding='utf8')
+        df=pd.read_csv(os.path.join(PKG_DIR,'utils',base_element_csv),index_col=0)#, encoding='utf8')
         
         df['oxidation_states']=df['oxidation_states'].apply(lambda x: x.replace(']', '').replace('[', ''))
         df['oxidation_states']=df['oxidation_states'].apply(lambda x: ','.join(x.split()) )
@@ -109,76 +117,15 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_pre_imputed_element_nodes(self, columns=None, **kwargs):
-        warnings.filterwarnings("ignore", category=UserWarning)
-        node_type=NodeTypes.PRE_IMPUTED_ELEMENT.value
-
-        logger.info(f"Getting {node_type} nodes")
-
-        filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        
-        if os.path.exists(filepath):
-            logger.info(f"Trying to load {node_type} nodes from {filepath}")
-            df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
-            return df
-
-        logger.info(f"No node file found. Attemping to create {node_type} nodes")
-
-        df=pd.read_csv(os.path.join(PKG_DIR,'utils','periodic_table_values.csv'),index_col=0)#, encoding='utf8')
-        
-        df['oxidation_states']=df['oxidation_states'].apply(lambda x: x.replace(']', '').replace('[', ''))
-        df['oxidation_states']=df['oxidation_states'].apply(lambda x: ','.join(x.split()) )
-        df['oxidation_states']=df['oxidation_states'].apply(lambda x: eval('['+x+']') )
-
-        df['experimental_oxidation_states']=df['experimental_oxidation_states'].apply(lambda x: eval(x) )
-        df['ionization_energies']=df['ionization_energies'].apply(lambda x: eval(x) )
-        # for irow, row in df.iterrows():
-        #     row['oxidation_states']=eval(row['oxidation_states'])
-        # df['oxidation_states']=df['oxidation_states']
-        
-        # elements = atomic_symbols[1:]
-        # elements_properties = []
-        # for i, element in enumerate(elements[:]):
-        #     tmp_dict=pymatgen_properties.copy()
-        #     pmat_element=Element(element)
-        #     for key in tmp_dict.keys():
-        #         try:
-        #             value=getattr(pmat_element,key)
-        #         except:
-        #             value=None
-        #         if isinstance(value,FloatWithUnit):
-        #             value=value.real
-        #         if isinstance(value,dict):
-        #             value=[(key2,value2) for key2,value2 in value.items()]
-        #         tmp_dict[key]=value
-        #     elements_properties.append(tmp_dict)
-
-        # df = pd.DataFrame(elements_properties)
-        df['name'] = df['symbol']
-        df['type'] = node_type
-
-        if columns:
-            df = df[columns]
-
-        schema = get_node_schema(NodeTypes.PRE_IMPUTED_ELEMENT)
-        try:
-            parquet_table=pa.Table.from_pandas(df,schema=schema)
-        except Exception as e:
-            logger.error(f"Error converting dataframe to parquet table for saving: {e}")
-            return None
-
-        logger.info(f"Saving {node_type} nodes to {filepath}")
-
-        self.save_nodes(parquet_table, filepath)
-        return df
-    
-    def get_crystal_system_nodes(self, columns=None, **kwargs):
+    def get_crystal_system_nodes(self, columns=None, 
+                                from_scratch=False,
+                                **kwargs):
         node_type=NodeTypes.CRYSTAL_SYSTEM.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -209,13 +156,15 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
 
-    def get_magnetic_states_nodes(self, columns=None, **kwargs):
+    def get_magnetic_states_nodes(self, columns=None,
+                                from_scratch=False,
+                                **kwargs):
         node_type=NodeTypes.MAGNETIC_STATE.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -245,16 +194,19 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_oxidation_states_nodes(self, columns=None, **kwargs):
+    def get_oxidation_states_nodes(self, columns=None, 
+                                   from_scratch=False, 
+                                   **kwargs):
         node_type=NodeTypes.OXIDATION_STATE.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
+        
 
         logger.info(f"No node file found. Attemping to create {node_type} nodes")
         # Old method
@@ -301,13 +253,15 @@ class Nodes:
  
         return df
     
-    def get_space_group_nodes(self, columns=None, **kwargs):
+    def get_space_group_nodes(self, columns=None,
+                            from_scratch=False, 
+                            **kwargs):
         node_type=NodeTypes.SPACE_GROUP.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -338,13 +292,15 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_chemenv_nodes(self, columns=None, **kwargs):
+    def get_chemenv_nodes(self, columns=None, 
+                        from_scratch=False, 
+                        **kwargs):
         node_type=NodeTypes.CHEMENV.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -376,13 +332,15 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_wyckoff_positions_nodes(self, columns=None, **kwargs):
+    def get_wyckoff_positions_nodes(self, columns=None, 
+                                from_scratch=False, 
+                                **kwargs):
         node_type=NodeTypes.SPG_WYCKOFF.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -418,14 +376,16 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_material_nodes(self, columns=None, **kwargs):
+    def get_material_nodes(self, columns=None, 
+                           from_scratch=False, 
+                           **kwargs):
         node_type=NodeTypes.MATERIAL.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -458,14 +418,16 @@ class Nodes:
         logger.info(f"Finished saving {node_type} nodes to {filepath}")
         return df
     
-    def get_material_lattice_nodes(self, columns=None, **kwargs):
+    def get_material_lattice_nodes(self, columns=None, 
+                                from_scratch=False,
+                                **kwargs):
         node_type=NodeTypes.LATTICE.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -493,14 +455,16 @@ class Nodes:
         self.save_nodes(parquet_table, filepath)
         return df
     
-    def get_material_site_nodes(self, columns=None, **kwargs):
+    def get_material_site_nodes(self, columns=None, 
+                            from_scratch=False,
+                            **kwargs):
         node_type=NodeTypes.SITE.value
 
         logger.info(f"Getting {node_type} nodes")
 
         filepath=os.path.join(self.node_dir, f'{node_type}.{self.file_type}')
         
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) and not from_scratch:
             logger.info(f"Trying to load {node_type} nodes from {filepath}")
             df=self.load_nodes(filepath=filepath, columns=columns, **kwargs)
             return df
@@ -924,6 +888,20 @@ class Relationships:
         self.save_relationships(parquet_table, filepath)
         return df
     
+    # def get_material_similarity_relationships(self,material_columns, relationship_name, columns=None, remove_duplicates=True, similarity_cutoff=0.8, **kwargs):
+    #     material_df = self.nodes.get_material_nodes(columns=['space_group'])
+    #     similarity_scores=[]
+    #     for irow in material_df:
+    #         material_i_encoding= material_df.loc[irow][  material_columns  ]
+    #         for jrow in material_df:
+    #             material_j_encoding= material_df.loc[jrow][ material_columns  ]
+    #             similarity_score=cosine_similarity(material_i_encoding,material_j_encoding)
+    #             if similarity_score > similarity_cutoff:
+    #                   similarity_scores.append((irow ,jrow, similarity_score))
+
+    #    df = pd.dataframe(similarity_scores), columns=['START_ID', 'END_ID']
+    #    self.save_relationships(df, filepath=relationship_name.parquet)
+
     def get_element_oxidation_state_relationships(self, columns=None, **kwargs):
         # Defining node types and relationship type
         relationship_type=RelationshipTypes.ELEMENT_OXIDATION_STATE.value
@@ -2227,7 +2205,7 @@ class GraphManager:
 
 
 
-# if __name__=='__main__':
+if __name__=='__main__':
 
     # node_dir=os.path.join('data','production','materials_project','graph_database','test','nodes')
     # nodes=Nodes(node_dir=node_dir,output_format='pandas')
@@ -2257,11 +2235,13 @@ class GraphManager:
     # Nodes with columns
     ################################################################################################
     # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    # node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
-    # nodes=Nodes(node_dir=node_dir,skip_init=True)
-    # # df=nodes.get_material_nodes()
-    # df=nodes.get_element_nodes()
-    # print(df.head())
+    node_dir=os.path.join('data','production','materials_project','graph_database','main','nodes')
+    nodes=Nodes(node_dir=node_dir,skip_init=True)
+    # df=nodes.get_material_nodes()
+    df=nodes.get_element_nodes(base_element_csv='interim_periodic_table_values.csv', from_scratch=True)
+    # df=nodes.get_pre_imputed_element_nodes()
+    print(df.head())
+    print(df['modulus_bulk'])
     # properties=nodes.get_property_names(node_type='MATERIAL')
     # print(properties)
     # # print(df.head())
