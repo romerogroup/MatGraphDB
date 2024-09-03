@@ -1289,7 +1289,6 @@ def get_data(data, key, default=None):
 
 
 
-
 if __name__=='__main__':
 
     properties=['chargemol_bonding_orders','coordination_environments_multi_weight','coordination_multi_connections',

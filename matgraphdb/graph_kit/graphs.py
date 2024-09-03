@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import pyarrow as pa
-import pyarrow.parquet as pq
+
 
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils.periodic_table import get_group_period_edge_index
