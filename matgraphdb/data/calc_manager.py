@@ -6,9 +6,14 @@ from typing import Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
 
-from matgraphdb import DBManager
-from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES,LOGGER, GLOBAL_PROP_FILE,ENCODING_DIR
+import numpy as np
+from pymatgen.core import Structure
+from pymatgen.io.vasp.inputs import Incar, Poscar, Potcar, Kpoints
 
+from matgraphdb import DBManager
+from matgraphdb.utils import get_logger
+
+logger=get_logger(__name__, console_out=False, log_level='info')
 
 
 class CalculationManager:
@@ -20,7 +25,6 @@ class CalculationManager:
             directory_path (str): The path to the directory where the database is stored.
             calc_path (str): The path to the directory where calculations are stored.
             n_cores (int): The number of CPU cores to be used for parallel processing.
-
         """
         self.db_manager = db_manager
         self.calculation_path = self.db_manager.calculation_path    
@@ -58,7 +62,6 @@ class CalculationManager:
             None
         """
         calc_dirs = self.db_manager.calculation_dirs()
-        LOGGER.info("Processing files from : ",self.calculation_path + os.sep + 'mp-*')
         results=self.process_task(self.check_chargemol_task, calc_dirs)
 
         for path, result in zip(calc_dirs[:],results[:]):
@@ -105,8 +108,6 @@ class CalculationManager:
                         else:
                             file.write(line)
 
-
-
                 chargemol_dir=os.path.join(path,'chargemol')
                 sumbit_script=os.path.join(chargemol_dir,'run.slurm')
                 with open(sumbit_script, 'w') as file:
@@ -135,6 +136,7 @@ class CalculationManager:
                     '/linux/Chargemol_09_26_2017_linux_parallel> chargemol_debug.txt 2>&1\n')
                     file.write('\n')
                     file.write(f'echo "run complete on `hostname`: `date`" 1>&2\n')
+
     @staticmethod
     def launch_calcs(slurm_scripts=[]):
         """
@@ -149,5 +151,7 @@ class CalculationManager:
         if slurm_scripts != []:
             for slurm_script in slurm_scripts:
                 result = subprocess.run(['sbatch', slurm_script], capture_output=False, text=True)
+
+
 
 
