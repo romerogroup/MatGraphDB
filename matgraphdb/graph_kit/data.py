@@ -643,9 +643,9 @@ if __name__ == "__main__":
         }
 
     generator=DataGenerator()
-    # # generator.add_node_type(node_path=node_files[0], 
-    # #                         feature_columns=node_properties['CHEMENV'],
-    # #                         target_columns=[])
+    generator.add_node_type(node_path=node_files[0], 
+                            feature_columns=node_properties['CHEMENV'],
+                            target_columns=[])
     
     generator.add_node_type(node_path=node_files[2], 
                             feature_columns=node_properties['ELEMENT'],
@@ -654,15 +654,15 @@ if __name__ == "__main__":
     generator.add_node_type(node_path=node_files[5], 
                             feature_columns=node_properties['MATERIAL'],
                             target_columns=['elasticity-k_vrh'],
-                            # filter={'elasticity-k_vrh':(0,300)}
+                            filter={'elasticity-k_vrh':(0,300)}
                             )
     
-    # generator.add_edge_type(edge_path=edge_path,
-    #                     feature_columns=relationship_properties['ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT'], 
-    #                     # target_columns=['weight'],
-    #                     # custom_encoders={}, 
-    #                     # node_filter={},
-    #                     undirected=True)
+    generator.add_edge_type(edge_path=edge_path,
+                        feature_columns=relationship_properties['ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT'], 
+                        # target_columns=['weight'],
+                        # custom_encoders={}, 
+                        # node_filter={},
+                        undirected=True)
     generator.add_edge_type(edge_path='Z:/Research_Projects/crystal_generation_project/MatGraphDB/data/production/materials_project/graph_database/main/relationships/MATERIAL-HAS-ELEMENT.parquet',
                         feature_columns=relationship_properties['MATERIAL-HAS-ELEMENT'],
                         # target_columns=['weight'],
