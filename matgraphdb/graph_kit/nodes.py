@@ -9,9 +9,9 @@ import logging
 
 from matgraphdb.utils.coord_geom import mp_coord_encoding
 from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_logger
-from matgraphdb.graph_kit.metadata import get_node_schema,get_relationship_schema
-from matgraphdb.graph_kit.metadata import NodeTypes, RelationshipTypes
+from matgraphdb.utils import PKG_DIR
+from matgraphdb.graph_kit.metadata import get_node_schema
+from matgraphdb.graph_kit.metadata import NodeTypes
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +209,7 @@ class MaterialNodes(Nodes):
         # The logic for creating material nodes
         try:
             df = pd.read_parquet(MATERIAL_PARQUET_FILE)
-            df['name'] = df['material_id']  # Assign 'name' field
+            df['name'] = df.index + 1  # Assign 'name' field
         except Exception as e:
             logger.error(f"Error reading material parquet file: {e}")
             return None

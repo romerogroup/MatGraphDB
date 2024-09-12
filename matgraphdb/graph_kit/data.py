@@ -7,7 +7,6 @@ import torch
 from torch_geometric.data import HeteroData
 
 from matgraphdb.graph_kit.pyg.encoders import *
-from matgraphdb.graph_kit.graphs import GraphManager
 from matgraphdb.utils import get_child_logger
 
 logger=get_child_logger(__name__, console_out=False, log_level='debug')
@@ -442,7 +441,7 @@ class DataGenerator:
     
 
 if __name__ == "__main__":
-    
+    from matgraphdb.graph_kit.graph_manager import GraphManager
     import pandas as pd
     import os
     material_graph=GraphManager(skip_init=False)

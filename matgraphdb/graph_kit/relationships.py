@@ -1,6 +1,6 @@
 from glob import glob
 import os
-import warnings
+
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -8,13 +8,10 @@ import pyarrow.parquet as pq
 import logging
 
 from matgraphdb.utils.periodic_table import get_group_period_edge_index
-from matgraphdb.utils.coord_geom import mp_coord_encoding
-from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_logger
-from matgraphdb.graph_kit.metadata import get_node_schema,get_relationship_schema
-from matgraphdb.graph_kit.metadata import NodeTypes, RelationshipTypes
-
+from matgraphdb.graph_kit.metadata import get_relationship_schema
+from matgraphdb.graph_kit.metadata import RelationshipTypes
 from matgraphdb.graph_kit.nodes import NodeManager
+
 logger = logging.getLogger(__name__)
 
 
