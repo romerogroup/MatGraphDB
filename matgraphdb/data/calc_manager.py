@@ -1,157 +1,347 @@
 import os
 import json
-from glob import glob
+
 import subprocess
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 from multiprocessing import Pool
 from functools import partial
 
-import numpy as np
-from pymatgen.core import Structure
-from pymatgen.io.vasp.inputs import Incar, Poscar, Potcar, Kpoints
-
-from matgraphdb import DBManager
-from matgraphdb.utils import get_logger
-
-logger=get_logger(__name__, console_out=False, log_level='info')
+from matgraphdb.calculations.job_scheduler_generator import SlurmScriptGenerator
+from matgraphdb.utils import N_CORES
 
 
 class CalculationManager:
-    def __init__(self, db_manager: DBManager):
+    def __init__(self, main_dir, db_manager, n_cores=N_CORES, job_submission_script_name='run.slurm'):
         """
-        Initializes the Manager object.
-
-        Args:
-            directory_path (str): The path to the directory where the database is stored.
-            calc_path (str): The path to the directory where calculations are stored.
-            n_cores (int): The number of CPU cores to be used for parallel processing.
+        Initializes the CalculationManager with the specified main directory, database manager, number of cores,
+        and the name of the job submission script.
+        
+        Parameters:
+        main_dir (str): Main directory path for calculations.
+        db_manager (object): Database manager object for handling database operations.
+        n_cores (int): Number of cores to use for multiprocessing.
+        job_submission_script_name (str): Name of the job submission script.
         """
         self.db_manager = db_manager
-        self.calculation_path = self.db_manager.calculation_path    
+        self.main_dir = main_dir
+        self.n_cores = n_cores
+        self.job_submission_script_name = job_submission_script_name
 
-    def check_chargemol_task(self, dir):
+        self.calculation_dir = os.path.join(self.main_dir, 'MaterialsData')
+        self.metadata_file = os.path.join(self.main_dir, 'metadata.json')
+
+        os.makedirs(self.calculation_dir, exist_ok=True)
+
+        self.initialized=False
+        print("Make sure to initialize the calculation manager before using it")
+        
+    def _process_task(self, func, list, **kwargs):
         """
-        Check if the chargemol task has been completed.
-
-        Args:
-            dir (str): The directory path where the chargemol task output is expected.
-
+        Processes a task in parallel using multiprocessing.
+        
+        Parameters:
+        func (callable): The function to apply to the task list.
+        list (list): List of tasks to process.
+        kwargs: Additional arguments for the function.
+        
         Returns:
-            bool: True if the chargemol task has been completed and the output file exists, False otherwise.
+        list: Results from processing the tasks.
         """
-        check = True
+        with Pool(self.n_cores) as p:
+            results=p.map(partial(func,**kwargs), list)
+        return results
 
-        file_path = os.path.join(dir, 'chargemol', 'DDEC6_even_tempered_bond_orders.xyz')
+    def _setup_material_directory(self, directory):
+        """
+        Creates the directory structure for a specific material if it doesn't exist.
+        
+        Parameters:
+        directory (str): Path to the material directory.
+        
+        Returns:
+        None
+        """
+        os.makedirs(directory, exist_ok=True)
+        return None
 
-        if os.path.exists(file_path):
-            check = True
-        else:
-            check = False
-        return check
+    def _setup_material_directories(self):
+        """
+        Creates directories for all materials in the database and returns their paths.
+        
+        Returns:
+        list: A list of material directory paths.
+        """
+        rows=self.db_manager.read()
+
+        material_dirs = []
+        for i, row in enumerate(rows):
+            material_id = row.id
+            material_directory = os.path.join(self.calculation_dir, material_id)
+            self._setup_material_directory(material_directory)
+            material_dirs.append(material_directory)
+        return material_dirs
     
-    def add_chargemol_slurm_script(self, partition_info=('comm_small_day','24:00:00','16', '1'), exclude=[]):
+    def initialize(self):
         """
-        Adds a SLURM script for running Chargemol calculations to each calculation directory.
+        Initializes the CalculationManager by loading metadata and setting up material directories.
+        """
+        self.metadata = self.load_metadata()
+        self.material_dirs = self._setup_material_directories()
+        self.initialized=True
+    
+    def get_calculation_names(self):
+        """
+        This method returns a list of all calculation names in the database.
+        """
+        calculation_names = os.listdir(self.material_dirs[0])
+        self.update_metadata({'calculation_names': calculation_names})
+        return calculation_names
+
+    def create_calc(self, calc_func: Callable, calc_name: str = None, **kwargs):
+        """
+        This method creates a new calculation by applying the provided function to each row in the database. 
+        The function is expecting an input of type dictionary-like object (each row's data) and a directory path 
+        where the calculation results should be stored. The function is responsible for saving the results in this 
+        directory, which is specific to each row and named based on the row's unique ID and the name of the 
+        calculation function.
 
         Args:
-            partition_info (tuple): A tuple containing information about the SLURM partition.
-                Default is ('comm_small_day','24:00:00','16', '1').
-            exclude (list): A list of nodes to exclude from the SLURM job. Default is an empty list.
+            calc_func (Callable): The function to apply to each material.
+            calc_name (str, optional): The name of the calculation. Defaults to the name of the function.
+            **kwargs: Additional arguments to pass to the calculation function.
+
+        Returns:
+            List: The results of the calculation for each material.
+        """
+        if calc_name is None:
+            calc_name = calc_func.__name__
+    
+        # Read data from the database
+        rows = self.db_manager.read()
+
+        multi_task_list=[]
+        i=0
+        for row in rows:
+            row_data=row.data
+            calc_dir=os.path.join(self.material_dirs[i],calc_name)
+
+            multi_task_list.append((row_data,calc_dir))
+            i+=1
+
+        # Process each row using multiprocessing, passing the directory structure
+        results = self._process_task(calc_func, multi_task_list, **kwargs)
+
+        return results
+    
+    def generate_job_scheduler_script_for_calc(self, calc_dir: str, slurm_config: Dict = None, slurm_script: str = None):
+        """
+        Generates a SLURM job scheduler submission script for a specific calculation.
+
+        Args:
+            calc_dir (str): The directory where the calculation is stored.
+            slurm_config (Dict, optional): Configuration settings for the SLURM script. Defaults to None.
+            slurm_script (str, optional): Predefined SLURM script content. Defaults to None.
+
+        Returns:
+            Tuple: The path to the generated SLURM script and its content.
+        """
+        calc_name=os.path.basename(calc_dir)
+        material_id=os.path.basename(os.path.dirname(calc_dir))
+
+        if slurm_config:
+            slurm_generator = SlurmScriptGenerator(
+                job_name=slurm_config.get('job_name', f"{calc_name}_calc_{material_id}"),
+                partition=slurm_config.get('partition', 'comm_small_day'),
+                time=slurm_config.get('time', '24:00:00')
+            )
+            
+            slurm_generator.init_header()
+            slurm_generator.add_slurm_header_comp_resources(
+                n_nodes=slurm_config.get('n_nodes'),
+                n_tasks=slurm_config.get('n_tasks'),
+                cpus_per_task=slurm_config.get('cpus_per_task')
+            )
+            slurm_generator.add_slurm_script_body(f"cd {calc_dir}")
+            slurm_generator.add_slurm_script_body(slurm_config.get('command', './run_calculation.sh'))
+
+            slurm_script = slurm_generator.finalize()
+            
+            # Save the SLURM script in the job directory
+            slurm_script_path = os.path.join(calc_dir, self.job_submission_script_name)
+            
+        
+        with open(slurm_script_path, 'w') as f:
+            f.write(slurm_script)
+
+        return slurm_script_path, slurm_script
+    
+    def generate_job_scheduler_script_for_calcs(self, calc_name, slurm_config: Dict = None, slurm_script: str = None, **kwargs):
+        """
+        Generates job scheduler submission scripts for all materials using the specified calculation name.
+
+        Args:
+            calc_name (str): The name of the calculation.
+            slurm_config (Dict, optional): Configuration settings for the SLURM script. Defaults to None.
+            slurm_script (str, optional): Predefined SLURM script content. Defaults to None.
+            **kwargs: Additional keyword arguments to pass to the script generator.
+
+        Returns:
+            List: The results of script generation for each material.
+        """
+        multi_task_list=[]
+        for material_dir in self.material_dirs:
+            calc_dir=os.path.join(material_dir,calc_name)
+            multi_task_list.append(calc_dir)
+
+        results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, slurm_config=slurm_config, slurm_script=slurm_script, **kwargs)
+        return results
+ 
+    def submit_job(self, slurm_script_path: str, capture_output=True, text=True):
+        """
+        Submits a SLURM job using a specified SLURM script path.
+
+        Args:
+            slurm_script_path (str): The path to the SLURM script to be submitted.
+            capture_output (bool, optional): Whether to capture the output of the SLURM job submission. Defaults to True.
+            text (bool, optional): Whether to capture output as text. Defaults to True.
+
+        Returns:
+            str: The SLURM job ID if the submission is successful.
+
+        Raises:
+            RuntimeError: If the SLURM job submission fails.
+        """
+        result = subprocess.run(['sbatch', slurm_script_path], capture_output=capture_output, text=text)
+        if result.returncode == 0:
+            # Extract the SLURM job ID from sbatch output
+            slurm_job_id = result.stdout.strip().split()[-1]
+            return slurm_job_id
+        else:
+            raise RuntimeError(f"Failed to submit SLURM job. Error: {result.stderr}")
+
+    def submit_jobs(self, calc_name, ids=None, **kwargs):
+        """
+        Submits SLURM jobs for all materials or a subset of materials by calculation name.
+
+        Args:
+            calc_name (str): The name of the calculation.
+            ids (List, optional): A list of material IDs to submit jobs for. Defaults to all materials.
+            **kwargs: Additional arguments to pass to the job submission function.
+
+        Returns:
+            List: The results of job submission for each material.
+        """
+        multi_task_list=[]
+        if ids is None:
+            for material_dir in self.material_dirs:
+                calc_dir=os.path.join(material_dir,calc_name)
+                job_submission_script_path=os.path.join(calc_dir, self.job_submission_script_name)
+                multi_task_list.append(job_submission_script_path)
+        else:
+            for id in ids:
+                calc_dir=os.path.join(self.calculation_dir,id,calc_name)
+                job_submission_script_path=os.path.join(calc_dir, self.job_submission_script_name)
+                multi_task_list.append(job_submission_script_path)
+
+        results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, **kwargs)
+        return results
+    
+    def run_func_on_calc(self, calc_func:Callable, calc_name: str, material_id: str, **kwargs):
+        """
+        Runs a specified function on a specific calculation directory. 
+        The calc_func expects the calculation directory path as its only argument.
+
+        Args:
+            calc_func (Callable): The function to run on the calculation directory.
+            calc_name (str): The name of the calculation.
+            material_id (str): The ID of the material for which the function will be run.
+            **kwargs: Additional arguments to pass to the function.
 
         Returns:
             None
         """
-        calc_dirs = self.db_manager.calculation_dirs()
-        results=self.process_task(self.check_chargemol_task, calc_dirs)
-
-        for path, result in zip(calc_dirs[:],results[:]):
-            if result==False:
-                with open(os.path.join(path,'POSCAR')) as f:
-                    lines=f.readlines()
-                    raw_natoms=lines[6].split()
-                    natoms=0
-                    for raw_natom in raw_natoms:
-                        natoms+=int(raw_natom)
-
-                # Read INCAR and modify NCORE and KPAR
-                incar_path = os.path.join(path, 'chargemol','INCAR')
-                with open(incar_path, 'r') as file:
-                    incar_lines = file.readlines()
-
-                if natoms >= 60:  
-                    nnode=4
-                    ncore = 32  
-                    kpar=4   
-                    ntasks=160
-                elif natoms >= 40:  
-                    nnode=3
-                    ncore = 20  
-                    kpar=3  
-                    ntasks=120
-                elif natoms >= 20: 
-                    nnode=2
-                    ncore = 16  
-                    kpar = 2   
-                    ntasks=80
-                else:
-                    nnode=1
-                    ntasks=40
-                    ncore = 40 
-                    kpar = 1
-
-                with open(incar_path, 'w') as file:
-                    for line in incar_lines:
-                        if line.strip().startswith('NCORE'):
-                            file.write(f'NCORE = {ncore}\n')
-                        elif line.strip().startswith('KPAR'):
-                            file.write(f'KPAR = {kpar}\n')
-                        else:
-                            file.write(line)
-
-                chargemol_dir=os.path.join(path,'chargemol')
-                sumbit_script=os.path.join(chargemol_dir,'run.slurm')
-                with open(sumbit_script, 'w') as file:
-                    file.write('#!/bin/bash\n')
-                    file.write('#SBATCH -J mp_database_chargemol\n')
-                    file.write(f'#SBATCH --nodes={nnode}\n')
-                    file.write(f'#SBATCH -n {ntasks}\n')
-                    file.write(f'#SBATCH -p {partition_info[0]}\n')
-                    file.write(f'#SBATCH -t {partition_info[1]}\n')
-                    if exclude:
-                        node_list_string= ','.join(exclude)
-                        file.write(f'#SBATCH --exclude={node_list_string}\n')
-                    file.write(f'#SBATCH --output={chargemol_dir}/jobOutput.out\n')
-                    file.write(f'#SBATCH --error={chargemol_dir}/jobError.err\n')
-                    file.write('\n')
-                    file.write('source ~/.bashrc\n')
-                    file.write('module load atomistic/vasp/6.2.1_intel22_impi22\n')
-                    file.write(f'cd {chargemol_dir}\n')
-                    file.write(f'echo "CALC_DIR: {chargemol_dir}"\n')
-                    file.write(f'echo "NCORES: $((SLURM_NTASKS))"\n')
-                    file.write('\n')
-                    file.write(f'mpirun -np $SLURM_NTASKS vasp_std\n')
-                    file.write('\n')
-                    file.write(f'export OMP_NUM_THREADS=$SLURM_NTASKS\n')
-                    file.write('~/SCRATCH/Codes/chargemol_09_26_2017/chargemol_FORTRAN_09_26_2017/compiled_binaries'
-                    '/linux/Chargemol_09_26_2017_linux_parallel> chargemol_debug.txt 2>&1\n')
-                    file.write('\n')
-                    file.write(f'echo "run complete on `hostname`: `date`" 1>&2\n')
-
-    @staticmethod
-    def launch_calcs(slurm_scripts=[]):
+        calc_dir=os.path.join(self.calculation_dir,material_id,calc_name)
+        calc_func(calc_dir,**kwargs)
+        return None
+    
+    def run_func_on_calcs(self, calc_func:Callable, calc_name: str, ids=None, **kwargs):
         """
-        Launches SLURM calculations by submitting SLURM scripts.
+        Runs a specified function on all calculation directories or a subset of directories.
 
         Args:
-            slurm_scripts (list): A list of SLURM script file paths.
+            calc_func (Callable): The function to run on each calculation directory.
+            calc_name (str): The name of the calculation.
+            ids (List, optional): A list of material IDs. Defaults to running on all directories.
+            **kwargs: Additional arguments to pass to the function.
 
         Returns:
-            None
+            List: The results of running the function on each calculation directory.
         """
-        if slurm_scripts != []:
-            for slurm_script in slurm_scripts:
-                result = subprocess.run(['sbatch', slurm_script], capture_output=False, text=True)
+        multi_task_list=[]
+        if ids is None:
+            i=0
+            for material_dir in self.material_dirs:
+                calc_dir=os.path.join(material_dir,calc_name)
+                multi_task_list.append(calc_dir)
+                i+=1
+        else:
+            for id in ids:
+                calc_dir=os.path.join(self.calculation_dir,id,calc_name)
+                multi_task_list.append(calc_dir)
+
+        results=self._process_task(calc_func, multi_task_list, **kwargs)
+        return results
+    
+    def add_calc_data_to_database(self, func:Callable, calc_name: str, ids=None, **kwargs):
+        multi_task_list=[]
+        if ids is None:
+            ids=[]
+            for material_dir in self.material_dirs:
+                calc_dir=os.path.join(material_dir,calc_name)
+                multi_task_list.append(calc_dir)
+                ids.append(os.path.dirname(material_dir))
+        else:
+            for id in ids:
+                calc_dir=os.path.join(self.calculation_dir,id,calc_name)
+                multi_task_list.append(calc_dir)
+
+        results=self._process_task(func, multi_task_list, **kwargs)
+
+        update_list=[(id,result) for id,result in zip(ids,results)]
+        
+        self.db_manager.update_many(update_list)
 
 
+    def load_metadata(self):
+        """
+        Loads metadata from a JSON file in the main directory.
 
+        Returns:
+            Dict: The loaded metadata. If the file does not exist, returns an empty dictionary.
+        """
+        if os.path.exists(self.metadata_file):
+            with open(self.metadata_file, 'r') as f:
+                metadata = json.load(f)
+                return metadata
+        else:
+            return {}
+    
+    def update_metadata(self, metadata):
+        """
+        Updates the metadata with new information and saves it to the metadata file.
 
+        Args:
+            metadata (Dict): The new metadata to be added or updated.
+        """
+        self.metadata.update(metadata)
+        self.save_metadata(self.metadata)
+
+    def save_metadata(self, metadata):
+        """
+        Saves the metadata to the metadata JSON file in the main directory.
+
+        Args:
+            metadata (Dict): The metadata to save.
+        """
+        with open(self.metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
