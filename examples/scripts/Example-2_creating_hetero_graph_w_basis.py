@@ -11,7 +11,7 @@ from matgraphdb.graph_kit.pyg.metrics import ClassificationMetrics,RegressionMet
 
 
 from matgraphdb.graph_kit.data import DataGenerator
-from matgraphdb.graph_kit.graphs import GraphManager
+from sandbox.matgraphdb.graph_kit.graphs import GraphManager
 
 DEVICE =  "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
 # DEVICE = torch.device("cpu")

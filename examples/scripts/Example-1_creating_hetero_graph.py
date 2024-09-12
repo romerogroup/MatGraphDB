@@ -15,7 +15,7 @@ from matgraphdb.graph_kit.pyg.metrics import ClassificationMetrics,RegressionMet
 
 
 from matgraphdb.graph_kit.data import DataGenerator
-from matgraphdb.graph_kit.graphs import GraphManager
+from sandbox.matgraphdb.graph_kit.graphs import GraphManager
 
 
 random.seed(42)

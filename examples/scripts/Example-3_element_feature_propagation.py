@@ -6,7 +6,7 @@ import torch
 
 from matgraphdb.utils.periodic_table import get_group_period_edge_index
 from matgraphdb.graph_kit.data import DataGenerator
-from matgraphdb.graph_kit.graphs import GraphManager
+from sandbox.matgraphdb.graph_kit.graphs import GraphManager
 from matgraphdb.utils import PKG_DIR, GRAPH_DIR
 from matgraphdb.graph_kit.pyg.algo import feature_propagation
 
