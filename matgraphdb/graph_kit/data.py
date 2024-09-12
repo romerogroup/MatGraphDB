@@ -12,6 +12,20 @@ from matgraphdb.utils import get_child_logger
 logger=get_child_logger(__name__, console_out=False, log_level='debug')
 
 def get_parquet_field_metadata(path, columns=None):
+    """
+    Retrieves the metadata for each field (column) in a Parquet file and returns it in a dictionary format.
+    
+    Args:
+        path (str): The file path to the Parquet file.
+        columns (list, optional): A list of column names to filter and return metadata for. If None, metadata for all fields is returned.
+        
+    Returns:
+        dict: A dictionary where keys are the column names, and values are dictionaries containing metadata for each column. 
+              The metadata is extracted from the Arrow schema in the Parquet file and includes key-value pairs converted to UTF-8 strings.
+              
+    Example:
+        field_metadata = get_parquet_field_metadata('data.parquet', columns=['column1', 'column2'])
+    """
     parquet_file = pq.ParquetFile(path)
     field_metadata={}
     for field in parquet_file.metadata.schema.to_arrow_schema():
@@ -26,6 +40,30 @@ def get_parquet_field_metadata(path, columns=None):
     return field_metadata
 
 def load_node_parquet(path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}, keep_nan=False):
+    """
+    Loads a Parquet file containing node data and applies custom encoders and filters, returning feature and target tensors 
+    along with a mapping of node names to indices.
+
+    Args:
+        path (str): The file path to the Parquet file.
+        feature_columns (list, optional): List of column names to use as features. Defaults to an empty list.
+        target_columns (list, optional): List of column names to use as targets. Defaults to an empty list.
+        custom_encoders (dict, optional): A dictionary where keys are column names and values are custom encoders to apply to those columns.
+                                          If not provided, the default encoder from the Parquet metadata will be used.
+        filter (dict, optional): A dictionary where keys are column names and values are tuples specifying the (min, max) range for filtering rows.
+        keep_nan (bool, optional): If False, rows with NaN values will be dropped. Defaults to False.
+        
+    Returns:
+        tuple: A tuple containing:
+               - x (torch.Tensor): The feature tensor concatenated from all feature columns.
+               - target (torch.Tensor): The target tensor concatenated from all target columns.
+               - index_name_map (dict): A mapping of the original index to the name of the node.
+               - feature_names (list): A list of feature column names, including any columns expanded by the encoders.
+               - target_names (list): A list of target column names, including any columns expanded by the encoders.
+
+    Example:
+        x, target, index_name_map, feature_names, target_names = load_node_parquet('nodes.parquet', feature_columns=['f1'], target_columns=['t1'])
+    """
     if target_columns is None:
         target_columns=[]
     if feature_columns is None:
@@ -119,7 +157,32 @@ def load_relationship_parquet(path, node_id_mappings,
                             target_columns=[],
                             custom_encoders={}, 
                             filter={}):
-    
+    """
+    Loads a Parquet file containing relationship data (edges between nodes), applies custom encoders and filters, 
+    and returns edge indices, edge attributes, and target tensors along with a mapping of edge indices.
+
+    Args:
+        path (str): The file path to the Parquet file.
+        node_id_mappings (dict): A dictionary where keys are node types (e.g., 'src', 'dst') and values are mappings of node indices to IDs.
+        feature_columns (list, optional): List of column names to use as edge features. Defaults to an empty list.
+        target_columns (list, optional): List of column names to use as edge targets. Defaults to an empty list.
+        custom_encoders (dict, optional): A dictionary where keys are column names and values are custom encoders to apply to those columns.
+                                          If not provided, the default encoder from the Parquet metadata will be used.
+        filter (dict, optional): A dictionary where keys are column names and values are tuples specifying the (min, max) range for filtering rows.
+        
+    Returns:
+        tuple: A tuple containing:
+               - edge_index (torch.Tensor): The edge index tensor with source and destination node indices.
+               - edge_attr (torch.Tensor): The edge attributes tensor concatenated from all feature columns.
+               - target (torch.Tensor): The target tensor concatenated from all target columns.
+               - index_name_mapping (dict): A mapping of the original edge index to the filtered edge index.
+               - feature_names (list): A list of feature column names, including any columns expanded by the encoders.
+               - target_names (list): A list of target column names, including any columns expanded by the encoders.
+
+    Example:
+        edge_index, edge_attr, target, index_name_mapping, feature_names, target_names = load_relationship_parquet(
+            'edges.parquet', node_id_mappings={'src': {0: 'A'}, 'dst': {1: 'B'}}, feature_columns=['f1'])
+    """
     
     all_columns=feature_columns+target_columns
 
@@ -238,7 +301,42 @@ def load_relationship_parquet(path, node_id_mappings,
     return edge_index, edge_attr, target, index_name_mapping, feature_names, target_names
 
 class DataGenerator:
+    """
+    A class used to generate and manage heterogeneous and homogeneous graph data for machine learning models.
+    This class handles the loading of nodes and edges, conversion between heterogeneous and homogeneous graph formats,
+    and saving/loading of graph data.
+
+    Attributes
+    ----------
+    hetero_data : HeteroData
+        Stores the heterogeneous graph data, where each node and edge type can have its own features and labels.
+    node_id_mappings : dict
+        Maps node names to their index IDs, helping to manage relationships between nodes when edges are added.
+    _homo_data : torch_geometric.data.Data, optional
+        Stores the homogeneous graph data, if converted from the heterogeneous data.
+
+    Methods
+    -------
+    homo_data()
+        Getter property that converts the heterogeneous graph to homogeneous format if requested.
+    add_node_type(node_path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}, keep_nan=False)
+        Adds a node type (with optional features and targets) to the heterogeneous graph.
+    add_edge_type(edge_path, feature_columns=[], target_columns=[], custom_encoders={}, filter={}, undirected=True)
+        Adds an edge type between two nodes in the heterogeneous graph, with optional edge features and labels.
+    to_homogeneous()
+        Converts the heterogeneous graph to a homogeneous format, where all node and edge types are merged.
+    save_graph(filepath, use_buffer=False, homogeneous=False)
+        Saves the graph data (either homogeneous or heterogeneous) to a specified file in .pt format.
+    load_graph(filepath, use_buffer=False, homogeneous=False)
+        Loads graph data (either homogeneous or heterogeneous) from a .pt file.
+    """
     def __init__(self):
+        """
+        Initializes the DataGenerator class.
+
+        Sets up an empty heterogeneous graph (`hetero_data`) and initializes mappings for node IDs.
+        Also initializes `_homo_data` to store the homogeneous graph, if needed.
+        """
         self.hetero_data = HeteroData()
 
         # This is need to map if nodes are filtered out.
@@ -249,15 +347,40 @@ class DataGenerator:
 
     @property
     def homo_data(self):
+        
         return self._homo_data
     @homo_data.getter
     def homo_data(self):
+        """
+        Getter for the homogeneous graph data.
+
+        Returns the homogeneous graph by converting the heterogeneous graph. Raises an exception if 
+        the node features between types do not match.
+
+        Returns
+        -------
+        torch_geometric.data.Data
+            The homogeneous graph data.
+
+        Raises
+        ------
+        ValueError
+            If node features are inconsistent across types.
+        """
         try:
             return self.hetero_data.to_homogeneous()
         except Exception as e:
             raise ValueError(f"Make sure to only upload a the nodes have the same amount of features: {e}")
     @homo_data.setter
     def homo_data(self, value):
+        """
+        Setter for the homogeneous graph data.
+
+        Parameters
+        ----------
+        value : torch_geometric.data.Data
+            The homogeneous graph data to be assigned.
+        """
         self._homo_data = value
 
     def add_node_type(self, node_path, 
@@ -266,6 +389,34 @@ class DataGenerator:
                     custom_encoders={}, 
                     filter={},
                     keep_nan=False):
+        """
+        Adds a new node type to the heterogeneous graph, loading features and targets from a Parquet file.
+
+        Parameters
+        ----------
+        node_path : str
+            Path to the Parquet file containing node data.
+        feature_columns : list, optional
+            List of column names to be used as features for the nodes.
+        target_columns : list, optional
+            List of column names to be used as target labels for the nodes.
+        custom_encoders : dict, optional
+            Custom encoders for specific feature columns.
+        filter : dict, optional
+            A dictionary of filters to apply when loading the node data.
+        keep_nan : bool, optional
+            Whether to keep NaN values in the data (default is False).
+
+        Returns
+        -------
+        dict
+            A mapping of node IDs to their original index names.
+
+        Raises
+        ------
+        Exception
+            If the node cannot be added due to an error in loading the data.
+        """
         logger.info(f"Adding node type: {node_path}")
 
 
@@ -321,6 +472,29 @@ class DataGenerator:
                 custom_encoders={}, 
                 filter={},
                 undirected=True):
+        """
+        Adds a new edge type between two nodes in the heterogeneous graph, with optional edge features and targets.
+
+        Parameters
+        ----------
+        edge_path : str
+            Path to the Parquet file containing edge data.
+        feature_columns : list, optional
+            List of column names to be used as features for the edges.
+        target_columns : list, optional
+            List of column names to be used as target labels for the edges.
+        custom_encoders : dict, optional
+            Custom encoders for specific feature columns.
+        filter : dict, optional
+            A dictionary of filters to apply when loading the edge data.
+        undirected : bool, optional
+            Whether to treat the edge as undirected and add a reverse edge (default is True).
+
+        Raises
+        ------
+        Exception
+            If the source or destination node types do not exist in the node ID mappings.
+        """
 
         edge_name=os.path.basename(edge_path).split('.')[0]
 
@@ -395,10 +569,35 @@ class DataGenerator:
         logger.info(f"undirected: {undirected}")
 
     def to_homogeneous(self):
+        """
+        Converts the heterogeneous graph into a homogeneous graph, merging all node and edge types.
+
+        Returns
+        -------
+        torch_geometric.data.Data
+            The homogeneous graph data.
+        """
         logger.info(f"Converting to homogeneous graph")
         self.homo_data=self.hetero_data.to_homogeneous()
 
     def save_graph(self, filepath, use_buffer=False, homogeneous=False):
+        """
+        Saves the graph data (either homogeneous or heterogeneous) to a specified file in .pt format.
+
+        Parameters
+        ----------
+        filepath : str
+            The path to save the graph data, which must have a `.pt` extension.
+        use_buffer : bool, optional
+            Whether to save the graph data to a buffer instead of directly to a file (default is False).
+        homogeneous : bool, optional
+            Whether to save the homogeneous graph data (default is False, saving the heterogeneous graph).
+
+        Raises
+        ------
+        ValueError
+            If the file type is not `.pt`.
+        """
         file_type=filepath.split('.')[-1]
 
         if homogeneous==True:
@@ -418,6 +617,28 @@ class DataGenerator:
             torch.save(data, filepath)
 
     def load_graph(self, filepath, use_buffer=False, homogeneous=False):
+        """
+        Loads graph data (either homogeneous or heterogeneous) from a .pt file.
+
+        Parameters
+        ----------
+        filepath : str
+            The path to load the graph data from, which must have a `.pt` extension.
+        use_buffer : bool, optional
+            Whether to load the graph data from a buffer instead of directly from a file (default is False).
+        homogeneous : bool, optional
+            Whether to load the homogeneous graph data (default is False, loading the heterogeneous graph).
+
+        Returns
+        -------
+        torch_geometric.data.Data
+            The loaded graph data.
+
+        Raises
+        ------
+        ValueError
+            If the file type is not `.pt`.
+        """
         file_type=filepath.split('.')[-1]
         if file_type!='pt':
             raise ValueError("Only .pt files are supported")

@@ -4,6 +4,38 @@ import pyarrow as pa
 from matgraphdb.data.utils import MATERIAL_PARQUET_SCHEMA
 
 class NodeTypes(Enum):
+    """
+    An enumeration of different node types used in a heterogeneous graph for material science data.
+
+    Each node type represents a specific category of data in the material science domain. These types are 
+    used when creating or managing nodes in the graph and help distinguish different kinds of entities.
+
+    Attributes
+    ----------
+    ELEMENT : str
+        Represents chemical elements in the graph.
+    CHEMENV : str
+        Represents chemical environments, which describe the local coordination environment of an atom.
+    CRYSTAL_SYSTEM : str
+        Represents different crystal systems, which describe the symmetry of a crystal's lattice.
+    MAGNETIC_STATE : str
+        Represents the magnetic state of a material or element (e.g., ferromagnetic, paramagnetic).
+    SPACE_GROUP : str
+        Represents space groups, which describe the symmetry of the crystal structure.
+    OXIDATION_STATE : str
+        Represents the oxidation state of an element.
+    MATERIAL : str
+        Represents materials as a whole in the graph.
+    SPG_WYCKOFF : str
+        Represents Wyckoff positions, which describe specific atomic positions within space groups.
+    CHEMENV_ELEMENT : str
+        Represents the relationship between chemical environments and specific elements.
+    LATTICE : str
+        Represents the lattice structure of a material.
+    SITE : str
+        Represents atomic sites within a material's structure.
+    """
+
     ELEMENT='ELEMENT'
     CHEMENV='CHEMENV'
     CRYSTAL_SYSTEM='CRYSTAL_SYSTEM'
@@ -18,7 +50,48 @@ class NodeTypes(Enum):
 
 
 class RelationshipTypes(Enum):
+    """
+    An enumeration of different relationship types used in a heterogeneous graph for material science data.
 
+    Each relationship type defines a connection between two different node types in the graph, representing 
+    how different entities interact or relate to each other. These relationships are crucial for understanding 
+    the structure, properties, and behavior of materials.
+
+    Attributes
+    ----------
+    MATERIAL_SPG : str
+        Represents the relationship between a material and its space group.
+    MATERIAL_CRYSTAL_SYSTEM : str
+        Represents the relationship between a material and its crystal system.
+    MATERIAL_LATTICE : str
+        Represents the relationship between a material and its lattice structure.
+    MATERIAL_SITE : str
+        Represents the relationship between a material and its atomic sites.
+    MATERIAL_CHEMENV : str
+        Represents the relationship between a material and its chemical environment.
+    MATERIAL_CHEMENV_ELEMENT : str
+        Represents the relationship between a material's chemical environment and its elements.
+    MATERIAL_ELEMENT : str
+        Represents the relationship between a material and its constituent elements.
+    ELEMENT_OXIDATION_STATE : str
+        Represents the relationship between an element and its possible oxidation states.
+    ELEMENT_CHEMENV : str
+        Represents the relationship between an element and its chemical environment.
+    ELEMENT_GEOMETRIC_CONNECTS_ELEMENT : str
+        Represents the geometric connection between two elements.
+    ELEMENT_ELECTRIC_CONNECTS_ELEMENT : str
+        Represents the electric connection between two elements.
+    ELEMENT_GEOMETRIC_ELECTRIC_CONNECTS_ELEMENT : str
+        Represents both geometric and electric connections between two elements.
+    ELEMENT_GROUP_PERIOD_CONNECTS_ELEMENT : str
+        Represents connections between elements based on group and period similarities in the periodic table.
+    CHEMENV_GEOMETRIC_CONNECTS_CHEMENV : str
+        Represents the geometric connection between two chemical environments.
+    CHEMENV_ELECTRIC_CONNECTS_CHEMENV : str
+        Represents the electric connection between two chemical environments.
+    CHEMENV_GEOMETRIC_ELECTRIC_CONNECTS_CHEMENV : str
+        Represents both geometric and electric connections between two chemical environments.
+    """
     MATERIAL_SPG=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.SPACE_GROUP.value}'
     MATERIAL_CRYSTAL_SYSTEM=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.CRYSTAL_SYSTEM.value}'
     MATERIAL_LATTICE=f'{NodeTypes.MATERIAL.value}-HAS-{NodeTypes.LATTICE.value}'
@@ -237,6 +310,33 @@ spg_wyckoff_property_schema_list = [
 
 
 def get_relationship_schema(relationship_type:RelationshipTypes):
+    """
+    Generates a schema for a given relationship type in a material science graph, defining the fields that
+    describe the relationship between two nodes. The schema is used to specify the properties of the relationship
+    such as the start node, end node, type of relationship, and the weight of the connection.
+
+    Parameters
+    ----------
+    relationship_type : RelationshipTypes
+        An instance of the `RelationshipTypes` Enum that defines the specific relationship between two nodes 
+        in the graph.
+
+    Returns
+    -------
+    pyarrow.Schema
+        A PyArrow schema object that defines the fields for the relationship properties, including:
+        - `START_ID`: The ID of the source node in the relationship.
+        - `END_ID`: The ID of the target node in the relationship.
+        - `TYPE`: The type of the relationship (encoded as a classification).
+        - `weight`: The weight of the relationship (encoded as an integer).
+
+    Example
+    -------
+    To generate a schema for a specific relationship type:
+    
+    >>> schema = get_relationship_schema(RelationshipTypes.MATERIAL_SPG)
+    >>> print(schema)
+    """
     if not isinstance(relationship_type,RelationshipTypes):
         raise ValueError("relationship_type must be an instance of RelationshipTypes.{}")
     node_a_name,connection_type,node_b_name=relationship_type.value.split('-')
@@ -263,6 +363,45 @@ SPG_WYCKOFF_PARQUET_SCHEMA = pa.schema(spg_wyckoff_property_schema_list)
 
 
 def get_node_schema(node_type:NodeTypes):
+    """
+    Retrieves the schema for a given node type in a material science graph, where each node type corresponds to 
+    a specific category of data in the material science domain. The schema defines the structure and properties 
+    of the node data for that specific node type.
+
+    Parameters
+    ----------
+    node_type : NodeTypes
+        An instance of the `NodeTypes` Enum that specifies the type of node for which the schema is requested.
+        This parameter determines which pre-defined schema will be returned for the corresponding node type.
+
+    Returns
+    -------
+    pyarrow.Schema
+        A PyArrow schema object that defines the fields for the node data, corresponding to the given `node_type`.
+        The returned schema can be one of the following based on the node type:
+        - `MATERIAL_PARQUET_SCHEMA`: For material-related nodes.
+        - `ELEMENT_PARQUET_SCHEMA`: For chemical elements or pre-imputed elements.
+        - `CHEMENV_PARQUET_SCHEMA`: For chemical environment nodes.
+        - `CRYSTAL_SYSTEM_PARQUET_SCHEMA`: For crystal system nodes.
+        - `MAGNETIC_STATE_PARQUET_SCHEMA`: For magnetic state nodes.
+        - `SPG_PARQUET_SCHEMA`: For space group nodes.
+        - `OXIDATION_STATE_PARQUET_SCHEMA`: For oxidation state nodes.
+        - `SPG_WYCKOFF_PARQUET_SCHEMA`: For Wyckoff position nodes.
+        - `LATTICE_PARQUET_SCHEMA`: For lattice structure nodes.
+        - `SITE_PARQUET_SCHEMA`: For atomic site nodes.
+
+    Example
+    -------
+    To get the schema for a specific node type:
+
+    >>> schema = get_node_schema(NodeTypes.MATERIAL)
+    >>> print(schema)
+
+    If an unsupported node type is passed:
+
+    >>> get_node_schema("invalid_node")
+    ValueError: node_type must be an instance of NodeTypes.
+    """
     if not isinstance(node_type,NodeTypes):
         raise ValueError("node_type must be an instance of NodeTypes.{}")
     node_name=node_type.value.lower()

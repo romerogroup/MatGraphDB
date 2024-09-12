@@ -14,9 +14,50 @@ from matgraphdb.graph_kit.nodes import NodeManager
 
 logger = logging.getLogger(__name__)
 
-
 class Relationships:
+    """
+    A class for managing and creating relationships between nodes in a graph database. This class handles 
+    relationship creation, loading, validation, and exporting relationships into different formats, such as 
+    Parquet and Neo4j CSV. It utilizes a NodeManager instance to handle node-related operations and can be 
+    extended to implement custom relationship creation logic.
+
+    Attributes
+    ----------
+    relationship_type : str
+        A string representing the relationship type in the format 'start_node-relationship-end_node'.
+    relationship_dir : str
+        The directory where the relationships are stored.
+    node_manager : NodeManager
+        An instance of NodeManager responsible for handling node operations.
+    output_format : str
+        The format used for reading and writing data ('pandas' or 'pyarrow'). Default is 'pandas'.
+    file_type : str
+        The file format used for saving relationships. Currently, 'parquet' is used.
+    filepath : str
+        The full path of the file where the relationships are stored.
+    schema : object
+        The schema definition for the relationships, created by the `create_schema` method.
+    """
     def __init__(self, relationship_type, relationship_dir, node_dir, output_format='pandas'):
+        """
+        Initializes the Relationships class with the given relationship type, directories, and output format.
+
+        Parameters
+        ----------
+        relationship_type : str
+            The type of relationship, formatted as 'start_node-relationship-end_node'.
+        relationship_dir : str
+            Directory where the relationship files will be stored.
+        node_dir : str
+            Directory where node information is stored, managed by the NodeManager.
+        output_format : str, optional
+            Format for reading and writing data. Options are 'pandas' or 'pyarrow' (default is 'pandas').
+
+        Raises
+        ------
+        ValueError
+            If `output_format` is not 'pandas' or 'pyarrow'.
+        """
         if output_format not in ['pandas', 'pyarrow']:
             raise ValueError("output_format must be either 'pandas' or 'pyarrow'")
         
@@ -34,7 +75,28 @@ class Relationships:
 
     def get_dataframe(self, columns=None, include_cols=True, from_scratch=False, remove_duplicates=True, **kwargs):
         """
-        Main method to load or create relationships. The creation logic will be implemented by subclasses.
+        Loads or creates the relationship data based on the specified parameters.
+
+        Parameters
+        ----------
+        columns : list, optional
+            A list of columns to include or exclude from the DataFrame.
+        include_cols : bool, optional
+            Whether to include or exclude the specified columns (default is True).
+        from_scratch : bool, optional
+            If True, forces the creation of the relationship data from scratch (default is False).
+        remove_duplicates : bool, optional
+            Whether to remove duplicate relationships (default is True).
+
+        Returns
+        -------
+        pd.DataFrame or pyarrow.Table
+            The loaded or newly created relationship DataFrame.
+
+        Raises
+        ------
+        ValueError
+            If required fields ('start_node_id' and 'end_node_id') are missing in the relationship DataFrame.
         """
 
         start_node_type,connection_name,end_node_type=self.relationship_type.split('-')
@@ -72,6 +134,14 @@ class Relationships:
         return df
     
     def get_property_names(self):
+        """
+        Retrieves and logs the names of properties (columns) in the relationship file.
+
+        Returns
+        -------
+        list
+            A list of property names in the relationship file.
+        """
         properties = Relationships.get_column_names(self.filepath)
         for property in properties:
             logger.info(f"Property: {property}")
@@ -79,7 +149,12 @@ class Relationships:
 
     def create_relationships(self, **kwargs):
         """
-        Abstract method for creating relationships. To be implemented by subclasses.
+        Abstract method for creating relationships. Must be implemented by subclasses.
+
+        Raises
+        ------
+        NotImplementedError
+            If this method is called from the base class instead of a subclass.
         """
         if self.__class__.__name__ != 'Relationships':
             raise NotImplementedError("Subclasses must implement this method.")
@@ -88,7 +163,12 @@ class Relationships:
 
     def create_schema(self, **kwargs):
         """
-        Abstract method for creating parquet schema. To be implemented by subclasses.
+        Abstract method for creating the schema for relationships. Must be implemented by subclasses.
+
+        Raises
+        ------
+        NotImplementedError
+            If this method is called from the base class instead of a subclass.
         """
         if self.__class__.__name__ != 'Relationships':
             raise NotImplementedError("Subclasses must implement this method.")
@@ -97,7 +177,26 @@ class Relationships:
 
     def load_dataframe(self, filepath, columns=None, include_cols=True, **kwargs):
         """
-        Load relationships from a parquet file.
+        Loads a DataFrame from a parquet file.
+
+        Parameters
+        ----------
+        filepath : str
+            The path to the parquet file.
+        columns : list, optional
+            List of columns to include or exclude when loading the file.
+        include_cols : bool, optional
+            Whether to include or exclude the specified columns (default is True).
+
+        Returns
+        -------
+        pd.DataFrame or pyarrow.Table
+            The loaded DataFrame or table, depending on the output format.
+
+        Raises
+        ------
+        Exception
+            If an error occurs while loading the file.
         """
         try:
             if self.output_format == 'pandas':
@@ -111,7 +210,19 @@ class Relationships:
 
     def save_dataframe(self, df, filepath):
         """
-        Save the relationships to a parquet file.
+        Saves a DataFrame to a parquet file.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The DataFrame to save.
+        filepath : str
+            The path where the DataFrame will be saved.
+
+        Raises
+        ------
+        Exception
+            If an error occurs while saving the DataFrame to a parquet file.
         """
         try:
             parquet_table = pa.Table.from_pandas(df, self.schema)
@@ -121,6 +232,14 @@ class Relationships:
             logger.error(f"Error converting dataframe to parquet table for saving: {e}")
 
     def to_neo4j(self, save_dir):
+        """
+        Converts the relationship data to Neo4j-compatible CSV format.
+
+        Parameters
+        ----------
+        save_dir : str
+            The directory where the Neo4j CSV file will be saved.
+        """
         logger.info(f"Converting relationship to Neo4j : {self.filepath}")
 
         relationship_type=os.path.basename(self.filepath).split('.')[0]
