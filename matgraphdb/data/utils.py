@@ -1,4 +1,8 @@
+import json
+import pandas as pd
 import pyarrow as pa
+import pyarrow.parquet as pq
+
 
 t_string=pa.string()
 t_int=pa.int64()
@@ -166,3 +170,46 @@ material_property_schema_list=[
 
 
 MATERIAL_PARQUET_SCHEMA = pa.schema(material_property_schema_list)
+
+
+
+# # empty_table = pa.Table.from_pandas(pd.DataFrame(columns=[field.name for field in MATERIAL_PARQUET_SCHEMA]), schema=MATERIAL_PARQUET_SCHEMA)
+
+# output_parquet_file = 'sandbox/schema.parquet'
+# # pq.write_table(empty_table, output_parquet_file)
+
+# table = pq.read_table(output_parquet_file)
+
+# # Extract the current schema
+# current_schema = table.schema
+# print("Current Schema:", current_schema)
+
+
+# # Define additional fields (example)
+# new_fields = [
+#     pa.field('new_field_1', pa.int64(), metadata={'encoder':'ClassificationEncoder()'}), 
+#     pa.field('new_field_2', pa.string(), metadata={'encoder':'ClassificationEncoder()'})
+# ]
+
+# # Create the updated schema by combining the old schema with new fields
+# new_schema = pa.schema(list(current_schema) + new_fields)
+# print("Updated Schema:", new_schema)
+
+# # Convert table to pandas DataFrame to add new columns (if needed)
+# df = table.to_pandas()
+# df['new_field_1'] = None
+# df['new_field_2'] = None
+
+# # Create a new pyarrow Table with the updated schema and data
+# new_table = pa.Table.from_pandas(df, schema=new_schema)
+
+# # Save the updated table to a new parquet file
+# updated_parquet_file = 'sandbox/updated_file.parquet'
+# pq.write_table(new_table, updated_parquet_file)
+
+
+# table = pq.read_table(updated_parquet_file)
+
+# # Extract the current schema
+# current_schema = table.schema
+# print("Current Schema:", current_schema)
