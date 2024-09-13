@@ -1,25 +1,26 @@
 from multiprocessing import Pool
 import os
-
+import logging
 from typing import Callable, List
+
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from functools import partial
-
 
 from matgraphdb.data.material_manager import MaterialDatabaseManager
 from matgraphdb.data.calc_manager import CalculationManager
 from matgraphdb.graph_kit.graph_manager import GraphManager
 from matgraphdb.utils import N_CORES
 
+logger = logging.getLogger(__name__)
 
 t_string=pa.string()
 t_int=pa.int64()
 t_float=pa.float64()
 t_bool=pa.bool_()
 
-def calculation_error_handler(calc_func: Callable, verbose=False):
+def calculation_error_handler(calc_func: Callable):
     """
     A decorator that wraps the user-defined calculation function in a try-except block.
     This allows graceful handling of any errors that may occur during the calculation process.
@@ -36,15 +37,14 @@ def calculation_error_handler(calc_func: Callable, verbose=False):
             return calc_func(data)
         except Exception as e:
             # Log the error (you could customize this as needed)
-            if verbose:
-                print(f"Error in calculation function: {e}\nData: {data}")
+            logger.error(f"Error in calculation function: {e}\nData: {data}")
             # Optionally, you could return a default or partial result, or propagate the error
             return {}
     
     return wrapper
 
 
-def disk_calculation(disk_calc_func: Callable, base_directory: str, verbose=False):
+def disk_calculation(disk_calc_func: Callable, base_directory: str):
     """
     A decorator that wraps the disk-based calculation function in a try-except block.
     It also ensures that the specified directory for each row (ID) and calculation name 
@@ -70,8 +70,7 @@ def disk_calculation(disk_calc_func: Callable, base_directory: str, verbose=Fals
             return disk_calc_func(row_data, directory=calculation_directory)
         except Exception as e:
             # Log the error
-            if verbose:
-                print(f"Error in calculation function: {e}\nData: {row_data}")
+            logger.error(f"Error in disk calculation function: {e}\nData: {row_data}")
             # Optionally, return a default or partial result, or propagate the error
             return {}
 
@@ -108,6 +107,7 @@ class MaterialRepositoryHandler:
             n_cores (int): Number of CPU cores to use for parallel processing.
             **kwargs: Additional keyword arguments for configuring the CalculationManager.
         """
+        logger.info("Initializing MaterialRepositoryHandler.")
         # Set up directories and database path
         self.main_dir = main_dir
         self.calculation_dir=os.path.join(self.main_dir, calculation_dirname)
@@ -115,19 +115,31 @@ class MaterialRepositoryHandler:
         os.makedirs(self.main_dir, exist_ok=True)
         os.makedirs(self.calculation_dir, exist_ok=True)
         os.makedirs(self.graph_dir, exist_ok=True)
+        logger.debug(f"Main directory set to {self.main_dir}")
+        logger.debug(f"Calculation directory set to {self.calculation_dir}")
+        logger.debug(f"Graph directory set to {self.graph_dir}")
 
         self.db_path = os.path.join(main_dir, db_file)
         self.n_cores = n_cores
 
+        logger.debug(f"Database path set to {self.db_path}")
+        logger.debug(f"Number of cores set to {self.n_cores}")
+
 
         self.db_manager = MaterialDatabaseManager(db_path=self.db_path)
+        logger.debug("MaterialDatabaseManager initialized.")
+
         self.calc_manager = CalculationManager(main_dir=self.calculation_dir, 
                                                db_manager=self.db_manager, 
                                                n_cores=self.n_cores,
                                                **kwargs)
+        logger.debug("CalculationManager initialized.")
+
         self.graph_manager = GraphManager(graph_dir=self.graph_dir)
+        logger.debug("GraphManager initialized.")
 
         self.parquet_schema_file = os.path.join(main_dir, 'material_schema.parquet')
+        logger.debug(f"Parquet schema file set to {self.parquet_schema_file}")
 
     def _process_task(self, func, list, **kwargs):
         """
@@ -141,8 +153,10 @@ class MaterialRepositoryHandler:
         Returns:
             list: The results of applying the function to each item in the input list.
         """
+        logger.info(f"Processing tasks in parallel using {self.n_cores} cores.")
         with Pool(self.n_cores) as p:
             results=p.map(partial(func,**kwargs), list)
+        logger.info("Tasks processed successfully.")
         return results
     
     def _load_parquet_schema(self):
@@ -154,9 +168,11 @@ class MaterialRepositoryHandler:
             pyarrow.Schema or list: The schema of the Parquet file, or an empty list if the file doesn't exist.
         """
         if os.path.exists(self.parquet_schema_file):
+            logger.debug(f"Loading Parquet schema from {self.parquet_schema_file}")
             table = pq.read_table(self.parquet_schema_file)
             return table.schema
         else:
+            logger.warning(f"Parquet schema file {self.parquet_schema_file} does not exist.")
             return []
         
     @property
@@ -169,6 +185,7 @@ class MaterialRepositoryHandler:
             pyarrow.Schema: The current schema stored in the Parquet file.
         """
         parquet_schema = self._load_parquet_schema()
+        logger.debug("Retrieved Parquet schema.")
         return parquet_schema
     
     def set_schema(self, schema):
@@ -181,6 +198,7 @@ class MaterialRepositoryHandler:
         Returns:
             pyarrow.Schema: The schema that was saved.
         """
+        logger.info("Setting new Parquet schema.")
         empty_table = pa.Table.from_pandas(
                                 pd.DataFrame(
                                     columns=[field.name for field in schema]), 
@@ -188,7 +206,7 @@ class MaterialRepositoryHandler:
                                     )
         pq.write_table(empty_table, self.parquet_schema_file )
 
-        print(f"Schema updated and saved with fields: {[field.name for field in schema]}")
+        logger.info(f"Schema updated and saved with fields: {[field.name for field in schema]}")
         return schema
         
     def add_field_to_schema(self, new_fields:List[pa.field]):
@@ -201,6 +219,7 @@ class MaterialRepositoryHandler:
         Returns:
             pyarrow.Schema: The updated schema with the new fields added.
         """
+        logger.info(f"Adding new fields to Parquet schema: {[field.name for field in new_fields]}")
         parquet_schema = self._load_parquet_schema()
 
         # Create a dictionary of current fields to easily replace or add new fields
@@ -220,7 +239,7 @@ class MaterialRepositoryHandler:
                                     )
         pq.write_table(empty_table, self.parquet_schema_file )
 
-        print(f"Schema updated and saved with fields: {[field.name for field in new_fields]}")
+        logger.info(f"Schema updated and saved with fields: {[field.name for field in updated_schema]}")
         return updated_schema
     
     def create_parquet_from_data(self, func:Callable, schema, output_filename: str =  'materials_database.parquet' ):
@@ -240,6 +259,7 @@ class MaterialRepositoryHandler:
             None
         """
         output_file=os.path.join(self.main_dir, output_filename)
+        logger.info(f"Creating Parquet file from data: {output_file}")
         error_message = "\n".join([
                 "Make the function return a tuple with column_names and values.",
                 "Also make sure the order of the column_names and values correspond with each other.",
@@ -253,10 +273,11 @@ class MaterialRepositoryHandler:
         for row in rows:
             try:
                 column_names, row_data=func(row.data)
+                logger.debug(f"Processed row ID {row.id}: {row_data}")
             except Exception as e:
-                print(f"Error processing row: {row.data}\n\n")
-                print(error_message)
-                raise e
+                logger.error(f"Error processing row ID {row.id}: {e}")
+                logger.debug(f"Row data: {row.data}")
+                logger.debug(error_message)
 
             processed_data.append(row_data)
 
@@ -266,12 +287,10 @@ class MaterialRepositoryHandler:
 
         # Write the DataFrame to a Parquet file
         df.to_parquet(output_file, engine='pyarrow', schema=schema, index=False)
-
-        print(f"Data exported to {output_file}")
+        logger.info(f"Data exported to {output_file}")
 
         self.set_schema(schema)
-
-        print(f"Schema file updated and saved to {self.parquet_schema_file}")
+        logger.info(f"Schema file updated and saved to {self.parquet_schema_file}")
         
     def run_inmemory_calculation(self, calc_func:Callable, save_results=False, verbose=False, **kwargs):
         """
@@ -307,20 +326,23 @@ class MaterialRepositoryHandler:
             - The `update_many` method is used to update the database by mapping each row's ID 
             to its corresponding calculated result.
         """
-        
+        logger.info("Running in-memory calculation on material data.")
         rows=self.db_manager.read()
         ids=[]
         data=[]
         for row in rows:
             ids.append(row.id)
             data.append(row.data)
+        logger.debug(f"Retrieved {len(rows)} rows from the database.")
 
         calc_func = calculation_error_handler(calc_func,verbose=verbose)
         results=self._process_task(calc_func, data, **kwargs)
+        logger.info("Calculation completed.")
 
         if save_results:
             update_list=[(id,result) for id,result in zip(ids,results)]
             self.db_manager.update_many(update_list)
+            logger.info("Results saved back to the database.")
 
         return results
     

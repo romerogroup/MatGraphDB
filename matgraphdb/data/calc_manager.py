@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 
@@ -9,6 +10,7 @@ from functools import partial
 from matgraphdb.calculations.job_scheduler_generator import SlurmScriptGenerator
 from matgraphdb.utils import N_CORES
 
+logger = logging.getLogger(__name__)
 
 class CalculationManager:
     def __init__(self, main_dir, db_manager, n_cores=N_CORES, job_submission_script_name='run.slurm'):
@@ -33,7 +35,13 @@ class CalculationManager:
         os.makedirs(self.calculation_dir, exist_ok=True)
 
         self.initialized=False
-        print("Make sure to initialize the calculation manager before using it")
+
+        logger.info(f"Initializing CalculationManager with main directory: {main_dir}")
+        logger.debug(f"Calculation directory set to: {self.calculation_dir}")
+        logger.debug(f"Metadata file path set to: {self.metadata_file}")
+        logger.debug(f"Job submission script name: {self.job_submission_script_name}")
+        logger.debug(f"Number of cores for multiprocessing: {self.n_cores}")
+        logger.info("Make sure to initialize the calculation manager before using it")
         
     def _process_task(self, func, list, **kwargs):
         """
@@ -47,8 +55,10 @@ class CalculationManager:
         Returns:
         list: Results from processing the tasks.
         """
+        logger.info(f"Processing {len(list)} tasks with {func.__name__} using {self.n_cores} cores.")
         with Pool(self.n_cores) as p:
             results=p.map(partial(func,**kwargs), list)
+        logger.info("Task processing completed.")
         return results
 
     def _setup_material_directory(self, directory):
@@ -61,6 +71,7 @@ class CalculationManager:
         Returns:
         None
         """
+        logger.debug(f"Setting up material directory at: {directory}")
         os.makedirs(directory, exist_ok=True)
         return None
 
@@ -71,12 +82,15 @@ class CalculationManager:
         Returns:
         list: A list of material directory paths.
         """
+        logger.info("Setting up material directories.")
+        logger.debug("Reading materials from the database.")
         rows=self.db_manager.read()
 
         material_dirs = []
         for i, row in enumerate(rows):
             material_id = row.id
             material_directory = os.path.join(self.calculation_dir, material_id)
+            logger.debug(f"Setting up directory for material ID {material_id} at {material_directory}")
             self._setup_material_directory(material_directory)
             material_dirs.append(material_directory)
         return material_dirs
@@ -85,15 +99,21 @@ class CalculationManager:
         """
         Initializes the CalculationManager by loading metadata and setting up material directories.
         """
+        logger.info("Initializing CalculationManager.")
         self.metadata = self.load_metadata()
+        logger.debug("Metadata loaded.")
         self.material_dirs = self._setup_material_directories()
+        logger.debug("Material directories set up.")
         self.initialized=True
+        logger.info("CalculationManager initialization complete.")
     
     def get_calculation_names(self):
         """
         This method returns a list of all calculation names in the database.
         """
+        logger.info("Retrieving calculation names.")
         calculation_names = os.listdir(self.material_dirs[0])
+        logger.debug(f"Calculation names found: {calculation_names}")
         self.update_metadata({'calculation_names': calculation_names})
         return calculation_names
 
@@ -115,9 +135,11 @@ class CalculationManager:
         """
         if calc_name is None:
             calc_name = calc_func.__name__
-    
+
+        logger.info(f"Creating calculation '{calc_name}' for all materials.")
         # Read data from the database
         rows = self.db_manager.read()
+        logger.debug(f"Retrieved {len(rows)} rows from the database.")
 
         multi_task_list=[]
         i=0
@@ -128,9 +150,11 @@ class CalculationManager:
             multi_task_list.append((row_data,calc_dir))
             i+=1
 
+        logger.info(f"Prepared tasks for {len(multi_task_list)} materials.")
         # Process each row using multiprocessing, passing the directory structure
+        logger.debug("Starting calculation tasks.")
         results = self._process_task(calc_func, multi_task_list, **kwargs)
-
+        logger.info(f"Calculation '{calc_name}' completed for all materials.")
         return results
     
     def generate_job_scheduler_script_for_calc(self, calc_dir: str, slurm_config: Dict = None, slurm_script: str = None):
@@ -148,7 +172,10 @@ class CalculationManager:
         calc_name=os.path.basename(calc_dir)
         material_id=os.path.basename(os.path.dirname(calc_dir))
 
+        logger.info(f"Generating SLURM script for calculation '{calc_name}' in material '{material_id}'.")
+
         if slurm_config:
+            logger.debug(f"SLURM config: {slurm_config}")
             slurm_generator = SlurmScriptGenerator(
                 job_name=slurm_config.get('job_name', f"{calc_name}_calc_{material_id}"),
                 partition=slurm_config.get('partition', 'comm_small_day'),
@@ -168,10 +195,10 @@ class CalculationManager:
             
             # Save the SLURM script in the job directory
             slurm_script_path = os.path.join(calc_dir, self.job_submission_script_name)
-            
-        
+              
         with open(slurm_script_path, 'w') as f:
             f.write(slurm_script)
+        logger.info(f"SLURM script saved at {slurm_script_path}")
 
         return slurm_script_path, slurm_script
     
@@ -188,12 +215,15 @@ class CalculationManager:
         Returns:
             List: The results of script generation for each material.
         """
+        logger.info(f"Generating SLURM scripts for calculation '{calc_name}' for all materials.")
         multi_task_list=[]
         for material_dir in self.material_dirs:
             calc_dir=os.path.join(material_dir,calc_name)
             multi_task_list.append(calc_dir)
+        logger.debug(f"Prepared SLURM script generation tasks for {len(multi_task_list)} materials.")
 
         results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, slurm_config=slurm_config, slurm_script=slurm_script, **kwargs)
+        logger.info("SLURM script generation completed for all materials.")
         return results
  
     def submit_job(self, slurm_script_path: str, capture_output=True, text=True):
@@ -211,12 +241,15 @@ class CalculationManager:
         Raises:
             RuntimeError: If the SLURM job submission fails.
         """
+        logger.info(f"Submitting SLURM job with script: {slurm_script_path}")
         result = subprocess.run(['sbatch', slurm_script_path], capture_output=capture_output, text=text)
         if result.returncode == 0:
             # Extract the SLURM job ID from sbatch output
             slurm_job_id = result.stdout.strip().split()[-1]
+            logger.info(f"SLURM job submitted successfully. Job ID: {slurm_job_id}")
             return slurm_job_id
         else:
+            logger.error(f"Failed to submit SLURM job with script {slurm_script_path}. Error: {result.stderr}")
             raise RuntimeError(f"Failed to submit SLURM job. Error: {result.stderr}")
 
     def submit_jobs(self, calc_name, ids=None, **kwargs):
@@ -231,19 +264,23 @@ class CalculationManager:
         Returns:
             List: The results of job submission for each material.
         """
+        logger.info(f"Submitting SLURM jobs for calculation '{calc_name}'")
         multi_task_list=[]
         if ids is None:
+            logger.debug("No specific IDs provided, submitting jobs for all materials.")
             for material_dir in self.material_dirs:
                 calc_dir=os.path.join(material_dir,calc_name)
                 job_submission_script_path=os.path.join(calc_dir, self.job_submission_script_name)
                 multi_task_list.append(job_submission_script_path)
         else:
+            logger.debug(f"Submitting jobs for material IDs: {ids}")
             for id in ids:
                 calc_dir=os.path.join(self.calculation_dir,id,calc_name)
                 job_submission_script_path=os.path.join(calc_dir, self.job_submission_script_name)
                 multi_task_list.append(job_submission_script_path)
-
+        logger.debug(f"Prepared job submission scripts for {len(multi_task_list)} materials.")
         results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, **kwargs)
+        logger.info("Job submissions completed.")
         return results
     
     def run_func_on_calc(self, calc_func:Callable, calc_name: str, material_id: str, **kwargs):
@@ -260,6 +297,7 @@ class CalculationManager:
         Returns:
             None
         """
+        logger.info(f"Running function '{calc_func.__name__}' on calculation '{calc_name}' for material ID '{material_id}'.")
         calc_dir=os.path.join(self.calculation_dir,material_id,calc_name)
         calc_func(calc_dir,**kwargs)
         return None
@@ -277,22 +315,26 @@ class CalculationManager:
         Returns:
             List: The results of running the function on each calculation directory.
         """
+        logger.info(f"Running function '{calc_func.__name__}' on calculation '{calc_name}' for multiple materials.")
         multi_task_list=[]
         if ids is None:
-            i=0
+            logger.debug("No specific IDs provided, running function on all materials.")
             for material_dir in self.material_dirs:
                 calc_dir=os.path.join(material_dir,calc_name)
                 multi_task_list.append(calc_dir)
-                i+=1
+
         else:
+            logger.debug(f"Running function on material IDs: {ids}")
             for id in ids:
                 calc_dir=os.path.join(self.calculation_dir,id,calc_name)
                 multi_task_list.append(calc_dir)
-
+        logger.debug(f"Prepared function tasks for {len(multi_task_list)} materials.")
         results=self._process_task(calc_func, multi_task_list, **kwargs)
+        logger.info(f"Function '{calc_func.__name__}' completed for all specified materials.")
         return results
     
     def add_calc_data_to_database(self, func:Callable, calc_name: str, ids=None, **kwargs):
+        logger.info(f"Adding calculation data to database for calculation '{calc_name}'.")
         multi_task_list=[]
         if ids is None:
             ids=[]
@@ -301,15 +343,18 @@ class CalculationManager:
                 multi_task_list.append(calc_dir)
                 ids.append(os.path.dirname(material_dir))
         else:
+            logger.debug(f"Processing material IDs: {ids}")
             for id in ids:
                 calc_dir=os.path.join(self.calculation_dir,id,calc_name)
                 multi_task_list.append(calc_dir)
-
+        logger.info("Calculation data processing completed.")
         results=self._process_task(func, multi_task_list, **kwargs)
 
         update_list=[(id,result) for id,result in zip(ids,results)]
+        logger.debug(f"Updating database with results.")
         
         self.db_manager.update_many(update_list)
+        logger.info("Database updated with calculation data.")
 
 
     def load_metadata(self):
@@ -319,11 +364,14 @@ class CalculationManager:
         Returns:
             Dict: The loaded metadata. If the file does not exist, returns an empty dictionary.
         """
+        logger.info("Loading metadata.")
         if os.path.exists(self.metadata_file):
+            logger.debug(f"Metadata file found at {self.metadata_file}")
             with open(self.metadata_file, 'r') as f:
                 metadata = json.load(f)
                 return metadata
         else:
+            logger.warning(f"Metadata file not found at {self.metadata_file}, returning empty metadata.")
             return {}
     
     def update_metadata(self, metadata):
@@ -333,6 +381,8 @@ class CalculationManager:
         Args:
             metadata (Dict): The new metadata to be added or updated.
         """
+        logger.info("Updating metadata.")
+        logger.debug(f"New metadata to update: {metadata}")
         self.metadata.update(metadata)
         self.save_metadata(self.metadata)
 
@@ -343,5 +393,7 @@ class CalculationManager:
         Args:
             metadata (Dict): The metadata to save.
         """
+        logger.info(f"Saving metadata to {self.metadata_file}.")
         with open(self.metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
+        logger.debug("Metadata saved successfully.")
