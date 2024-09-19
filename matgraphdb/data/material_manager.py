@@ -52,7 +52,7 @@ class MaterialDatabaseManager:
 
         logger.info(f"Initializing MaterialDatabaseManager with database at {db_path}")
         self.db = connect(db_path)
-        self.properties=set(self.db.metadata.get('properties',[]))
+        self.data_keys=set(self.db.metadata.get('data_keys',[]))
 
 
     def _process_structure(self, structure, coords, coords_are_cartesian, species, lattice):
@@ -91,51 +91,61 @@ class MaterialDatabaseManager:
             return None
     
     def add_material(self,
-                     composition: Union[str, dict, Atoms] = None,
-                     structure: Atoms = None,
                      coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
                      coords_are_cartesian: bool = False,
                      species: List[str] = None,
                      lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
-                     properties: Dict = None,
-                     db=None):
+                     structure: Atoms = None,
+                     composition: Union[str, dict, Atoms] = None,
+                     data: Dict = None,
+                     db=None,
+                     **kwargs):
         """
         Add a material to the database.
 
         Args:
-            composition (Union[str, dict], optional): The composition of the material.
-            structure (Atoms, optional): The atomic structure in ASE format.
+            
             coords (Union[List[Tuple[float,float,float]], np.ndarray], optional): Atomic coordinates.
             coords_are_cartesian (bool, optional): If the coordinates are cartesian.
             species (List[str], optional): Atomic species.
             lattice (Union[List[Tuple[float,float,float]], np.ndarray], optional): Lattice parameters.
-            properties (dict, optional): Additional properties of the material.
+            structure (Atoms, optional): The atomic structure in ASE format.
+            composition (Union[str, dict], optional): The composition of the material.
+            data (dict, optional): Additional data of the material.
+            **kwargs: Additional keyword arguments to pass to the ASE database.
         """
 
         logger.info("Adding a new material.")
         # Handle composition: convert string or dict to a format for storage
-        composition = self._process_composition(composition)
+        ase_composition = self._process_composition(composition)
 
         check_all_params_provided(coords=coords, species=species, lattice=lattice)
 
         ase_structure = self._process_structure(structure, coords, coords_are_cartesian, species, lattice)
 
-        if ase_structure is None and composition is None:
+        if ase_structure is None and ase_composition is None:
             logger.error("Either a structure or a composition must be provided.")
             raise ValueError("Either a structure or a composition must be provided")
+        
+        if ase_composition is not None:
+            ase_atoms = ase_composition
+            has_structure=False
+        else:
+            ase_atoms = ase_structure
+            has_structure=True
 
         entry_data={}
-        # Add any custom properties from the properties argument
-        if properties:
-            logger.debug(f"Adding custom properties: {properties}")
-            entry_data.update(properties)
+        # Add any custom data from the data argument
+        if data:
+            logger.debug(f"Adding custom data: {data}")
+            entry_data.update(data)
 
         # Write to the ASE database
         if db is None:
             with connect(self.db_path) as db:
-                db.write(structure, data=entry_data)
+                db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
         else:
-            db.write(structure, data=entry_data)
+            db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
 
         logger.info("Material added successfully.")
 
@@ -152,41 +162,45 @@ class MaterialDatabaseManager:
         logger.info(f"Adding {len(materials)} materials to the database.")
         with connect(self.db_path) as db:
             for material in materials:
-                self.add_material(db=db,**material)
+                self.add_material(db=db, **material)
         logger.info("All materials added successfully.")
 
     def read(self, selection=None , **kwargs):
-        """Read a material from the database by ID."""
+        """Read materials from the database by ID."""
         logger.debug(f"Reading materials with selection: {selection}, filters: {kwargs}")
         return self.db.select(selection=selection, **kwargs)
 
-    def read_properties(self, selection=None , **kwargs):
-        """Read properties in the database by ID."""
-        logger.debug(f"Reading properties with selection: {selection}, filters: {kwargs}")
+    def read_data(self, selection=None , **kwargs):
+        """Read data in the database by ID."""
+        logger.debug(f"Reading data with selection: {selection}, filters: {kwargs}")
         rows=self.db.select(selection=selection, **kwargs)
-        properties=[row.data for row in rows]
-        return properties
+        data=[row.data for row in rows]
+        return data
 
     def update_material(self, material_id: int,
                         structure: Atoms = None,
-                        properties: Dict = None,
-                        delete_keys: List[str] = None,
+                        data: Dict = None,
+                        delete_keys: List[str] = [],
                         db=None,
                         **kwargs):
         logger.info(f"Updating material with ID {material_id}.")
+
+        if delete_keys is None:
+            delete_keys=[]
+
         entry_data={}
-        # Add any custom properties from the properties argument
-        if properties:
-            logger.debug(f"Updating properties: {properties}")
-            entry_data.update(properties)
+        # Add any custom data from the data argument
+        if data:
+            logger.debug(f"Updating properties: {data}")
+            entry_data.update(data)
 
         # Write to the ASE database
         if db is None:
             logger.debug("Opening database connection for updating.")
             with connect(self.db_path) as db:
-                db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys)
+                db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys, **kwargs)
         else:
-            db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys)
+            db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys, **kwargs)
         logger.info(f"Material with ID {material_id} updated successfully.")
 
     def update_many(self, update_list: List[Dict]):
@@ -195,37 +209,37 @@ class MaterialDatabaseManager:
         
         Args:
             updates (List[Tuple(id,Dict)]): A list of of tuples where the first element is the material ID 
-            and the second is a dictionary of properties to update.
+            and the second is a dictionary of key value pairs for the update operation.
         """
         logger.info(f"Updating {len(update_list)} materials in the database.")
         with connect(self.db_path) as db:
             for update in update_list:
                 id=update[0]
                 material_dict=update[1]
-                self.update_material(id=id, properties=material_dict,  db=db)
+                self.update_material(id=id, db=db, **material_dict)
         logger.info("All materials updated successfully.")
 
-    def delete_properties(self, delete_keys: List[str]):
+    def delete_data(self, delete_keys: List[str]):
         """
-        Delete properties from a material in the database.
+        Delete data from a material in the database.
         
         Args:
 
-            delete_keys (List[str]): A list of property keys to delete.
+            delete_keys (List[str]): A list of data keys to delete.
         """
-        logger.info(f"Deleting properties {delete_keys} from all materials.")
+        logger.info(f"Deleting data {delete_keys} from all materials.")
         rows=self.read()
         with connect(self.db_path) as db:
             for row in rows:
                 self.update_material(id=row.id, delete_keys=delete_keys, db=db)
-        logger.info("Properties deleted successfully.")
+        logger.info("Data deleted successfully.")
 
-    def delete_material(self, material_id: int):
+    def delete_material(self, material_ids: List[int]):
         """Delete a material from the database by ID."""
-        logger.info(f"Deleting material with ID {material_id}.")
+        logger.info(f"Deleting material with ID {material_ids}.")
         with connect(self.db_path) as db:
-            db.delete(material_id)
-        logger.info(f"Material with ID {material_id} deleted successfully.")
+            db.delete(material_ids)
+        logger.info(f"Material with ID {material_ids} deleted successfully.")
 
     def add_metadata(self, metadata: Dict):
         """Add metadata to the database."""
@@ -258,18 +272,18 @@ class MaterialDatabaseManager:
         rows=self.read()
         for row in rows:
             data_properties=list(row.data.keys())
-            self.properties.update(data_properties)
+            self.data_keys.update(data_properties)
 
         with connect(self.db_path) as db:
             db_metadata=db.metadata
-            db_metadata['properties']=list(self.properties)
+            db_metadata['data_keys']=list(self.data_keys)
             db.metadata=db_metadata
         logger.info("Data properties updated successfully.")
 
-    def get_properties(self):
-        """Get the properties of the database."""
-        logger.debug("Retrieving properties from the database.")
-        return self.properties
+    def get_data(self):
+        """Get the data of the database."""
+        logger.debug("Retrieving data from the database.")
+        return self.data_keys
 
 
 # class MaterialDatabaseManager:
