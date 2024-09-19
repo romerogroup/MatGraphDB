@@ -172,7 +172,7 @@ tmp
 /logs/
 
 /figures/
-
+/examples/matgraphdb/notebooks/data/
 /examples/scripts/testing/
 /examples/scripts/plots/
 /examples/scripts/properties/
