@@ -187,7 +187,7 @@ node_properties={
         ]
     }
 
-
+generator=DataGenerator()
 relationship_properties={
     'ELEMENT-CAN_OCCUR-CHEMENV':[
         'weight',
