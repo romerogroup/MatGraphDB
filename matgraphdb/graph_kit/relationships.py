@@ -1243,6 +1243,7 @@ class RelationshipManager:
             raise ValueError("output_format must be either 'pandas' or 'pyarrow'")
         
         self.relationship_dir = relationship_dir
+        os.makedirs(self.relationship_dir, exist_ok=True)
 
         self.file_type = 'parquet'
         self.get_existing_relationships()

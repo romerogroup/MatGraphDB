@@ -752,6 +752,7 @@ class NodeManager:
             raise ValueError("output_format must be either 'pandas' or 'pyarrow'")
         
         self.node_dir = node_dir
+        os.makedirs(self.node_dir, exist_ok=True)
         self.file_type = 'parquet'
         self.get_existing_nodes()
 
