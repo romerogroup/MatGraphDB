@@ -175,7 +175,10 @@ tmp
 
 /examples/scripts/testing/
 /examples/scripts/plots/
+/examples/scripts/properties/
 /examples/scripts/databases/
+/examples/scripts/imputed_periodic_table_values.csv
+/examples/scripts/subgraph_visualization.svg
 /examples/scripts/main-06242024.json
 /examples/scripts/main.json
 /examples/scripts/nelements-2-2.json
