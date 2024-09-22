@@ -116,37 +116,40 @@ class MaterialDatabaseManager:
         """
 
         logger.info("Adding a new material.")
-        # Handle composition: convert string or dict to a format for storage
-        ase_composition = self._process_composition(composition)
+        try:
+            # Handle composition: convert string or dict to a format for storage
+            ase_composition = self._process_composition(composition)
 
-        check_all_params_provided(coords=coords, species=species, lattice=lattice)
+            check_all_params_provided(coords=coords, species=species, lattice=lattice)
 
-        ase_structure = self._process_structure(structure, coords, coords_are_cartesian, species, lattice)
+            ase_structure = self._process_structure(structure, coords, coords_are_cartesian, species, lattice)
 
-        if ase_structure is None and ase_composition is None:
-            logger.error("Either a structure or a composition must be provided.")
-            raise ValueError("Either a structure or a composition must be provided")
-        
-        if ase_composition is not None:
-            ase_atoms = ase_composition
-            has_structure=False
-        else:
-            ase_atoms = ase_structure
-            has_structure=True
+            if ase_structure is None and ase_composition is None:
+                logger.error("Either a structure or a composition must be provided.")
+                raise ValueError("Either a structure or a composition must be provided")
+            
+            if ase_composition is not None:
+                ase_atoms = ase_composition
+                has_structure=False
+            else:
+                ase_atoms = ase_structure
+                has_structure=True
 
-        entry_data={}
-        # Add any custom data from the data argument
-        if data:
-            logger.debug(f"Adding custom data: {data}")
-            entry_data.update(data)
+            entry_data={}
+            # Add any custom data from the data argument
+            if data:
+                logger.debug(f"Adding custom data: {data}")
+                entry_data.update(data)
 
-        # Write to the ASE database
-        if db is None:
-            with connect(self.db_path) as db:
+            # Write to the ASE database
+            if db is None:
+                with connect(self.db_path) as db:
+                    db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
+            else:
                 db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
-        else:
-            db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
-
+        except Exception as e:
+            logger.error(f"Error adding material: {e}")
+            
         logger.info("Material added successfully.")
 
         return None
@@ -165,7 +168,7 @@ class MaterialDatabaseManager:
                 self.add_material(db=db, **material)
         logger.info("All materials added successfully.")
 
-    def read(self, selection=None , **kwargs):
+    def read(self, selection=None, **kwargs):
         """Read materials from the database by ID."""
         logger.debug(f"Reading materials with selection: {selection}, filters: {kwargs}")
         return self.db.select(selection=selection, **kwargs)
