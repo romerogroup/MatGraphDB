@@ -60,6 +60,10 @@ class MultiLayerPerceptron(nn.Module):
         out=self.output_layer(out)
         return out
     
+
+
+    
+    
 class Block(nn.Module):
     """Conv Block: communication followed by computation"""
     def __init__(self, in_channels, out_channels,

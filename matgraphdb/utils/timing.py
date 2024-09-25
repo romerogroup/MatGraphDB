@@ -1,5 +1,9 @@
+import logging
+
 import functools
 import time
+
+logger = logging.getLogger(__name__)
 
 class Timer:
     """A class to keep track of events and time in a code"""
@@ -102,7 +106,7 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Function {func.__name__!r} executed in {elapsed_time:.4f} seconds")
+        logger.debug(f"Function {func.__name__!r} executed in {elapsed_time:.4f} seconds")
         return result
 
     return wrapper

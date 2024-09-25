@@ -14,8 +14,8 @@ from matgraphdb.utils.periodic_table import atomic_symbols
 
 logger=get_logger(__name__, console_out=False, log_level='info')
 
-class Database:
-    def __init__(self, root_dir='',  n_cores=N_CORES):
+class JsonDatabase:
+    def __init__(self, db_path='MaterialsDatabase',  n_cores=N_CORES):
         """
         Initializes the Manager object.
 
@@ -26,24 +26,17 @@ class Database:
             n_cores (int): The number of CPU cores to be used for parallel processing.
 
         """
-        self.root_dir=root_dir
-        self.db_dir = os.path.join(root_dir,'json_database')
-        self.calc_dir = os.path.join(root_dir,'calculations')
-        self.material_calc_dir=os.path.join(self.calc_dir,'MaterialsData')
+        self.db_path=db_path
+        self.db_dir = os.path.join(self.db_path,'db')
 
-        os.makedirs(self.root_dir,exist_ok=True)
         os.makedirs(self.db_dir,exist_ok=True)
-        os.makedirs(self.calc_dir,exist_ok=True)
-        os.makedirs(self.material_calc_dir,exist_ok=True)
+  
 
         self.n_cores = n_cores
         self.metadata={}
         self._load_state()
 
-        logger.info(f"root_dir: {self.root_dir}")
         logger.info(f"db_dir: {self.db_dir}")
-        logger.info(f"calc_dir: {self.calc_dir}")
-        logger.info(f"material_calc_dir: {self.material_calc_dir}")
         logger.info(f"n_cores: {self.n_cores}")
 
     @property
