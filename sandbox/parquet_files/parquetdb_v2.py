@@ -1,25 +1,16 @@
-from collections import defaultdict
-import copy
-
-
-from glob import glob
-import os
-import json
-import shutil
-import time
-from typing import Callable, List, Tuple, Union
-import uuid
 import logging
+import os
+import shutil
+from functools import partial
+from glob import glob
+from multiprocessing import Pool
+from typing import List, Union
 
-import numpy as np
 import pandas as pd
-
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
-from multiprocessing import Pool
-from functools import partial
+import pyarrow.parquet as pq
 
 from matgraphdb.utils import timeit
 
@@ -234,9 +225,10 @@ class ParquetDatabase:
                             )
         except Exception as e:
             logger.error(f"Error writing final table to {dataset_dir}: {e}")
-            logger.info(f"Restoring original files")
             # If something goes wrong, restore the original files
             self._restore_tmp_files(table_name)
+
+            raise e
     
     @timeit
     def read(self, ids=None, table_name:str='main', 
@@ -416,7 +408,8 @@ class ParquetDatabase:
                 logger.error(f"Error processing {original_file}: {e}")
                 # If something goes wrong, restore the original file
                 self._restore_tmp_files(table_name)
-                break
+
+                raise e
 
             logger.info(f"Updated {filename} with {original_table.shape}")
              
