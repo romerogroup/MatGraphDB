@@ -1,25 +1,27 @@
 import json
 import os
 import logging
-from typing import Union, List, Tuple, Dict
+from typing import Callable, Union, List, Tuple, Dict
+from functools import partial
+from glob import glob
+from multiprocessing import Pool
 
-
-from ase.db import connect
-from ase import Atoms
 import numpy as np
-from ase.calculators.emt import EMT
-
+import pandas as pd
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.core import Structure
+from pymatgen.core import Structure, Composition
+from parquetdb import ParquetDB
+import spglib
+
 
 from matgraphdb.calculations.mat_calcs.chemenv_calc import calculate_chemenv_connections
+from matgraphdb.utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
-
-def ase_to_pymatgen(ase_atoms: Atoms):
-    """Convert an ASE Atoms object to a pymatgen Structure object."""
-    logger.debug("Converting ASE Atoms object to pymatgen Structure.")
-    return Structure.from_sites(ase_atoms.get_chemical_symbols(), ase_atoms.get_scaled_positions(), ase_atoms.get_cell())
 
 def check_all_params_provided(**kwargs):
     param_names = list(kwargs.keys())
@@ -40,66 +42,84 @@ def check_all_params_provided(**kwargs):
             f"Missing: {', '.join(missing)}. Provided: {', '.join(provided)}."
         )
 
+def convert_coordinates(coords, lattice, coords_are_cartesian=True):
+    """
+    Convert between Cartesian and fractional coordinates based on lattice vectors.
+    
+    Args:
+        coords (numpy.ndarray): A 1D or 2D array of coordinates.
+        lattice (numpy.ndarray): A 3x3 matrix representing the lattice vectors.
+        coords_are_cartesian (bool): Whether the input coordinates are in Cartesian (True) or fractional (False).
+    
+    Returns:
+        frac_coords (numpy.ndarray): Fractional coordinates.
+        cart_coords (numpy.ndarray): Cartesian coordinates.
+    """
+    # Ensure the lattice is a numpy array
+    lattice = np.array(lattice)
+    
+    if coords_are_cartesian:
+        # If coordinates are Cartesian, calculate fractional coordinates
+        frac_coords = np.linalg.solve(lattice.T, coords.T).T  # cartesian to fractional
+        cart_coords = coords
+    else:
+        # If coordinates are fractional, calculate Cartesian coordinates
+        frac_coords = coords
+        cart_coords = np.dot(coords, lattice)  # fractional to cartesian
+
+    return frac_coords, cart_coords
+
+def perform_symmetry_analysis(structure: Structure, symprec: float = 0.1):
+    """
+    Perform symmetry analysis on a structure.
+
+    Args:
+        structure (Structure): The structure to be analyzed.
+        symprec (float, optional): The symmetry precision. Defaults to 0.1.
+
+    Returns:
+        dict: A dictionary containing the symmetry information.
+    """
+    sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
+    sym_dataset = sym_analyzer.get_symmetry_dataset()
+
+    symmetry_info = {'symmetry':{}}
+    symmetry_info['symmetry']["crystal_system"] = sym_analyzer.get_crystal_system()
+    symmetry_info['symmetry']["number"] = sym_analyzer.get_space_group_number()
+    symmetry_info['symmetry']["point_group"] = sym_analyzer.get_point_group_symbol()
+    symmetry_info['symmetry']["symbol"] = sym_analyzer.get_hall()
+    symmetry_info['symmetry']["symprec"] = symprec
+    symmetry_info['symmetry']["version"] = str(spglib.__version__)
+    symmetry_info['symmetry']["wyckoffs"] = sym_dataset['wyckoffs']
+
+    return symmetry_info
+
 
 class MaterialDatabaseManager:
     """This class is intended to be the Data Access Layer for the Material Database.
     It provides methods for adding, reading, updating, and deleting materials from the database.
     """
 
-    def __init__(self, db_path: str):
-        # Connect to the ASE SQLite database
-        self.db_path=db_path
+    def __init__(self, db_dir: str, n_cores=8):
+        self.db_dir=db_dir
+        self.n_cores=n_cores
+        self.main_table_name='main'
 
-        logger.info(f"Initializing MaterialDatabaseManager with database at {db_path}")
-        self.db = connect(db_path)
-        self.data_keys=set(self.db.metadata.get('data_keys',[]))
+        logger.info(f"Initializing MaterialDatabaseManager with database at {db_dir}")
+        self.db = ParquetDB(db_dir)
 
-
-    def _process_structure(self, structure, coords, coords_are_cartesian, species, lattice):
-        logger.debug("Processing structure input.")
-        if structure is not None:
-            if not isinstance(structure, Atoms):
-                logger.error("Structure must be an ASE Atoms object.")
-                raise TypeError("Structure must be an ASE Atoms object")
-            logger.debug("Using provided ASE Atoms structure.")
-            return structure
-        elif coords is not None and species is not None and lattice is not None:
-            logger.debug("Building ASE Atoms structure from provided coordinates, species, and lattice.")
-            if coords_are_cartesian:
-                return Atoms(symbols=species, positions=coords, cell=lattice, pbc=True)
-            else:
-                return Atoms(symbols=species, scaled_positions=coords, cell=lattice, pbc=True)
-        else:
-            logger.debug("No valid structure information provided.")
-            return None
-
-    def _process_composition(self, composition):
-        logger.debug("Processing composition input.")
-        if isinstance(composition, Atoms):
-            logger.debug("Composition provided as ASE Atoms object.")
-            return composition
-        elif isinstance(composition, str):
-            composition_str = composition
-            logger.debug(f"Composition provided as string: {composition_str}")
-            return Atoms(composition_str)
-        elif isinstance(composition, dict):
-            composition_str = ', '.join(f"{k}:{v}" for k, v in composition.items())
-            logger.debug(f"Composition provided as dict: {composition_str}")
-            return Atoms(composition_str)
-        else:
-            logger.debug("No valid composition information provided.")
-            return None
-    
-    def add_material(self,
-                     coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
-                     coords_are_cartesian: bool = False,
-                     species: List[str] = None,
-                     lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
-                     structure: Atoms = None,
-                     composition: Union[str, dict, Atoms] = None,
-                     data: Dict = None,
-                     db=None,
-                     **kwargs):
+    def add(self, structure: Structure = None,
+                coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
+                coords_are_cartesian: bool = False,
+                species: List[str] = None,
+                lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
+                properties: dict = None,
+                include_symmetry: bool = True,
+                calculate_funcs: List[Callable]=None,
+                table_name:str='main',
+                save_db: bool = True,
+                **kwargs
+            ):
         """
         Add a material to the database.
 
@@ -111,295 +131,317 @@ class MaterialDatabaseManager:
             lattice (Union[List[Tuple[float,float,float]], np.ndarray], optional): Lattice parameters.
             structure (Atoms, optional): The atomic structure in ASE format.
             composition (Union[str, dict], optional): The composition of the material.
-            data (dict, optional): Additional data of the material.
-            **kwargs: Additional keyword arguments to pass to the ASE database.
+            properties (dict, optional): Additional properties of the material.
+            include_symmetry (bool, optional): If True, include symmetry information in the entry data.
+            calculate_funcs (List[Callable], optional): A list of functions to calculate additional properties.
+                This must rturn a dictionary with the calculated properties.
+                ```python
+                def calculate_property(structure: Structure):
+                    do_something(structure)
+                    return {'property1': value1, 'property2': value2}
+                magager.add(calculate_funcs=[calculate_property])
+                ```
+            table_name (str, optional): The name of the table to add the data to.
+            save_db (bool, optional): If True, save the entry data to the database.
+            **kwargs:  Additional keyword arguments to pass to the ParquetDB create method.
         """
+        # Generating entry data
+        entry_data={}
 
+        if properties is None:
+            properties={}
+        if calculate_funcs is None:
+            calculate_funcs=[]
+        if include_symmetry:
+            calculate_funcs.append(partial(perform_symmetry_analysis, symprec=kwargs.get('symprec',0.1)))
+            
         logger.info("Adding a new material.")
         try:
-            # Handle composition: convert string or dict to a format for storage
-            ase_composition = self._process_composition(composition)
 
-            check_all_params_provided(coords=coords, species=species, lattice=lattice)
+            structure = self._init_structure(structure, coords, coords_are_cartesian, species, lattice)
 
-            ase_structure = self._process_structure(structure, coords, coords_are_cartesian, species, lattice)
-
-            if ase_structure is None and ase_composition is None:
-                logger.error("Either a structure or a composition must be provided.")
-                raise ValueError("Either a structure or a composition must be provided")
+            if structure is None:
+                logger.error("A structure must be provided.")
+                raise ValueError("Either a structure must be provided")
             
-            if ase_composition is not None:
-                ase_atoms = ase_composition
-                has_structure=False
-            else:
-                ase_atoms = ase_structure
-                has_structure=True
+      
+            composition=structure.composition
+    
+            entry_data['formula']=composition.formula
+            entry_data['elements']=list([element.symbol for element in composition.elements])
+            
+            entry_data['lattice']=structure.lattice.matrix.tolist()
+            entry_data['frac_coords']=structure.frac_coords.tolist()
+            entry_data['cartesian_coords']=structure.cart_coords.tolist()
+            entry_data['atomic_numbers']=structure.atomic_numbers
+            entry_data['species']=list([specie.symbol for specie in structure.species])
 
-            entry_data={}
-            # Add any custom data from the data argument
-            if data:
-                logger.debug(f"Adding custom data: {data}")
-                entry_data.update(data)
+            entry_data["volume"]=structure.volume
+            entry_data["density"]=structure.density
+            entry_data["nsites"]=len(structure.sites)
+            entry_data["density_atomic"]=entry_data["nsites"]/entry_data["volume"]
 
-            # Write to the ASE database
-            if db is None:
-                with connect(self.db_path) as db:
-                    db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
-            else:
-                db.write(ase_atoms, data=entry_data, has_structure=has_structure, **kwargs)
+            # Calculating additional properties
+            if calculate_funcs:
+                for func in calculate_funcs:
+                    try:
+                        func_results=partial(func, **kwargs)(structure)
+                        entry_data.update(func_results)
+                    except Exception as e:
+                        logger.error(f"Error calculating property: {e}")
+
+            # Adding other properties as columns
+            entry_data.update(properties)
+            
+            if save_db:
+                self.db.create(entry_data, table_name=table_name, **kwargs)
+                logger.info("Material added successfully.")
+            return entry_data
         except Exception as e:
             logger.error(f"Error adding material: {e}")
-            
-        logger.info("Material added successfully.")
-
-        return None
+        
+        return entry_data
     
-    def add_many(self, materials: List[Dict]):
+    def add_many(self, materials: List[Dict], table_name:str='main', **kwargs):
         """
         Write many materials to the database in a single transaction.
         
         Args:
-            materials (List[Dict]): A list of dictionaries where each dictionary represents a material
-                                    with keys like 'composition', 'structure', 'coords', etc.
+            materials (List[Dict]): A list of dictionaries where the dictionary keys should 
+            be the arguments to pass to the add method.
+            table_name (str, optional): The name of the table to add the data to.
+            **kwargs: Additional keyword arguments to pass to the ParquetDB create method.
+            
         """
         logger.info(f"Adding {len(materials)} materials to the database.")
-        with connect(self.db_path) as db:
-            for material in materials:
-                self.add_material(db=db, **material)
+        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores)
+        entry_data=[result for result in results if result]
+        try:
+            self.db.create(entry_data, table_name=table_name, **kwargs)
+        except Exception as e:
+            logger.error(f"Error adding material: {e}")
         logger.info("All materials added successfully.")
 
-    def read(self, selection=None, **kwargs):
+    def read(self, ids=None, 
+            columns:List[str]=None, 
+            include_cols:bool=True, 
+            filters: List[pc.Expression]=None,
+            output_format='table',
+            table_name:str='main', 
+            batch_size=None):
         """Read materials from the database by ID."""
-        logger.debug(f"Reading materials with selection: {selection}, filters: {kwargs}")
-        return self.db.select(selection=selection, **kwargs)
+        logger.debug(f"Reading materials.")
+        logger.debug(f"ids: {ids}")
+        logger.debug(f"table_name: {table_name}")
+        logger.debug(f"columns: {columns}")
+        logger.debug(f"include_cols: {include_cols}")
+        logger.debug(f"filters: {filters}")
+        logger.debug(f"output_format: {output_format}")
+        logger.debug(f"batch_size: {batch_size}")
 
-    def read_data(self, selection=None , **kwargs):
-        """Read data in the database by ID."""
-        logger.debug(f"Reading data with selection: {selection}, filters: {kwargs}")
-        rows=self.db.select(selection=selection, **kwargs)
-        data=[row.data for row in rows]
-        return data
-
-    def update_material(self, material_id: int,
-                        structure: Atoms = None,
-                        data: Dict = None,
-                        delete_keys: List[str] = [],
-                        db=None,
-                        **kwargs):
-        logger.info(f"Updating material with ID {material_id}.")
-
-        if delete_keys is None:
-            delete_keys=[]
-
-        entry_data={}
-        # Add any custom data from the data argument
-        if data:
-            logger.debug(f"Updating properties: {data}")
-            entry_data.update(data)
-
-        # Write to the ASE database
-        if db is None:
-            logger.debug("Opening database connection for updating.")
-            with connect(self.db_path) as db:
-                db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys, **kwargs)
-        else:
-            db.update(material_id, atoms=structure, data=entry_data, delete_keys=delete_keys, **kwargs)
-        logger.info(f"Material with ID {material_id} updated successfully.")
-
-    def update_many(self, update_list: List[Dict]):
+        kwargs=dict(ids=ids, table_name=table_name, columns=columns, include_cols=include_cols, 
+                    filters=filters, output_format=output_format, batch_size=batch_size)
+        return self.db.read(**kwargs)
+    
+    def update(self, data: Union[List[dict], dict, pd.DataFrame], 
+               table_name='main', 
+               field_type_dict=None):
         """
-        Update many rows in the database in a single transaction.
-        
+        Updates data in the database.
+
         Args:
-            updates (List[Tuple(id,Dict)]): A list of of tuples where the first element is the material ID 
-            and the second is a dictionary of key value pairs for the update operation.
-        """
-        logger.info(f"Updating {len(update_list)} materials in the database.")
-        with connect(self.db_path) as db:
-            for update in update_list:
-                id=update[0]
-                material_dict=update[1]
-                self.update_material(id=id, db=db, **material_dict)
-        logger.info("All materials updated successfully.")
+            data (dict or list of dicts or pandas.DataFrame): The data to be updated.
+                Each dict should have an 'id' key corresponding to the record to update.
+            table_name (str): The name of the table to update data in.
+            field_type_dict (dict): A dictionary where the keys are the field names and the values are the new field types.
+            **kwargs: Additional keyword arguments.
 
-    def delete_data(self, delete_keys: List[str]):
+        Raises:
+            ValueError: If new fields are found in the update data that do not exist in the schema.
         """
-        Delete data from a material in the database.
-        
-        Args:
+        logger.info(f"Updating data")
+        self.db.update(data, table_name=table_name, field_type_dict=field_type_dict)
+        logger.info("Data updated successfully.")
 
-            delete_keys (List[str]): A list of data keys to delete.
-        """
-        logger.info(f"Deleting data {delete_keys} from all materials.")
-        rows=self.read()
-        with connect(self.db_path) as db:
-            for row in rows:
-                self.update_material(id=row.id, delete_keys=delete_keys, db=db)
+    def delete(self, ids:List[int], table_name:str='main'):
+        logger.info(f"Deleting data {ids}")
+        self.db.delete(ids, table_name=table_name)
         logger.info("Data deleted successfully.")
 
-    def delete_material(self, material_ids: List[int]):
-        """Delete a material from the database by ID."""
-        logger.info(f"Deleting material with ID {material_ids}.")
-        with connect(self.db_path) as db:
-            db.delete(material_ids)
-        logger.info(f"Material with ID {material_ids} deleted successfully.")
+    def get_schema(self, table_name:str ='main'):
+        """Get the schema of a table.
 
-    def add_metadata(self, metadata: Dict):
-        """Add metadata to the database."""
-        logger.info("Adding metadata to the database.")
-        with connect(self.db_path) as db:
-            db_metadata=db.metadata
-            db_metadata.update(metadata)
-            db.metadata=db_metadata
-        logger.debug(f"Metadata added: {metadata}")
+        Args:
+            table_name (str): The name of the table.
 
-    def delete_metadata(self, delete_keys: List[str]):
+        Returns:
+            pyarrow.Schema: The schema of the table.
         """
-        Delete metadata from the database.
+        return self.db.get_schema(table_name=table_name)
+    
+    def update_schema(self, table_name:str='main', field_dict=None, schema=None):
+        """Update the schema of a table.
+
+        Args:
+            table_name (str): The name of the table.
+            field_dict (dict, optional): A dictionary where the keys are the field names and the values are the new field types.
+            schema (pyarrow.Schema, optional): The new schema to be set.
+
+        Returns:
+            None
+        """
+        self.db.update_schema(table_name=table_name, field_dict=field_dict, schema=schema)
+
+    def get_tables(self):
+        """Get a list of all tables in the database."""
+        return self.db.get_tables()
+    
+    def get_metadata(self, table_name:str='main'):
+        """Get the metadata of a table.
         
         Args:
+            table_name (str): The name of the table.
 
-            delete_keys (List[str]): A list of metadata keys to delete.
+        Returns:
+            dict: The metadata of the table.
         """
-        logger.info(f"Deleting metadata keys {delete_keys}.")
-        with connect(self.db_path) as db:
-            db_metadata=db.metadata
-            for key in delete_keys:
-                db_metadata.pop(key)
-                db.metadata=db_metadata
-        logger.info("Metadata deleted successfully.")
 
-    def update_data_properties(self):
-        """Update the data properties of the database."""
-        logger.info("Updating data properties of the database.")
-        rows=self.read()
-        for row in rows:
-            data_properties=list(row.data.keys())
-            self.data_keys.update(data_properties)
-
-        with connect(self.db_path) as db:
-            db_metadata=db.metadata
-            db_metadata['data_keys']=list(self.data_keys)
-            db.metadata=db_metadata
-        logger.info("Data properties updated successfully.")
-
-    def get_data(self):
-        """Get the data of the database."""
-        logger.debug("Retrieving data from the database.")
-        return self.data_keys
-
-
-# class MaterialDatabaseManager:
-
-#     def __init__(self, path: str):
-#         # Connect to the ASE SQLite database
-#         self.path=path
-#         os.makedirs(self.path,exist_ok=True)
-#         self.db_manager=MaterialDatabaseManager(db_path=os.path.join(self.path,'matgraphdb.db'))
-
-
-#     def _calculate_space_group(structure,symprec=0.01):
-#         sym_analyzer=SpacegroupAnalyzer(structure,symprec=symprec)
-
-#         data={'symmetry':{}}
-#         data["symmetry"]["crystal_system"]=sym_analyzer.get_crystal_system()
-#         data["symmetry"]["number"]=sym_analyzer.get_space_group_number()
-#         data["symmetry"]["point_group"]=sym_analyzer.get_point_group_symbol()
-#         data["symmetry"]["symbol"]=sym_analyzer.get_hall()
-#         data["symmetry"]["symprec"]=symprec
-
-#         sym_dataset=sym_analyzer.get_symmetry_dataset()
-#         data["wyckoffs"]=sym_dataset['wyckoffs']
-#         data["symmetry"]["version"]="1.16.2"
-
-#         return data
-
-#     def _calculate_chemenv(structure):
-#         data={'coordination_environments_multi_weight':None, 
-#               'coordination_multi_connections':None, 
-#               'coordination_multi_numbers':None}
-#         try:
-#             coordination_environments, nearest_neighbors, coordination_numbers = calculate_chemenv_connections(structure)
-#             data["coordination_environments_multi_weight"]=coordination_environments
-#             data["coordination_multi_connections"]=nearest_neighbors
-#             data["coordination_multi_numbers"]=coordination_numbers
-#         except:
-#             pass
-
-#         return data
-
-
-if __name__ == "__main__":
-    import time
-    # Create a new database
-    db_path = "data/raw/test.db"
-    manager = MaterialDatabaseManager(db_path)
-
-    # Add a material to the database
-    composition = {"Fe": 1, "O": 2}
-
-    # coords=np.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]])
-    # species=["Fe", "O"]
-    # lattice=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-    # f=manager.add_material(coords=coords, species=species, lattice=lattice, properties={"density": 1.0})
+        return self.db.get_metadata(table_name=table_name)
     
-    # material_dict={
-    #                "coords": np.array([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]), 
-    #                "species": ["Fe", "O"], 
-    #                "lattice": [[1, 0, 0], [0, 1, 0], [0, 0, 1]], 
-    #                "properties": {"density": 1.0}}
+    def set_metadata(self, metadata: dict, table_name:str):
+        """Set the metadata of a table.
+        
+        Args:
+            metadata (dict): The metadata to be set.
+            table_name (str): The name of the table.
 
-    # rows=manager.read()
-    # print(type(rows))
+        Returns:
+            None
+        """
+        self.db.set_metadata(metadata=metadata, table_name=table_name)
 
-    # rows=manager.read_properties()
-    # rows=manager.add_metadata({'test2':1})
+    def drop_table(self, table_name:str='main'):
+        """Drop a table from the database.
 
+        Args:
+            table_name (str): The name of the table to be dropped.
 
-    # for row in rows:
-    #     print(row)
-        # print(row.id)
-    # row = manager.read_material(material_id=1)
-    # print(row.data)
-    # for row in rows:
-    #     print(row.id)
-    # rows=manager.list_materials()
+        Returns:
+            None
+        """
+        self.db.drop_table(table_name=table_name)
 
-    # for row in rows:
-    #     print(row.id)
-    #     print(row.data)
+    def rename_table(self, old_table_name:str, new_table_name:str):
+        """Rename a table in the database.
 
+        Args:
+            old_table_name (str): The current name of the table.
+            new_table_name (str): The new name of the table.
 
+        Returns:
+            None
+        """
+        self.db.rename_table(old_table_name=old_table_name, new_table_name=new_table_name)
 
+    def copy_table(self, old_table_name:str, new_table_name:str, **kwargs):
+        """Copy a table in the database.
 
+        Args:
+            old_table_name (str): The current name of the table.
+            new_table_name (str): The new name of the table.
 
+        Returns:
+            None
+        """
+        self.db.copy_table(old_table_name=old_table_name, new_table_name=new_table_name, **kwargs)
 
+    def optimize_table(self, table_name:str='main', **kwargs):
+        """Optimize a table in the database.
 
+        Args:
+            table_name (str): The name of the table to be optimized.
+            **kwargs: Additional keyword arguments to pass to the ParquetDB optimize_table method.
 
+        Returns:
+            None
+        """
+        self.db.optimize_table(table_name=table_name, **kwargs)
 
+    def export_table(self, table_name:str='main', export_dir:str=None, export_format:str='parquet', **kwargs):
+        """Export a table in the database.
 
+        Args:
+            table_name (str): The name of the table to be exported.
+            export_dir (str, optional): The directory where the exported table will be saved.
+            export_format (str, optional): The format of the exported table. Defaults to 'parquet'.
+            **kwargs: Additional keyword arguments to pass to the ParquetDB export_table method.
 
+        Returns:
+            None
+        """        
+        self.db.export_table(table_name=table_name, file_path=export_dir, format=export_format, **kwargs)
 
+    def export_partitioned_dataset(self, table_name: str, 
+                                   export_dir: str, 
+                                   partitioning,
+                                   partitioning_flavor=None,
+                                   batch_size: int = None, 
+                                   **kwargs):
+        """
+        This method exports a partitioned dataset to a specified file format.
 
+        Args:
+            table_name (str): The name of the table to export.
+            export_dir (str): The directory to export the data to.
+            partitioning (dict): The partitioning to use for the dataset.
+            partitioning_flavor (str): The partitioning flavor to use.
+            batch_size (int): The batch size.
+            **kwargs: Additional keyword arguments to pass to the pq.write_to_dataset function.
 
+        """
+        self.db.export_partitioned_dataset(table_name=table_name, 
+                                           file_path=export_dir, 
+                                           partitioning=partitioning, 
+                                           partitioning_flavor=partitioning_flavor, 
+                                           batch_size=batch_size, 
+                                           **kwargs)
+    
+    def _init_structure(self, structure, coords, coords_are_cartesian, species, lattice):
+        check_all_params_provided(coords=coords, species=species, lattice=lattice)
+        logger.debug("Processing structure input.")
+        if structure is not None:
+            if not isinstance(structure, Structure):
+                logger.error("Structure must be an Structure object.")
+                raise TypeError("Structure must be an Structure object")
+            logger.debug("Using provided Structure structure.")
+            return structure
+        elif coords is not None and species is not None and lattice is not None:
+            logger.debug("Building Structure structure from provided coordinates, species, and lattice.")
+            if coords_are_cartesian:
+                return Structure(lattice=lattice, species=species, coords=coords, coords_are_cartesian=True)
+            else:
+                return Structure(lattice=lattice, species=species, coords=coords, coords_are_cartesian=False)
+        else:
+            logger.debug("No valid structure information provided.")
+            return None
 
-
-    # with open('sandbox/json_file_1000.json','r') as f:
-    #     data=json.load(f)
-    # material_dict['properties']['other']=data
-
-    # materials= [material_dict for _ in range(10000)]
-    # # print(f)\
-    # begin_time = time.time()
-    # manager.write_many(materials=materials)
-    # print('Write time: ', time.time() - begin_time)
-
-    # begin_time = time.time()
-    # rows=manager.list_materials()
-    # print(len(rows))
-    # print('List time: ', time.time() - begin_time)
-
-    # print(rows[0].data)
-    # for row in rows:
-    #     print(type(row.data))
-    # print(manager.list_materials())
+    def _init_composition(self, composition):
+        logger.debug("Processing composition input.")
+        if isinstance(composition, Composition):
+            logger.debug("Composition provided as ASE Atoms object.")
+            return composition
+        elif isinstance(composition, str):
+            composition_str = composition
+            logger.debug(f"Composition provided as string: {composition_str}")
+            return Composition(composition_str)
+        elif isinstance(composition, dict):
+            composition_str = ', '.join(f"{k}:{v}" for k, v in composition.items())
+            logger.debug(f"Composition provided as dict: {composition_str}")
+            return Composition(composition_str)
+        else:
+            logger.debug("No valid composition information provided.")
+            return None
+        
+    def _add_many(self, material):
+        material['save_db']=False
+        return self.add(**material)

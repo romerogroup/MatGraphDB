@@ -1,14 +1,13 @@
 import logging
 import os
 import json
+import inspect
 
 import subprocess
 from typing import Callable, Dict, List, Tuple, Union
-from multiprocessing import Pool
-from functools import partial
 
 from matgraphdb.calculations.job_scheduler_generator import SlurmScriptGenerator
-from matgraphdb.utils import N_CORES
+from matgraphdb.utils import N_CORES, multiprocess_task
 
 logger = logging.getLogger(__name__)
 
@@ -43,24 +42,6 @@ class CalculationManager:
         logger.debug(f"Number of cores for multiprocessing: {self.n_cores}")
         logger.info("Make sure to initialize the calculation manager before using it")
         
-    def _process_task(self, func, list, **kwargs):
-        """
-        Processes a task in parallel using multiprocessing.
-        
-        Parameters:
-        func (callable): The function to apply to the task list.
-        list (list): List of tasks to process.
-        kwargs: Additional arguments for the function.
-        
-        Returns:
-        list: Results from processing the tasks.
-        """
-        logger.info(f"Processing {len(list)} tasks with {func.__name__} using {self.n_cores} cores.")
-        with Pool(self.n_cores) as p:
-            results=p.map(partial(func,**kwargs), list)
-        logger.info("Task processing completed.")
-        return results
-
     def _setup_material_directory(self, directory):
         """
         Creates the directory structure for a specific material if it doesn't exist.
@@ -84,11 +65,12 @@ class CalculationManager:
         """
         logger.info("Setting up material directories.")
         logger.debug("Reading materials from the database.")
-        rows=self.db_manager.read()
+        table=self.db_manager.read(columns=['id'])
+        id_df=table.to_pandas()
 
         material_dirs = []
-        for i, row in enumerate(rows):
-            material_id = row.id
+        for i, row in id_df.iterrows():
+            material_id = row['id']
             material_directory = os.path.join(self.calculation_dir, material_id)
             logger.debug(f"Setting up directory for material ID {material_id} at {material_directory}")
             self._setup_material_directory(material_directory)
@@ -106,7 +88,63 @@ class CalculationManager:
         logger.debug("Material directories set up.")
         self.initialized=True
         logger.info("CalculationManager initialization complete.")
-    
+
+    def run_inmemory_calculation(self, calc_func:Callable, save_results=False, verbose=False, read_args=None, **kwargs):
+        """
+        Runs a calculation on the data retrieved from the MaterialDatabaseManager.
+
+        This method is designed to process data from the material database using a user-defined 
+        calculation function. The `calc_func` is expected to be a callable that accepts a 
+        dictionary-like object (each row's data) and returns a dictionary representing the results 
+        of the calculation. The results can optionally be saved back to the database.
+
+        Args:
+            calc_func (Callable): A function that processes each row of data. This function should 
+                                accept a dictionary-like object representing the row's data and return 
+                                a dictionary containing the calculated results for that row.
+            save_results (bool): A flag indicating whether to save the results back to the database 
+                                after processing. Defaults to True.
+            verbose (bool): A flag indicating whether to print error messages. Defaults to False.
+            **kwargs: Additional keyword arguments that are passed to the calculation function.
+
+        Returns:
+            list: A list of result dictionaries returned by the `calc_func` for each row in the database.
+
+        Example:
+            def my_calc_func(row_data):
+                # Perform some calculations on row_data
+                return {'result': sum(row_data.values())}
+            
+            handler.run_calculation(my_calc_func)
+
+        Notes:
+            - The data is read from the database using `self.db_manager.read()`.
+            - If `save_results` is True, the method will update the database with the results.
+            - The `update_many` method is used to update the database by mapping each row's ID 
+            to its corresponding calculated result.
+        """
+        logger.info("Running in-memory calculation on material data.")
+        rows=self.db_manager.read(**read_args)
+        ids=[]
+        data=[]
+        for row in rows:
+            ids.append(row.id)
+            data.append(row.data)
+        logger.debug(f"Retrieved {len(rows)} rows from the database.")
+
+        calc_func = calculation_error_handler(calc_func,verbose=verbose)
+        results=multiprocess_task(calc_func, data, n_cores=self.n_cores, **kwargs)
+        logger.info("Calculation completed.")
+
+        if save_results:
+            update_list=[(id,result) for id,result in zip(ids,results)]
+            self.db_manager.update_many(update_list)
+            logger.info("Results saved back to the database.")
+
+        return results
+
+
+
     def get_calculation_names(self):
         """
         This method returns a list of all calculation names in the database.
@@ -117,7 +155,7 @@ class CalculationManager:
         self.update_metadata({'calculation_names': calculation_names})
         return calculation_names
 
-    def create_calc(self, calc_func: Callable, calc_name: str = None, **kwargs):
+    def create_calc(self, calc_func: Callable, calc_name: str = None, read_args: dict = None, **kwargs):
         """
         This method creates a new calculation by applying the provided function to each row in the database. 
         The function is expecting an input of type dictionary-like object (each row's data) and a directory path 
@@ -127,33 +165,51 @@ class CalculationManager:
 
         Args:
             calc_func (Callable): The function to apply to each material.
+                This function should have arguments that match the names of the columns in the database.
+                ```python
+                def my_calc_func(material_id: int, formula: str, density: float, lattice: List[List[float]]):
+                    # Perform some calculation
+                    return {'density': sum(density)}
+
+                manager.create_calc(my_calc_func,'my_calc')
+                ```
             calc_name (str, optional): The name of the calculation. Defaults to the name of the function.
+            read_args (dict, optional): Additional arguments to pass to the `MaterialDatabaseManager.read` method.
             **kwargs: Additional arguments to pass to the calculation function.
 
         Returns:
             List: The results of the calculation for each material.
         """
+        if read_args is None:
+            read_args={}
         if calc_name is None:
             calc_name = calc_func.__name__
 
         logger.info(f"Creating calculation '{calc_name}' for all materials.")
         # Read data from the database
-        rows = self.db_manager.read()
-        logger.debug(f"Retrieved {len(rows)} rows from the database.")
+
+        signature = inspect.signature(calc_func)
+        param_names=list(signature.parameters.keys())
+        read_args['columns']=param_names
+        read_args['columns'].append('id')
+
+        table = self.db_manager.read(**read_args)
+        df=table.to_pandas()
+        logger.debug(f"Retrieved {len(table.shape[0])} rows from the database.")
 
         multi_task_list=[]
-        i=0
-        for row in rows:
-            row_data=row.data
-            calc_dir=os.path.join(self.material_dirs[i],calc_name)
+        for row in df.iterrows():
+            id=row['id']
+            row_data = row.drop('id')
+            calc_dir=os.path.join(self.material_dirs[id],calc_name)
 
             multi_task_list.append((row_data,calc_dir))
-            i+=1
+
 
         logger.info(f"Prepared tasks for {len(multi_task_list)} materials.")
         # Process each row using multiprocessing, passing the directory structure
         logger.debug("Starting calculation tasks.")
-        results = self._process_task(calc_func, multi_task_list, **kwargs)
+        results=multiprocess_task(calc_func, multi_task_list, n_cores=self.n_cores, **kwargs)
         logger.info(f"Calculation '{calc_name}' completed for all materials.")
         return results
     
@@ -222,7 +278,7 @@ class CalculationManager:
             multi_task_list.append(calc_dir)
         logger.debug(f"Prepared SLURM script generation tasks for {len(multi_task_list)} materials.")
 
-        results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, slurm_config=slurm_config, slurm_script=slurm_script, **kwargs)
+        results=multiprocess_task(self.generate_job_scheduler_script_for_calc, multi_task_list, n_cores=self.n_cores, slurm_config=slurm_config, slurm_script=slurm_script, **kwargs)
         logger.info("SLURM script generation completed for all materials.")
         return results
  
@@ -279,7 +335,7 @@ class CalculationManager:
                 job_submission_script_path=os.path.join(calc_dir, self.job_submission_script_name)
                 multi_task_list.append(job_submission_script_path)
         logger.debug(f"Prepared job submission scripts for {len(multi_task_list)} materials.")
-        results=self._process_task(self.generate_job_scheduler_script_for_calc, multi_task_list, **kwargs)
+        results=multiprocess_task(self.generate_job_scheduler_script_for_calc, multi_task_list, n_cores=self.n_cores, **kwargs)
         logger.info("Job submissions completed.")
         return results
     
@@ -329,11 +385,11 @@ class CalculationManager:
                 calc_dir=os.path.join(self.calculation_dir,id,calc_name)
                 multi_task_list.append(calc_dir)
         logger.debug(f"Prepared function tasks for {len(multi_task_list)} materials.")
-        results=self._process_task(calc_func, multi_task_list, **kwargs)
+        results=multiprocess_task(calc_func, multi_task_list, n_cores=self.n_cores, **kwargs)
         logger.info(f"Function '{calc_func.__name__}' completed for all specified materials.")
         return results
     
-    def add_calc_data_to_database(self, func:Callable, calc_name: str, ids=None, **kwargs):
+    def add_calc_data_to_database(self, func:Callable, calc_name: str, ids=None, update_args: dict = None, **kwargs):
         logger.info(f"Adding calculation data to database for calculation '{calc_name}'.")
         multi_task_list=[]
         if ids is None:
@@ -348,14 +404,22 @@ class CalculationManager:
                 calc_dir=os.path.join(self.calculation_dir,id,calc_name)
                 multi_task_list.append(calc_dir)
         logger.info("Calculation data processing completed.")
-        results=self._process_task(func, multi_task_list, **kwargs)
+        results=multiprocess_task(func, multi_task_list, n_cores=self.n_cores, **kwargs)
 
         update_list=[(id,result) for id,result in zip(ids,results)]
+        update_data=[]
+        
+        for id, result in zip(ids,results):
+            update_dict={}
+            update_dict.update(result)
+            update_dict['id']=id
+            update_data.append(update_dict)
+
+
         logger.debug(f"Updating database with results.")
         
-        self.db_manager.update_many(update_list)
+        self.db_manager.update(update_list, **update_args)
         logger.info("Database updated with calculation data.")
-
 
     def load_metadata(self):
         """
@@ -397,3 +461,60 @@ class CalculationManager:
         with open(self.metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
         logger.debug("Metadata saved successfully.")
+
+
+
+def calculation_error_handler(calc_func: Callable):
+    """
+    A decorator that wraps the user-defined calculation function in a try-except block.
+    This allows graceful handling of any errors that may occur during the calculation process.
+    
+    Args:
+        calc_func (Callable): The user-defined calculation function to be wrapped.
+    
+    Returns:
+        Callable: A wrapped function that executes the calculation and handles any exceptions.
+    """
+    def wrapper(data):
+        try:
+            # Call the user-defined calculation function
+            return calc_func(data)
+        except Exception as e:
+            # Log the error (you could customize this as needed)
+            logger.error(f"Error in calculation function: {e}\nData: {data}")
+            # Optionally, you could return a default or partial result, or propagate the error
+            return {}
+    
+    return wrapper
+
+def disk_calculation(disk_calc_func: Callable, base_directory: str):
+    """
+    A decorator that wraps the disk-based calculation function in a try-except block.
+    It also ensures that the specified directory for each row (ID) and calculation name 
+    is created before the calculation function is executed.
+
+    Args:
+        disk_calc_func (Callable): The user-defined disk-based calculation function to be wrapped.
+        base_directory (str): The base directory where files related to the calculation will be stored.
+        verbose (bool): If True, prints error messages. Defaults to False.
+
+    Returns:
+        Callable: A wrapped function that handles errors and ensures the calculation directory exists.
+    """
+
+    def wrapper(row_data, row_id, calculation_name):
+        # Define the directory for this specific row (ID) and calculation
+        material_specific_directory = os.path.join('MaterialsData',row_id,calculation_name)
+        calculation_directory = os.path.join(base_directory, material_specific_directory)
+        os.makedirs(calculation_directory, exist_ok=True)
+
+        try:
+            # Call the user-defined calculation function, passing the directory as a parameter
+            return disk_calc_func(row_data, directory=calculation_directory)
+        except Exception as e:
+            # Log the error
+            logger.error(f"Error in disk calculation function: {e}\nData: {row_data}")
+            # Optionally, return a default or partial result, or propagate the error
+            return {}
+
+    return wrapper

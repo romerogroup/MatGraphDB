@@ -15,6 +15,9 @@ from matgraphdb.utils.config import (USER, PASSWORD, LOCATION, GRAPH_DB_NAME, DB
 # ML variables
 from matgraphdb.utils.config import (ML_DIR,ML_SCRATCH_RUNS_DIR)
 
+# Multiprocessing variables
+from matgraphdb.utils.multiprocess_utils import multiprocess_task
+
 # Other important variables
 from matgraphdb.utils.log_config import setup_logging, get_child_logger, get_logger
 from matgraphdb.utils.timing import Timer, timeit
