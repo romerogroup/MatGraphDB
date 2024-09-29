@@ -6,10 +6,10 @@ from functools import partial
 
 from matgraphdb import MatGraphDB
 from matgraphdb.utils import timeit
-
+from parquetdb import ParquetDB
 
 # Configure logging
-logger = logging.getLogger('matgraphdb')
+logger = logging.getLogger('parquetdb')
 logger.setLevel(logging.ERROR)
 
 ch = logging.StreamHandler()
@@ -20,56 +20,61 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+
+
+PARQUET_ROWS_PER_FILE=20000
+JSON_BATCH_SIZE=10000
+N_CORES=40
+# DB_DIR='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/MaterialsDB'
+DB_DIR=os.path.join('data', 'MatGraphDB_Example')
+
+
 def read_json_file(file_path):
     try:
         with open(file_path, 'r') as f:
-            data = json.load(f)
-        return data
+            raw_data = json.load(f)
+
+            # for key, value in data.items():
+            #     if isinstance(value, dict):
+            #         data[key] = value.get('value', None)
+
+            structure_dict = raw_data.get('structure')
+
+            raw_data.pop('structure')
+            raw_data.pop('composition')
+            raw_data.pop('composition_reduced')
+            if structure_dict:
+                raw_data['lattice'] = structure_dict['lattice']['matrix']
+                raw_data['a'] = structure_dict['lattice']['a']
+                raw_data['b'] = structure_dict['lattice']['b']
+                raw_data['c'] = structure_dict['lattice']['c']
+                raw_data['alpha'] = structure_dict['lattice']['alpha']
+                raw_data['beta'] = structure_dict['lattice']['beta']
+                raw_data['gamma'] = structure_dict['lattice']['gamma']
+                species=[]
+                cart_coords=[]
+                frac_coords=[]
+
+                if 'properties' in structure_dict:
+                    structure_dict.pop('properties')
+                for isite,site in enumerate(structure_dict['sites']):
+                    species.append(site['label'])
+                    frac_coords.append(site['abc'])
+                    cart_coords.append(site['xyz'])
+
+                    structure_dict['sites'][isite]['properties'].update({'dummy_variable':True})
+
+                raw_data['species'] = species
+                raw_data['frac_coords'] = frac_coords
+                raw_data['cart_coords'] = cart_coords
+                
+                raw_data['structure'] = structure_dict
+
+        return raw_data
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
-        return {}
-
-def get_structure(structure_dict):
-    lattice_info = structure_dict.get('lattice', None)
-    lattice = lattice_info.get('matrix', None) if lattice_info else None
-
-    sites = structure_dict.get('sites', [])
-    species = []
-    coords = []
-
-    for site in sites:
-        coord = site.get('abc', None)
-        if coord is not None:
-            coords.append(coord)
-        else:
-            coords.append([0, 0, 0])  # Default or handle missing coords
-
-        specie = site.get('species', [{}])[-1].get('element', None)
-        if specie is not None:
-            species.append(specie)
-        else:
-            species.append('X')  # Default or handle missing species
-
-    return coords, species, lattice
-
-def process_material_data(data):
-    if data is None:
         return None
 
-    structure_dict = data.get('structure', {})
-    coords, species, lattice = get_structure(structure_dict)
-
-    # Remove 'structure' key from data to store the rest as additional data
-    
-    material_entry = {
-        'coords': coords,
-        'species': species,
-        'lattice': lattice,
-        'coords_are_cartesian': False,  # Assuming 'abc' are fractional coordinates
-        'data': data
-    }
-
-    return material_entry
 
 @timeit
 def multiprocess_read_json_files(json_files, num_processes):
@@ -77,17 +82,13 @@ def multiprocess_read_json_files(json_files, num_processes):
         json_data_list = pool.map(read_json_file, json_files)
     return json_data_list
 
-@timeit
-def multiprocess_process_json_files(num_processes, json_data_list):
-    with multiprocessing.Pool(num_processes) as pool:
-        materials_to_insert = pool.map(process_material_data, json_data_list)
-    return materials_to_insert
 
 @timeit
-def write_to_database(mgdb, materials_to_insert, batch_size):
+def write_to_database(db, materials_to_insert, batch_size):
+    
     for i in range(0, len(materials_to_insert), batch_size):
         batch = materials_to_insert[i:i+batch_size]
-        mgdb.db_manager.add_many(batch)
+        db.create(batch, max_rows_per_group=PARQUET_ROWS_PER_FILE, max_rows_per_file=PARQUET_ROWS_PER_FILE)
         print(f"Inserted batch {i//batch_size + 1} containing {len(batch)} materials.")
 
 
@@ -96,23 +97,24 @@ def process_batch(mgdb, json_files_batch, num_processes, batch_size):
     # Step 4: Read JSON files with multiprocessing for the current batch
     print(f"Reading {len(json_files_batch)} JSON files in the current batch...")
     json_data_list = multiprocess_read_json_files(json_files_batch, num_processes)
-    
-    # Step 5: Process material data for the current batch
-    print("Processing material data for the current batch...")
-    materials_to_insert = multiprocess_process_json_files(num_processes, json_data_list)
-    
-    # Step 6: Filter out None entries
+
+    # Step 5: Filter out None entries
     print("Filtering None entries...")
-    materials_to_insert = [mat for mat in materials_to_insert if mat is not None]
+    materials_to_insert = [mat for mat in json_data_list if mat is not None]
     print(f"Filtered materials. {len(materials_to_insert)} valid materials to insert in this batch.")
     
-    # Step 8: Insert materials into the database in batches
+    # Step 6: Insert materials into the database in batches
     write_to_database(mgdb, materials_to_insert, batch_size)
 
 def main():
     # Step 1: Initialize MatGraphDB
     print("Initializing MatGraphDB...")
-    mgdb = MatGraphDB(main_dir=os.path.join('data', 'MatGraphDB_Example'))
+    mgdb = MatGraphDB(main_dir=DB_DIR)
+    db = mgdb.db_manager
+    try:
+        db.drop_table('main')
+    except Exception as e:
+        print(f"Error dropping table: {e}")
 
     # Step 2: Directory containing the JSON files
     print("Listing all JSON files...")
@@ -122,24 +124,19 @@ def main():
     print(f"Found {len(json_files)} JSON files.")
 
     # Step 3: Number of processes to use
-    num_processes = 40
+    num_processes = N_CORES
     print(f"Using {num_processes} processes for parallel JSON reading and processing...")
 
     # Step 7: Batch size for insertion
-    batch_size = 10000  # Adjust based on memory and performance considerations
-    print(f"Processing and inserting materials in batches of {batch_size} JSON files...")
+    print(f"Processing and inserting materials in batches of {JSON_BATCH_SIZE} JSON files...")
 
     # Step 8: Split the JSON files into batches and process them
-    for i in range(0, len(json_files), batch_size):
-        json_files_batch = json_files[i:i+batch_size]
-        print(f"Processing batch {i//batch_size + 1} with {len(json_files_batch)} JSON files.")
-        process_batch(mgdb, json_files_batch, num_processes, batch_size)
+    for i in range(0, len(json_files), JSON_BATCH_SIZE):
+        json_files_batch = json_files[i:i+JSON_BATCH_SIZE]
+        print(f"Processing batch {i//JSON_BATCH_SIZE + 1} with {len(json_files_batch)} JSON files.")
+        process_batch(db, json_files_batch, num_processes, JSON_BATCH_SIZE)
     
     print("All batches processed and inserted successfully.")
-
-if __name__ == '__main__':
-    main()
-
 
 if __name__ == '__main__':
     main()

@@ -7,6 +7,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from functools import partial
+from parquetdb import ParquetDB
 
 from matgraphdb.data.material_manager import MaterialDatabaseManager
 from matgraphdb.data.calc_manager import CalculationManager
@@ -93,7 +94,7 @@ class MatGraphDB:
     def __init__(self, main_dir: str,
                  calculation_dirname='calculations',
                  graph_dirname='graph_database',
-                 db_file='materials.db', 
+                 db_dirname='materials', 
                  n_cores=N_CORES,
                  **kwargs):
         """
@@ -112,21 +113,23 @@ class MatGraphDB:
         self.main_dir = main_dir
         self.calculation_dir=os.path.join(self.main_dir, calculation_dirname)
         self.graph_dir=os.path.join(self.main_dir, graph_dirname)
+        self.db_dir=os.path.join(self.main_dir, db_dirname)
         os.makedirs(self.main_dir, exist_ok=True)
         os.makedirs(self.calculation_dir, exist_ok=True)
+        os.makedirs(self.db_dir, exist_ok=True)
         os.makedirs(self.graph_dir, exist_ok=True)
         logger.debug(f"Main directory set to {self.main_dir}")
         logger.debug(f"Calculation directory set to {self.calculation_dir}")
         logger.debug(f"Graph directory set to {self.graph_dir}")
 
-        self.db_path = os.path.join(main_dir, db_file)
         self.n_cores = n_cores
 
-        logger.debug(f"Database path set to {self.db_path}")
+        logger.debug(f"Database path set to {self.db_dir}")
         logger.debug(f"Number of cores set to {self.n_cores}")
 
 
-        self.db_manager = MaterialDatabaseManager(db_path=self.db_path)
+        # self.db_manager = MaterialDatabaseManager(db_path=self.db_path)
+        self.db_manager=ParquetDB(self.db_dir)
         logger.debug("MaterialDatabaseManager initialized.")
 
         self.calc_manager = CalculationManager(main_dir=self.calculation_dir, 
