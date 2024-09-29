@@ -19,7 +19,7 @@ PARQUET_ROWS_PER_FILE=20000
 JSON_BATCH_SIZE=10000
 N_CORES=40
 # DB_DIR='/users/lllang/SCRATCH/projects/MatGraphDB/data/production/materials_project/MaterialsDB'
-DB_DIR=os.path.join('data', 'MatGraphDB_Example')
+DB_DIR=os.path.join('data', 'MatGraphDB')
 
 
 
@@ -28,7 +28,7 @@ DB_DIR=os.path.join('data', 'MatGraphDB_Example')
 ################################################################################################
 
 # Configure logging
-logger = logging.getLogger('parquetdb')
+logger = logging.getLogger('matgraphdb')
 logger.setLevel(logging.ERROR)
 
 ch = logging.StreamHandler()
@@ -47,7 +47,7 @@ def main():
 
     # Measure read time
     start_time = time.perf_counter()
-    table = db.read(table_name='main', output_format='table')
+    table = db.read(table_name='main', columns=['id','species','chargemol_bonding_connections', 'lattice', 'frac_coords'], output_format='table')
     end_time = time.perf_counter()
     df=table.to_pandas()
 
