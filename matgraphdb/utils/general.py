@@ -1,3 +1,4 @@
+import inspect
 import os
 
 
@@ -51,6 +52,25 @@ def get_os():
         return "Linux or macOS"
     else:
         return "Unknown OS"
+    
+
+def get_function_args(func):
+    signature = inspect.signature(func)
+    params = signature.parameters
+    
+    args = []
+    kwargs = []
+    
+    for name, param in params.items():
+        if param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+            if param.default == inspect.Parameter.empty:
+                args.append(name)
+            else:
+                kwargs.append(name)
+        elif param.kind == inspect.Parameter.KEYWORD_ONLY:
+            kwargs.append(name)
+    
+    return args, kwargs
 
 
 if __name__ == '__main__':
