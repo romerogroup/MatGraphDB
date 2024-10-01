@@ -101,6 +101,7 @@ exclude = ["matgraphdb.tests*"]
 # include-package-data = true
 
 [tool.setuptools_scm]
+version_file = "matgraphdb/_version.py"
 local_scheme="no-local-version"
 # version_file = "matgraphdb/_version.py"
 # version_scheme="post-release"
