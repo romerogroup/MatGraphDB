@@ -36,7 +36,6 @@ dependencies = [
     "autopep8",
     "pymatgen",
     "parquetdb",
-    "graph-tool; platform_system == 'Linux'",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +50,10 @@ torch = [
     "torch_sparse",
     "torch_cluster",
     "torch_spline_conv"
+]
+
+graph-tool = [
+    "graph-tool; platform_system == 'Linux'"
 ]
 
 llm = [
