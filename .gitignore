@@ -180,5 +180,5 @@ tmp
 !/examples/*.py
 
 condaenv*
-
+reports/
 dev_env.md
