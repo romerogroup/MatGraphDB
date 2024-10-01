@@ -32,10 +32,11 @@ tiktoken
 tqdm
 p-tqdm
 
+--index-url https://download.pytorch.org/whl/cu118
+torch==2.1.2 
+torchvision==0.16.2 
+torchaudio==2.1.2 
 
-torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
-torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 
 pyg_lib; platform_system == "Linux"
 torch_geometric==2.5.2 
@@ -43,7 +44,7 @@ torch_scatter
 torch_sparse 
 torch_cluster
 torch_spline_conv
--f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+--find-links https://data.pyg.org/whl/torch-2.1.0+cu118.html
 
 
 

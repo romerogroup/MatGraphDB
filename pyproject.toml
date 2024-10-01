@@ -16,18 +16,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
-dependencies = [
-    'coxeter',
-    'crystals',
-    'mendeleev',
-    'pymatgen',
-    'numpy',
-    'scipy',
-    'pyyaml',
-    'matplotlib',
-    'setuptools_scm'
-]
-
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 
