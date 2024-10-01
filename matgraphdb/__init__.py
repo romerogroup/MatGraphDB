@@ -1,4 +1,4 @@
-__version__='1.0.0'
+from matgraphdb._version import __version__
 
 # from matgraphdb.data.manager import DBManager
 # from matgraphdb.graph.neo4j_gds_manager import Neo4jGDSManager
