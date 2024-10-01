@@ -6,3 +6,5 @@ from matgraphdb._version import __version__
 # from matgraphdb.graph.graph_generator import GraphGenerator
 
 from matgraphdb.core import MatGraphDB
+from . import _version
+__version__ = _version.get_versions()['version']
