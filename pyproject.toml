@@ -1,6 +1,12 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm>=8"]
+requires = ["setuptools>=64", "setuptools-scm==8.0.4"]
 build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools_scm]
+local_scheme="no-local-version"
+version_file = "matgraphdb/_version.py"
+
 
 [project]
 name = "matgraphdb"
@@ -99,10 +105,3 @@ exclude = ["matgraphdb.tests*"]
 
 # [tool.setuptools]
 # include-package-data = true
-
-[tool.setuptools_scm]
-version_file = "matgraphdb/_version.py"
-local_scheme="no-local-version"
-# version_file = "matgraphdb/_version.py"
-# version_scheme="post-release"
-
