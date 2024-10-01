@@ -1,13 +1,50 @@
-# poly_graphs_lib requirements
-# Usage: pip install -r requirements.txt
+pytest
+setuptools_scm
+python-dotenv
 
-# Base ----------------------------------------
 
-coxeter
-crystals
-mendeleev
-pymatgen
 numpy
+pandas
 scipy
 pyyaml
 matplotlib
+seaborn
+autopep8
+jupyterlab
+
+nglview
+ipywidgets
+pylint
+
+ase
+pymatgen
+mendeleev
+matminer
+coxeter
+crystals
+
+
+neo4j
+graph-tool; platform_system == "Linux"
+parquetdb
+openai
+tiktoken
+tqdm
+p-tqdm
+
+
+torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
+torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+
+pyg_lib; platform_system == "Linux"
+torch_geometric==2.5.2 
+torch_scatter 
+torch_sparse 
+torch_cluster
+torch_spline_conv
+-f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+
+
+
+
