@@ -94,3 +94,5 @@ include-package-data = true
 
 [tool.setuptools_scm]
 version_file = "matgraphdb/_version.py"
+version_scheme="post-release"
+local_scheme="no-local-version"
