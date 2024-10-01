@@ -16,21 +16,69 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
-dynamic = ["version", "dependencies", "optional-dependencies"]
+dynamic = ["version"]
+
+dependencies = [
+    "pytest",
+    "setuptools",
+    "setuptools_scm",
+    "python-dotenv",
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "pyyaml",
+    "jupyterlab",
+    "nglview",
+    "ipywidgets",
+    "pylint",
+    "autopep8",
+    "pymatgen",
+    "parquetdb",
+    "graph-tool; platform_system == 'Linux'",
+]
+
+[project.optional-dependencies]
+
+torch = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "pyg_lib ; platform_system == 'Linux'" ,
+    "torch_geometric",
+    "torch_scatter",
+    "torch_sparse",
+    "torch_cluster",
+    "torch_spline_conv"
+]
+
+llm = [
+    "openai",
+    "tiktoken",
+]
+
+neo4j = [
+    "neo4j",
+]
+
+materials=[
+    "ase",
+    "mendeleev",
+    "matminer",
+    "coxeter",
+    "crystals",
+]
+
+dev = ["sphinx", 
+"sphinx_rtd_theme"]
 
 
 [project.urls]
-Homepage = "https://example.com"
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/lllangWV/MatGraphDB"
-Issues = "https://github.com/lllangWV/MatGraphDB/issues"
-Changelog = "https://github.com/lllangWV/MatGraphDB/CHANGELOG.md"
+Repository = "https://github.com/romerogroup/MatGraphDB"
+Issues = "https://github.com/romerogroup/MatGraphDB/issues"
+Changelog = "https://github.com/romerogroup/MatGraphDB/CHANGELOG.md"
 
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-
-[tool.setuptools.dynamic.optional-dependencies]
-dev = { file = ["requirements-dev.txt"] }
 
 
 [tool.setuptools.packages.find]
@@ -42,4 +90,4 @@ exclude = ["matgraphdb.tests*"]
 include-package-data = true
 
 [tool.setuptools_scm]
-version_file = "pkg/_version.py"
+version_file = "matgraphdb/_version.py"
