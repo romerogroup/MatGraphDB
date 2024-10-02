@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm==8.0.4"]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 
@@ -95,13 +95,3 @@ where = ["."]
 include = ["matgraphdb*"]
 exclude = ["matgraphdb.tests*"]
 
-# [tool.versioneer]
-# VCS = "git"
-# style = "pep440"
-# versionfile_source = "matgraphdb/_version.py"
-# versionfile_build = "matgraphdb/_version.py"
-# tag_prefix = ""
-# parentdir_prefix = "MatGraphDB-"
-
-# [tool.setuptools]
-# include-package-data = true
