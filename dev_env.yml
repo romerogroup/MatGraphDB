@@ -1,0 +1,19 @@
+name: matgraphdb_dev
+channels:
+- pytorch
+- nvidia
+- pyg
+- defaults
+- conda-forge
+dependencies:
+- python==3.9.*
+- pytorch
+- torchvision
+- torchaudio
+- pyg
+- pytorch-cuda=11.8
+- pip
+- pip:
+  - -e .
+  - -e .[llm]
+  - -e .[dev]
