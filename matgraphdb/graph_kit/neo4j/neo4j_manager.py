@@ -8,7 +8,7 @@ import pandas as pd
 
 from matgraphdb.data.manager import DBManager
 from matgraphdb.utils import (PASSWORD,USER,LOCATION,DBMSS_DIR, GRAPH_DIR, LOGGER,MP_DIR)
-from matgraphdb.utils.general import get_os
+from matgraphdb.utils.general_utils import get_os
 from matgraphdb.graph_kit.neo4j.utils import get_similarity_query, format_projection,format_dictionary,format_list,format_string
 
 

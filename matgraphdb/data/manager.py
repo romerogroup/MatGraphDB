@@ -23,7 +23,7 @@ from matgraphdb.calculations.mat_calcs.embeddings import generate_composition_em
 from matgraphdb.calculations.mat_calcs.wyckoff_calc import calculate_wyckoff_positions
 from matgraphdb.calculations.parsers import parse_chargemol_bond_orders,parse_chargemol_net_atomic_charges, parse_chargemol_atomic_moments, parse_chargemol_overlap_populations
 from matgraphdb.data.utils import MATERIAL_PARQUET_SCHEMA
-from matgraphdb.utils.periodic_table import atomic_symbols
+from matgraphdb.utils.chem_utils.periodic import atomic_symbols
 from matgraphdb.utils import get_logger
 
 logger=get_logger(__name__, console_out=False, log_level='info')

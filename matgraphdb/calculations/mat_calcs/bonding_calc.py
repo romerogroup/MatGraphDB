@@ -1,7 +1,7 @@
 
 from pymatgen.analysis.local_env import CutOffDictNN
 
-from matgraphdb.utils.periodic_table import covalent_cutoff_map
+from matgraphdb.utils.chem_utils.periodic import covalent_cutoff_map
 from matgraphdb.utils import  LOGGER
 
 def calculate_geometric_electric_consistent_bonds(geo_coord_connections,elec_coord_connections, bond_orders, threshold=0.1):

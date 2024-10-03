@@ -14,8 +14,13 @@ from matgraphdb.data.material_manager import MaterialDatabaseManager
 from matgraphdb.data.calc_manager import CalculationManager
 from matgraphdb.graph_kit.graph_manager import GraphManager
 from matgraphdb.utils import N_CORES, multiprocess_task
+from matgraphdb.utils.log_utils import setup_logging
+
+# Setup logging
+setup_logging()
 
 logger = logging.getLogger(__name__)
+
 
 class MatGraphDB:
     """

@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import logging
 
-from matgraphdb.utils.periodic_table import get_group_period_edge_index
+from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 from matgraphdb.graph_kit.metadata import get_relationship_schema
 from matgraphdb.graph_kit.metadata import RelationshipTypes
 from matgraphdb.graph_kit.nodes import NodeManager

@@ -9,7 +9,7 @@ import uuid
 
 from matgraphdb.utils import DB_DIR,DB_CALC_DIR,N_CORES, GLOBAL_PROP_FILE, ENCODING_DIR, EXTERNAL_DATA_DIR, MP_DIR
 from matgraphdb.utils import get_logger
-from matgraphdb.utils.periodic_table import atomic_symbols
+from matgraphdb.utils.chem_utils.periodic import atomic_symbols
 
 
 logger=get_logger(__name__, console_out=False, log_level='info')

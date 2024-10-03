@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from matgraphdb.calculations.job_scheduler_generator import SlurmScriptGenerator
 from matgraphdb.utils import N_CORES, multiprocess_task
-from matgraphdb.utils.general import get_function_args
+from matgraphdb.utils.general_utils import get_function_args
 
 logger = logging.getLogger(__name__)
 

@@ -141,7 +141,7 @@ class ElementsEncoder:
         self.dtype = dtype
 
     def __call__(self, df):
-        from matgraphdb.utils.periodic_table import atomic_symbols
+        from matgraphdb.utils.chem_utils.periodic import atomic_symbols
         tensor=torch.zeros(len(df),118)
         element_to_z={element:i-1 for i,element in enumerate(atomic_symbols)}
         for irow,elements in enumerate(df):
@@ -155,7 +155,7 @@ class CompositionEncoder:
         self.dtype = dtype
 
     def __call__(self, df):
-        from matgraphdb.utils.periodic_table import atomic_symbols
+        from matgraphdb.utils.chem_utils.periodic import atomic_symbols
         import ast
         tensor=torch.zeros(len(df),118)
         element_to_z={element:i-1 for i,element in enumerate(atomic_symbols)}

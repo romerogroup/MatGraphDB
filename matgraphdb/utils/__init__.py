@@ -19,8 +19,6 @@ from matgraphdb.utils.config import (ML_DIR,ML_SCRATCH_RUNS_DIR)
 from matgraphdb.utils.multiprocess_utils import multiprocess_task
 
 # Other important variables
-from matgraphdb.utils.log_config import setup_logging, get_child_logger, get_logger
-from matgraphdb.utils.timing import Timer, timeit
+from matgraphdb.utils.log_utils import setup_logging
+from matgraphdb.utils.benchmark_utils import Timer, timeit
 
-# Initialize logger
-LOGGER = setup_logging()

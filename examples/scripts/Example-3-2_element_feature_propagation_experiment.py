@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error, r2_score
 
-from matgraphdb.utils.periodic_table import get_group_period_edge_index
+from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 from matgraphdb.graph_kit.data import DataGenerator
 from sandbox.matgraphdb.graph_kit.graphs import GraphManager
 from matgraphdb.utils import PKG_DIR, GRAPH_DIR

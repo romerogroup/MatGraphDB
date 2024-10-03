@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from torch_geometric.utils import to_networkx
 
-from matgraphdb.utils.periodic_table import get_group_period_edge_index
+from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 from matgraphdb.graph_kit.data import DataGenerator
 from sandbox.matgraphdb.graph_kit.graphs import GraphManager
 from matgraphdb.utils import PKG_DIR, GRAPH_DIR

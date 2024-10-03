@@ -1,7 +1,7 @@
 import numpy as np
 
 from matgraphdb.utils import LOGGER
-from matgraphdb.utils.periodic_table import atomic_symbols
+from matgraphdb.utils.chem_utils.periodic import atomic_symbols
 
 
 def calculate_bond_orders_sum(bond_orders,bond_connections, site_element_names):
