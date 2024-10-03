@@ -1,1 +1,0 @@
-from matgraphdb.data.manager import DBManager
