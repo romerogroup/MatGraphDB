@@ -98,7 +98,7 @@ exclude = ["matgraphdb.tests*"]
 
 
 [tool.setuptools.package-data]
-matgraphdb = ["**/*.json", "**/*.csv", "**/*.yml"]
+matgraphdb = ["**/*.json", "**/*.csv", "**/*.yml", "**/*.parquet"]
 # include = ["matgraphdb"]
 # exclude = ["matgraphdb.tests"]
 
