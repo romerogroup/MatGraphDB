@@ -90,8 +90,15 @@ Changelog = "https://github.com/romerogroup/MatGraphDB/CHANGELOG.md"
 
 
 
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["matgraphdb*"]
 exclude = ["matgraphdb.tests*"]
+
+
+[tool.setuptools.package-data]
+matgraphdb = ["**/*.json", "**/*.csv", "**/*.yml"]
+# include = ["matgraphdb"]
+# exclude = ["matgraphdb.tests"]
 

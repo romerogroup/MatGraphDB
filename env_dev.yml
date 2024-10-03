@@ -16,6 +16,6 @@ dependencies:
   - torch_cluster 
   - torch_spline_conv 
   - -f https://data.pyg.org/whl/torch-2.4.0+cu118.html
-  - -e .
-  - -e .[llm]
-  - -e .[dev]
+  - -e . --config-settings editable_mode=strict
+  - -e .[llm] --config-settings editable_mode=strict
+  - -e .[dev] --config-settings editable_mode=strict
