@@ -111,11 +111,29 @@ def load_coord_geometry(parquet_file, **kwargs):
 
 
 
-if __name__ == '__main__':
-    resources_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
-    coord_geom_dir=os.path.join(resources_dir,'coordination_geometries')
-    parquet_file=os.path.join(resources_dir,'coordination_geometries.parquet')
-    json_files=glob.glob(coord_geom_dir + '/*.json')
-    convert_coord_geo_json_to_parquet(json_files, parquet_file)
+# if __name__ == '__main__':
+#     import pandas as pd
+#     resources_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
+#     # coord_geom_dir=os.path.join(resources_dir,'coordination_geometries')
+#     # parquet_file=os.path.join(resources_dir,'coordination_geometries.parquet')
+#     # # json_files=glob.glob(coord_geom_dir + '/*.json')
+#     # # convert_coord_geo_json_to_parquet(json_files, parquet_file)
+
+
+#     # table=load_coord_geometry(parquet_file)
+#     # df=table.to_pandas()
+
+#     # print(df.head())
+#     # df.to_csv(os.path.join(config.data_dir,'coordination_geometries.csv'))
+
+
+#     df = pd.read_csv(os.path.join(resources_dir,'imputed_periodic_table_values.csv'))
+#     save_parquet(df, os.path.join(resources_dir,'imputed_periodic_table_values.parquet'))
+
+#     df = pd.read_csv(os.path.join(resources_dir,'interim_periodic_table_values.csv'))
+#     save_parquet(df, os.path.join(resources_dir,'interim_periodic_table_values.parquet'))
+
+#     df = pd.read_csv(os.path.join(resources_dir,'raw_periodic_table_values.csv'))
+#     save_parquet(df, os.path.join(resources_dir,'raw_periodic_table_values.parquet'))
 
 
