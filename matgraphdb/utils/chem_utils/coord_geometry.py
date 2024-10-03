@@ -4,13 +4,13 @@ import numpy as np
 import glob
 import json
 
-from matgraphdb.utils import PKG_DIR
+from matgraphdb import config
 from matgraphdb.utils.file_utils import load_json, save_parquet, load_parquet
 
 logger = logging.getLogger(__name__)
 
 def get_coord_geom_info():
-    coord_geom_dir=os.path.join(PKG_DIR,'resources','coordination_geometries')
+    coord_geom_dir=os.path.join(config.pkg_dir,'resources','coordination_geometries')
     files=glob.glob(coord_geom_dir + '/*.json')
 
     cg_list=[]
@@ -40,7 +40,7 @@ def get_coord_geom_info():
     return mp_coord_encoding, coord_nums
 
 def extract_coordination_encoding(data:dict):
-    mp_symbol=data.get(['mp_symbol'],None)
+    mp_symbol=data.get('mp_symbol',None)
     if mp_symbol is None:
         logger.info(f"No 'mp_symbol' key found in data: {data}")
         return None
@@ -112,8 +112,10 @@ def load_coord_geometry(parquet_file, **kwargs):
 
 
 if __name__ == '__main__':
-    resources_dir=os.path.join(PKG_DIR,'utils','chem_utils','resources')
+    resources_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
     coord_geom_dir=os.path.join(resources_dir,'coordination_geometries')
     parquet_file=os.path.join(resources_dir,'coordination_geometries.parquet')
     json_files=glob.glob(coord_geom_dir + '/*.json')
     convert_coord_geo_json_to_parquet(json_files, parquet_file)
+
+

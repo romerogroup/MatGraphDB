@@ -7,9 +7,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import logging
 
-from matgraphdb.utils.chem_utils.coord_geometry import mp_coord_encoding
-from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import PKG_DIR
+from matgraphdb import config
+# from matgraphdb.utils.chem_utils.coord_geometry import mp_coord_encoding
 from matgraphdb.graph_kit.metadata import get_node_schema
 from matgraphdb.graph_kit.metadata import NodeTypes
 

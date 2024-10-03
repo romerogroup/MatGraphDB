@@ -8,10 +8,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import logging
 
+from matgraphdb import config
 from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
-from matgraphdb.utils.chem_utils.coord_geometry import mp_coord_encoding
-from matgraphdb.utils import MATERIAL_PARQUET_FILE
-from matgraphdb.utils import GRAPH_DIR,PKG_DIR, get_logger
+# from matgraphdb.utils.chem_utils.coord_geometry import mp_coord_encoding
+
 from matgraphdb.graph_kit.metadata import get_node_schema,get_relationship_schema
 from matgraphdb.graph_kit.metadata import NodeTypes, RelationshipTypes
 
