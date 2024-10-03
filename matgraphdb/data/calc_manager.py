@@ -5,7 +5,7 @@ import subprocess
 from typing import Callable, Dict, List, Tuple, Union
 
 from matgraphdb.calculations.job_scheduler_generator import SlurmScriptGenerator
-from matgraphdb.utils import N_CORES, multiprocess_task
+from matgraphdb.utils.multiprocess_utils import  multiprocess_task
 from matgraphdb.utils.general_utils import get_function_args
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # However, the former would be neater and if the user wants to speed up loading they can provide the need fields to read_args
 
 class CalculationManager:
-    def __init__(self, main_dir, db_manager, n_cores=N_CORES, job_submission_script_name='run.slurm'):
+    def __init__(self, main_dir, db_manager, n_cores=1, job_submission_script_name='run.slurm'):
         """
         Initializes the `CalculationManager` with the specified main directory, database manager, number of cores, 
         and the name of the job submission script.

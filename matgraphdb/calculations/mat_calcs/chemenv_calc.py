@@ -1,10 +1,11 @@
 import copy
+import logging
 
 from pymatgen.analysis.chemenv.coordination_environments.chemenv_strategies import MultiWeightsChemenvStrategy
 from pymatgen.analysis.chemenv.coordination_environments.coordination_geometry_finder import LocalGeometryFinder
 from pymatgen.analysis.chemenv.coordination_environments.structure_environments import LightStructureEnvironments
 
-from matgraphdb.utils import LOGGER
+logger = logging.getLogger(__name__)
 
 
 def calculate_chemenv_connections(structure):
@@ -63,7 +64,7 @@ def calculate_chemenv_connections(structure):
                 pass
 
     except Exception as error:
-        LOGGER.error(f"Error processing file: {error}")
+        logger.error(f"Error processing file: {error}")
         coordination_environments = None
         nearest_neighbors = None
         coordination_numbers = None

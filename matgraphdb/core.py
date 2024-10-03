@@ -13,14 +13,10 @@ from pymatgen.core import Structure
 from matgraphdb.data.material_manager import MaterialDatabaseManager
 from matgraphdb.data.calc_manager import CalculationManager
 from matgraphdb.graph_kit.graph_manager import GraphManager
-from matgraphdb.utils import N_CORES, multiprocess_task
-from matgraphdb.utils.log_utils import setup_logging
-
-# Setup logging
-setup_logging()
+from matgraphdb.utils.multiprocess_utils import multiprocess_task
+# from matgraphdb.utils.log_utils import setup_logging
 
 logger = logging.getLogger(__name__)
-
 
 class MatGraphDB:
     """
@@ -46,7 +42,7 @@ class MatGraphDB:
                  calculation_dirname='calculations',
                  graph_dirname='graph_database',
                  db_dirname='materials', 
-                 n_cores=N_CORES,
+                 n_cores=1,
                  **kwargs):
         """
         Initializes the `MatGraphDB` class by setting up directories, database, calculation manager, and graph manager.

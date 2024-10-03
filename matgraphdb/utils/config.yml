@@ -1,0 +1,66 @@
+root_dir: "."
+data_dir: "{{ root_dir }}/data"
+external_data_dir: "{{ data_dir }}/external"
+log_dir: "{{ root_dir }}/logs"
+db_name: 'MatGraphDB'
+n_cores: 
+
+neo4j:
+  user: "neo4j"
+  password: "password"
+  location: "bolt://localhost:7687"
+  desktop_dir: "C:/Users/lllang/.Neo4jDesktop"
+  dbmss_dir: '$(desktop_dir)/relate-data/dbmss'
+
+numpy_config:
+  np_printoptions:
+    linewidth:  400
+    precision: 3
+
+logging_config:
+  version: 1
+  disable_existing_loggers: False
+
+  formatters:
+    simple:
+      format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
+
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: simple
+      stream: ext://sys.stdout
+
+    file:
+      class: logging.FileHandler
+      level: INFO
+      formatter: simple
+      filename: "{{ log_dir }}/matgraphdb.log"
+      mode: a
+
+  loggers:
+      matgraphdb:
+          level: DEBUG
+          handlers: [console]
+          propagate: no
+
+      development:
+          level: DEBUG
+          handlers: [console]
+          propagate: no
+
+      staging:
+          level: INFO
+          handlers: [console, file]
+          propagate: no
+
+      production:
+          level: WARNING
+          handlers: [file]
+          propagate: no
+
+  root:
+      level: DEBUG
+      handlers: [console]

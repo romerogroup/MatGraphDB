@@ -18,7 +18,7 @@ from parquetdb import ParquetDB
 import spglib
 
 from matgraphdb.calculations.mat_calcs.chemenv_calc import calculate_chemenv_connections
-from matgraphdb.utils import multiprocess_task
+from matgraphdb.utils.multiprocess_utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
 
