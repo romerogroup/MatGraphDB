@@ -1,0 +1,56 @@
+name: my_matgraphdb
+channels:
+- pytorch
+- nvidia
+- defaults
+- conda-forge
+dependencies:
+- python==3.9.*
+- pytorch==2.1.2
+- torchvision==0.16.2
+- torchaudio==2.1.2
+- pytorch-cuda=11.8
+- pip
+- pip:
+
+  - pytest
+  - setuptools_scm
+  - python-dotenv
+  - sphinx
+  - sphinx_rtd_theme
+  - numpy
+  - pandas
+  - scipy
+  - pyyaml
+  - matplotlib
+  - seaborn
+  - autopep8
+  - jupyterlab
+
+  - nglview
+  - ipywidgets
+  - pylint
+
+  - ase
+  - pymatgen
+  - mendeleev
+  - matminer
+  - coxeter
+  - crystals
+
+  - neo4j
+  - parquetdb
+  - openai
+  - tiktoken
+  - tqdm
+  - p-tqdm
+
+  - graph-tool; platform_system == "Linux"
+  - pyg_lib ; platform_system == "Linux"
+  - torch_geometric
+  - torch_scatter 
+  - torch_sparse
+  - torch_cluster
+  - torch_spline_conv
+  - -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+  - -e .
