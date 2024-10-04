@@ -78,7 +78,7 @@ def convert_coord_geo_json_to_parquet(json_files, parquet_file, **kwargs):
     table=save_parquet(data_list, parquet_file, **kwargs)
     return table
 
-def load_coord_geometry(parquet_file, columns=None, output_format='pandas', **kwargs):
+def load_coord_geometry(parquet_file=None, columns=None, output_format='pandas', **kwargs):
     """
     Load coordination geometry information from a Parquet file.
 
@@ -101,6 +101,9 @@ def load_coord_geometry(parquet_file, columns=None, output_format='pandas', **kw
     dict
         A dictionary with atomic symbols as keys and lists of coordinates as values.
     """
+    resource_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
+    if parquet_file is None:
+        parquet_file=os.path.join(resource_dir,'coordination_geometries.parquet')
     output_formats=['pandas','pyarrow']
     if output_format not in output_formats:
         raise ValueError(f"type must be one of {output_formats}")

@@ -12,12 +12,14 @@ P_COLUMNS=np.arange(27,33)
 D_COLUMNS=np.arange(17,27)
 F_COLUMNS=np.arange(3,17)
 
-def get_element_properties(type='imputed', columns=None, output_format='pandas', **kwargs):
+def get_element_properties(parquet_file=None, type='imputed', columns=None, output_format='pandas', **kwargs):
     """
     Load element properties from a parquet file based on type and return it in the specified format.
 
     Parameters
     ----------
+    parquet_file : str, optional
+        The path to the parquet file containing the element properties. If not provided, the default file is used.
     type : str, optional
         The type of data to load (default is 'imputed'). Options are 'imputed', 'raw', or 'interim'.
     columns : list, optional
@@ -45,8 +47,9 @@ def get_element_properties(type='imputed', columns=None, output_format='pandas',
         raise ValueError(f"type must be one of {types}")
 
     resources_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
-    parquet_file=os.path.join(resources_dir,f'{type}_periodic_table_values.parquet')
-
+    if parquet_file is None:
+        parquet_file=os.path.join(resources_dir,f'{type}_periodic_table_values.parquet')
+   
     table=load_parquet(parquet_file, columns=columns, **kwargs)
     if output_format=='pandas':
         return table.to_pandas()
