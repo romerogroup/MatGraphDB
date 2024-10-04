@@ -9,37 +9,27 @@ from matgraphdb.utils.file_utils import load_json, save_parquet, load_parquet
 
 logger = logging.getLogger(__name__)
 
-def get_coord_geom_info():
-    coord_geom_dir=os.path.join(config.pkg_dir,'resources','coordination_geometries')
-    files=glob.glob(coord_geom_dir + '/*.json')
-
-    cg_list=[]
-    mp_symbols={}
-    cg_points={}
-    mp_coord_encoding={}
-
-    for file in files:
-
-        with open(file) as f:
-            dd = json.load(f)
-        cg_list.append(dd)
-        mp_symbols.update({dd['mp_symbol']:0})
-        cg_points.update({dd['mp_symbol']:dd['points']})
-
-
-        coord_encoding=np.zeros(shape=14)
-        coord_num=int(dd['mp_symbol'].split(':')[-1])
-        
-        if coord_num<=13:
-            coord_encoding[coord_num-1]=1
-        elif coord_num==20:
-            coord_encoding[-1]=1
-        mp_coord_encoding.update({dd['mp_symbol']:coord_encoding})
-
-    coord_nums=np.array([1,2,3,4,5,6,7,8,9,10,11,12,13,20])
-    return mp_coord_encoding, coord_nums
-
 def extract_coordination_encoding(data:dict):
+    """
+    Extract coordination encoding and coordination number from the given data dictionary.
+
+    Parameters
+    ----------
+    data : dict
+        Dictionary containing at least the 'mp_symbol' key. 'mp_symbol' should be in the format 'symbol:coordination_number'.
+
+    Returns
+    -------
+    dict or None
+        A dictionary with keys 'coordination_encoding' and 'coordination_number' if 'mp_symbol' exists in the input data.
+        Returns None if 'mp_symbol' is not found.
+
+    Example
+    -------
+    >>> data = {'mp_symbol': 'Cu:12'}
+    >>> extract_coordination_encoding(data)
+    {'coordination_encoding': array([0., 0., ..., 1., 0.]), 'coordination_number': 12}
+    """
     mp_symbol=data.get('mp_symbol',None)
     if mp_symbol is None:
         logger.info(f"No 'mp_symbol' key found in data: {data}")
@@ -56,25 +46,27 @@ def extract_coordination_encoding(data:dict):
 
 def convert_coord_geo_json_to_parquet(json_files, parquet_file, **kwargs):
     """
-    Converts a JSON file containing coordination geometry information to a Parquet file.
-
-    This function reads a JSON file containing coordination geometry information and 
-    converts it to a Parquet file. The JSON file should contain a dictionary with 
-    keys 'mp_symbol' and 'points', where 'mp_symbol' is the atomic symbol and 'points' 
-    is a list of coordinates. The Parquet file will be saved at the specified location.
+    Convert a list of JSON files containing coordination geometry information to a Parquet file.
 
     Parameters
     ----------
-    json_file : str
-        The path to the JSON file containing coordination geometry information.
+    json_files : list
+        List of paths to JSON files containing coordination geometry information.
     parquet_file : str
-        The path to save the Parquet file.
+        The path where the Parquet file will be saved.
     kwargs
         Additional keyword arguments to pass to the `save_parquet` function.
 
     Returns
     -------
-    None
+    pyarrow.Table
+        The resulting Parquet table after conversion.
+
+    Example
+    -------
+    >>> json_files = ['file1.json', 'file2.json']
+    >>> convert_coord_geo_json_to_parquet(json_files, 'output.parquet')
+    <pyarrow.Table>
     """
     data_list=[]
     for file in json_files:
@@ -86,7 +78,7 @@ def convert_coord_geo_json_to_parquet(json_files, parquet_file, **kwargs):
     table=save_parquet(data_list, parquet_file, **kwargs)
     return table
 
-def load_coord_geometry(parquet_file, **kwargs):
+def load_coord_geometry(parquet_file, columns=None, output_format='pandas', **kwargs):
     """
     Load coordination geometry information from a Parquet file.
 
@@ -97,6 +89,10 @@ def load_coord_geometry(parquet_file, **kwargs):
     ----------
     parquet_file : str
         The path to the Parquet file containing coordination geometry information.
+    columns : list, optional
+        A list of column names to include in the returned data. By default, all columns are included.
+    output_format : str, optional
+        The format of the returned data (default is 'pandas'). Options are 'pandas' or 'pyarrow'.
     kwargs
         Additional keyword arguments to pass to the `load_parquet` function.
 
@@ -105,35 +101,14 @@ def load_coord_geometry(parquet_file, **kwargs):
     dict
         A dictionary with atomic symbols as keys and lists of coordinates as values.
     """
-    table=load_parquet(parquet_file, **kwargs)
+    output_formats=['pandas','pyarrow']
+    if output_format not in output_formats:
+        raise ValueError(f"type must be one of {output_formats}")
+    table=load_parquet(parquet_file, columns=columns, **kwargs)
+    if output_format=='pandas':
+        return table.to_pandas()
+    elif output_format=='pyarrow':
+        return table
     return table
-
-
-
-
-# if __name__ == '__main__':
-#     import pandas as pd
-#     resources_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
-#     # coord_geom_dir=os.path.join(resources_dir,'coordination_geometries')
-#     # parquet_file=os.path.join(resources_dir,'coordination_geometries.parquet')
-#     # # json_files=glob.glob(coord_geom_dir + '/*.json')
-#     # # convert_coord_geo_json_to_parquet(json_files, parquet_file)
-
-
-#     # table=load_coord_geometry(parquet_file)
-#     # df=table.to_pandas()
-
-#     # print(df.head())
-#     # df.to_csv(os.path.join(config.data_dir,'coordination_geometries.csv'))
-
-
-#     df = pd.read_csv(os.path.join(resources_dir,'imputed_periodic_table_values.csv'))
-#     save_parquet(df, os.path.join(resources_dir,'imputed_periodic_table_values.parquet'))
-
-#     df = pd.read_csv(os.path.join(resources_dir,'interim_periodic_table_values.csv'))
-#     save_parquet(df, os.path.join(resources_dir,'interim_periodic_table_values.parquet'))
-
-#     df = pd.read_csv(os.path.join(resources_dir,'raw_periodic_table_values.csv'))
-#     save_parquet(df, os.path.join(resources_dir,'raw_periodic_table_values.parquet'))
 
 
