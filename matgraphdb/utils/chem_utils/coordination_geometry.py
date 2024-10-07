@@ -78,7 +78,7 @@ def convert_coord_geo_json_to_parquet(json_files, parquet_file, **kwargs):
     table=save_parquet(data_list, parquet_file, **kwargs)
     return table
 
-def load_coord_geometry(parquet_file=None, columns=None, output_format='pandas', **kwargs):
+def get_coordination_geometry(parquet_file=None, columns=None, output_format='pandas', **kwargs):
     """
     Load coordination geometry information from a Parquet file.
 
