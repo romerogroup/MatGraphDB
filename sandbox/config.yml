@@ -5,10 +5,19 @@ log_dir: "{{ root_dir }}/logs"
 db_name: 'MatGraphDB'
 n_cores: 
 
+neo4j:
+  user: "neo4j"
+  password: "password"
+  location: "bolt://localhost:7687"
+  desktop_dir: "C:/Users/lllang/.Neo4jDesktop"
+  dbmss_dir: '$(desktop_dir)/relate-data/dbmss'
+
 numpy_config:
   np_printoptions:
     linewidth:  400
     precision: 3
+
+
 
 logging_config:
   version: 1
@@ -33,7 +42,7 @@ logging_config:
 
   loggers:
     matgraphdb:
-      level: INFO
+      level: DEBUG
       handlers: [console]
       propagate: no
 

@@ -14,7 +14,6 @@ from matgraphdb.data.material_manager import MaterialDatabaseManager
 from matgraphdb.data.calc_manager import CalculationManager
 from matgraphdb.graph_kit.graph_manager import GraphManager
 from matgraphdb.utils.multiprocess_utils import multiprocess_task
-# from matgraphdb.utils.log_utils import setup_logging
 
 logger = logging.getLogger(__name__)
 
