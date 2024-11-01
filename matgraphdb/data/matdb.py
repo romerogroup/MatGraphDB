@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core import Structure, Composition
 from parquetdb import ParquetDB
-from parquetdb.core.parquetdb import NormalizeConfig
+from parquetdb.core.parquetdb import NormalizeConfig, LoadConfig
 import spglib
 
 from matgraphdb import config
@@ -22,8 +22,6 @@ from matgraphdb.utils.mp_utils import multiprocess_task
 from matgraphdb.utils.general_utils import set_verbosity
 
 logger = logging.getLogger(__name__)
-
-
     
 class MatDB:
     """
@@ -80,6 +78,10 @@ class MatDB:
                 include_symmetry: bool = True,
                 calculate_funcs: List[Callable]=None,
                 save_db: bool = True,
+                schema:pa.Schema=None,
+                metadata:dict=None,
+                normalize_dataset:bool=False,
+                normalize_config:NormalizeConfig=NormalizeConfig(),
                 verbose: int = 3,
                 **kwargs
         ):
@@ -110,6 +112,14 @@ class MatDB:
             A list of functions for calculating additional properties of the material.
         save_db : bool, optional
             If True, saves the material entry to the database (default is True).
+        schema : pyarrow.Schema, optional
+            A new schema to be applied to the dataset.
+        metadata : dict, optional
+            A dictionary containing the metadata to be set.
+        normalize_dataset : bool, optional
+            If True, normalizes the dataset.
+        normalize_config : NormalizeConfig, optional
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
         verbose : int, optional
             The verbosity level for logging (default is 3).
         **kwargs
@@ -202,513 +212,14 @@ class MatDB:
         logger.debug(f'Input dataframe shape - {df.shape}')
         try:
             if save_db:
-                self.db.create(df, **kwargs)
+                create_kwargs=dict(data=df, schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, normalize_config=normalize_config)
+                self.db.create(**create_kwargs)
                 logger.info("Material added successfully.")
             return entry_data
         except Exception as e:
             logger.exception(f"Error adding material: {e}")
         
         return entry_data
-    
-    def add_many(self, materials: List[Dict],  verbose: int = 3, **kwargs):
-        """
-        Adds multiple materials to the database in a single transaction.
-
-        This method processes a list of materials and writes their data to the specified 
-        database dataset in a single transaction. Each material should be represented as a 
-        dictionary with keys corresponding to the arguments for the `add` method.
-
-        Parameters:
-        -----------
-        materials : List[Dict]
-            A list of dictionaries where each dictionary contains the material data and 
-            corresponds to the arguments for the `add` method.
-        verebose : int, optional
-            The verbosity level for logging (default is 3).
-        **kwargs
-            Additional keyword arguments passed to the ParquetDB `create` method.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Add a batch of materials to the database
-        .. highlight:: python
-        .. code-block:: python
-
-            materials = [
-                {'coords': [(0.0, 0.0, 0.0)], 'species': ["H"], 'lattice': [(1.0, 0.0, 0.0)]},
-                {'coords': [(0.5, 0.5, 0.5)], 'species': ["He"], 'lattice': [(0.0, 1.0, 0.0)]}
-            ]
-            manager.add_many(materials)
-        """
-        set_verbosity(verbose)
-        
-        logger.info(f"Adding {len(materials)} materials to the database.")
-        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, verbose=verbose)
-        entry_data=[result for result in results if result]
-        
-        df = pd.DataFrame(entry_data)
-        try:
-            self.db.create(entry_data, **kwargs)
-        except Exception as e:
-            logger.error(f"Error adding material: {e}")
-        logger.info("All materials added successfully.")
-
-    def read(self, 
-            ids=None, 
-            columns:List[str]=None, 
-            include_cols:bool=True, 
-            filters: List[pc.Expression]=None,
-            load_format='table',
-            batch_size=None,
-            verbose: int = 3):
-        """
-        Reads materials from the database by ID or based on specific filters.
-
-        This method retrieves material data from the database, allowing filtering by material IDs, 
-        selecting specific columns, and applying additional filters. The output format can be specified 
-        as either a dataset or another supported format.
-
-        Parameters:
-        -----------
-        ids : list, optional
-            A list of material IDs to retrieve from the database. If None, all materials will be retrieved.
-        columns : List[str], optional
-            A list of column names to include in the output. If None, all columns are included.
-        include_cols : bool, optional
-            If True, only the specified columns are included. If False, all columns except the specified 
-            ones are included (default is True).
-        filters : List[pc.Expression], optional
-            A list of filters to apply to the query, allowing for more fine-grained material selection.
-        output_format : str, optional
-            The format in which to return the data, such as 'dataset' or another supported format (default is 'dataset').
-        batch_size : int, optional
-            The size of data batches to be read, useful for handling large datasets (default is None).
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
-
-        Returns:
-        --------
-        Depends on `output_format`
-            The material data in the specified format (e.g., a dataset or another format supported by the database).
-
-        Examples:
-        ---------
-        # Example usage:
-        # Read specific materials by their IDs and select certain columns
-        .. highlight:: python
-        .. code-block:: python
-
-            # read materials by IDs, select certain columns, and choose a dataset output format
-            materials_dataset = manager.read(
-                ids=[1, 2, 3],
-                columns=['formula', 'density'],
-                load_format='table'
-            )
-
-            # Convert to pandas DataFrame
-            df=materials_dataset.to_pandas()
-
-            # Apply filters to the query
-            materials_dataset = manager.read(
-                filters=[pc.field('formula') == 'Fe', pc.field('density') > 7.0],
-                load_format='table'
-            )
-
-            # Read materials in batches
-            materials_generator = manager.read(
-                batch_size=100,
-                load_format='batch_generator'
-            )
-            for batch_table in materials_generator:
-                # Do something with the batch dataset
-
-
-            # Read materials as an unloaded dataset
-            dataset = manager.read()
-        """
-        set_verbosity(verbose)
-        
-        logger.debug(f"Reading materials.")
-        logger.debug(f"ids: {ids}")
-        logger.debug(f"columns: {columns}")
-        logger.debug(f"include_cols: {include_cols}")
-        logger.debug(f"filters: {filters}")
-        logger.debug(f"load_format: {load_format}")
-        logger.debug(f"batch_size: {batch_size}")
-
-        kwargs=dict(ids=ids, columns=columns, include_cols=include_cols, 
-                    filters=filters, load_format=load_format, batch_size=batch_size)
-        return self.db.read(**kwargs)
-    
-    def update(self, data: Union[List[dict], dict, pd.DataFrame], 
-               schema=None, 
-               metadata=None,
-               normalize_config=NormalizeConfig(), 
-               verbose: int = 3):
-        """
-        Updates existing records in the database.
-
-        This method updates records in the specified dataset based on the provided data. Each entry in the data 
-        must include an 'id' key that corresponds to the record to be updated. Field types can also be updated 
-        if specified in `field_type_dict`.
-
-        Parameters:
-        -----------
-        data : Union[List[dict], dict, pd.DataFrame]
-            The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame. 
-            Each dictionary should have an 'id' key for identifying the record to update.
-        schema : pyarrow.Schema, optional
-            A new schema to be applied to the dataset.
-        metadata : dict, optional
-            A dictionary containing the metadata to be set.
-        normalize_kwargs : dict, optional
-            A dictionary of keyword arguments to be passed to the normalize function.
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Update a record in the database
-        .. highlight:: python
-        .. code-block:: python
-
-            # Update a record in the database
-            update_data = {'id': 1, 'density': 5.3, 'volume': 22.1}
-            manager.update(update_data)
-
-            # Update multiple records in the database
-            update_data = [
-                {'id': 1, 'density': 5.3, 'volume': 22.1},
-                {'id': 2, 'density': 7.8, 'volume': 33.2}
-            ]
-            manager.update(update_data)
-
-            # Update records with new field types
-
-        """
-        set_verbosity(verbose)
-
-        logger.info(f"Updating data")
-        self.db.update(data, schema=schema, metadata=metadata, normalize_config=normalize_config)
-        logger.info("Data updated successfully.")
-
-    def delete(self, ids:List[int]=None, columns=None, verbose: int = 3):
-        """
-        Deletes records from the database by ID.
-
-        This method deletes specific records from the database based on the provided list of IDs.
-
-        Parameters:
-        -----------
-        ids : List[int]
-            A list of record IDs to delete from the database.
-        columns : List[str], optional
-            A list of column names to delete from the database.
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Delete records by ID
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.delete(ids=[1, 2, 3])
-        """
-        set_verbosity(verbose)
-        
-        logger.info(f"Deleting data {ids}")
-        self.db.delete(ids=ids, columns=columns)
-        logger.info("Data deleted successfully.")
-
-    def get_schema(self):
-        """
-        Retrieves the schema of a specified dataset.
-
-        This method returns the schema of the specified dataset in the database, which includes the 
-        field names and their data types.
-
-
-        Returns:
-        --------
-        pyarrow.Schema
-            The schema of the specified dataset, including field names and types.
-
-        Examples:
-        ---------
-        # Example usage:
-        # Get the schema of the 'main' dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            schema = manager.get_schema()
-        """
-
-        return self.db.get_schema()
-    
-    def update_schema(self, field_dict:dict=None, schema:pa.Schema=None, normalize_kwargs:dict=None):
-        """
-        Updates the schema of a specified dataset.
-
-        This method allows updating the schema of a dataset in the database. You can either provide a dictionary 
-        specifying new field types or directly pass a new schema.
-
-        Parameters:
-        -----------
-        field_dict : dict, optional
-            A dictionary where the keys are field names and the values are the new field types.
-        schema : pyarrow.Schema, optional
-            A new schema to be applied to the dataset.
-        normalize_kwargs : dict, optional
-            A dictionary of keyword arguments to be passed to the normalize function.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Update the schema of the 'main' dataset by adding a new field
-        .. highlight:: python
-        .. code-block:: python
-
-            # Update fields
-            field_dict = {'density': pa.float64()}
-            manager.update_schema(field_dict=field_dict)
-
-            # Update by passing a new schema. 
-            new_schema = pa.schema([
-                ('id', pa.int64()),
-                ('formula', pa.string()),
-                ('density', pa.float64()),
-                ('new_field', pa.float64())
-            ])
-            manager.update_schema(schema=new_schema)
-
-            # The field names must match the existing ones and be in the same order.
-            # Also the schema field type must be compatible with the existing entries.
-            # It would be useful to get the schema of a dataset before updating it.
-
-            current_schema = manager.get_schema()
-            density_field = current_schema.get_field_index('density')
-            new_schema = current_schema.set(density_field, pa.float32())
-            manager.update_schema(schema=new_schema)
-        """
-
-        self.db.update_schema(field_dict=field_dict, schema=schema, normalize_kwargs=normalize_kwargs)
-
-    def get_metadata(self):
-        """
-        Retrieves the metadata of a specified dataset.
-
-        This method returns the metadata associated with the specified dataset in the database.
-
-
-        Returns:
-        --------
-        dict
-            A dictionary containing the metadata of the specified dataset.
-
-        Examples:
-        ---------
-        # Example usage:
-        # Get the metadata of the 'main' dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            metadata = manager.get_metadata()
-        """
-        return self.db.get_metadata()
-    
-    def set_metadata(self, metadata: dict):
-        """
-        Sets the metadata for a specified dataset.
-
-        This method updates the metadata of the specified dataset with the provided dictionary.
-
-        Parameters:
-        -----------
-        metadata : dict
-            A dictionary containing the metadata to be set.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Set new metadata for a dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            metadata = {'description': 'Material properties', 'version': 2}
-            manager.set_metadata(metadata=metadata)
-        """
-
-        self.db.set_metadata(metadata=metadata)
-
-    def drop_dataset(self):
-        """
-        Drops a specified dataset from the database.
-
-        This method permanently removes the specified dataset and its contents from the database.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Drop the 'main' dataset from the database
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.drop_dataset()
-        """
-
-        self.db.drop_dataset()
-
-    def rename_dataset(self, new_dataset_name:str):
-        """
-        Renames a dataset in the database.
-
-        This method changes the name of an existing dataset to a new specified name.
-
-        Parameters:
-        -----------
-        new_dataset_name : str
-            The new name for the dataset.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Rename a dataset from 'old_dataset' to 'new_dataset'
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.rename_dataset(old_dataset_name='old_dataset', new_dataset_name='new_dataset')
-        """
-
-        self.db.rename_dataset(new_dataset_name=new_dataset_name)
-
-    def copy_dataset(self, new_dataset_name:str, **kwargs):
-        """
-        Copies a dataset in the database to a new dataset.
-
-        This method creates a copy of an existing dataset under a new name. Additional parameters 
-        can be passed to customize the copying process.
-
-        Parameters:
-        -----------
-        new_dataset_name : str
-            The name for the new copy of the dataset.
-        **kwargs
-            Additional keyword arguments for customizing the copy process.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Copy a dataset from 'main' to 'main_backup'
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.copy_dataset(new_dataset_name='main_backup')
-        """
-
-        self.db.copy_dataset( new_dataset_name=new_dataset_name, **kwargs)
-
-
-    def export_dataset(self, export_dir:str=None, export_format:str='parquet', **kwargs):
-        """Export a dataset in the database.
-
-        Args:
-            export_dir (str, optional): The directory where the exported dataset will be saved.
-            export_format (str, optional): The format of the exported dataset. Defaults to 'parquet'.
-            **kwargs: Additional keyword arguments to pass to the ParquetDB export_dataset method.
-
-        Returns:
-            None
-        """        
-        self.db.export_dataset(file_path=export_dir, format=export_format, **kwargs)
-
-    def export_partitioned_dataset(self, 
-                                   export_dir: str, 
-                                   partitioning,
-                                   partitioning_flavor=None,
-                                   batch_size: int = None, 
-                                   **kwargs):
-        """
-        Exports a partitioned dataset to a specified directory.
-
-        This method exports a dataset to the specified directory using the provided partitioning scheme. 
-        Additional parameters allow customization of the export process, such as setting the partitioning flavor 
-        and controlling the batch size.
-
-        Parameters:
-        -----------
-        export_dir : str
-            The directory where the dataset will be exported.
-        partitioning : dict
-            The partitioning scheme to use for the dataset.
-        partitioning_flavor : str, optional
-            The partitioning flavor to use (e.g., 'hive' or another supported flavor).
-        batch_size : int, optional
-            The batch size to use during export.
-        **kwargs
-            Additional keyword arguments passed to the `pq.write_to_dataset` function.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Export a partitioned dataset to a directory
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.export_partitioned_dataset(
-                dataset_name='main',
-                export_dir='/path/to/export',
-                partitioning={'nelements': 'int', 'crystal_system': 'str'},
-                partitioning_flavor='hive',
-                batch_size=1000
-            )
-        """
-
-        self.db.export_partitioned_dataset(
-                                           file_path=export_dir, 
-                                           partitioning=partitioning, 
-                                           partitioning_flavor=partitioning_flavor, 
-                                           batch_size=batch_size, 
-                                           **kwargs)
     
     def _init_structure(self, structure, coords, coords_are_cartesian, species, lattice):
         """
@@ -811,8 +322,70 @@ class MatDB:
         else:
             logger.debug("No valid composition information provided.")
             return None
+    
+    def add_many(self, materials: Union[List[dict]],  
+                schema:pa.Schema=None,
+                metadata:dict=None,
+                normalize_dataset:bool=False,
+                normalize_config:NormalizeConfig=NormalizeConfig(),
+                verbose: int = 3, **kwargs):
+        """
+        Adds multiple materials to the database in a single transaction.
+
+        This method processes a list of materials and writes their data to the specified 
+        database dataset in a single transaction. Each material should be represented as a 
+        dictionary with keys corresponding to the arguments for the `add` method.
+
+        Parameters:
+        -----------
+        materials : Union[List[dict]]
+            A list of dictionaries where each dictionary contains the material data and 
+            corresponds to the arguments for the `add` method.
+        schema : pyarrow.Schema, optional
+            A new schema to be applied to the dataset.
+        metadata : dict, optional
+            A dictionary containing the metadata to be set.
+        normalize_dataset : bool, optional
+            If True, normalizes the dataset.
+        normalize_config : NormalizeConfig, optional
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
+        **kwargs
+            Additional keyword arguments passed to the ParquetDB `create` method.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Add a batch of materials to the database
+        .. highlight:: python
+        .. code-block:: python
+
+            materials = [
+                {'coords': [(0.0, 0.0, 0.0)], 'species': ["H"], 'lattice': [(1.0, 0.0, 0.0)]},
+                {'coords': [(0.5, 0.5, 0.5)], 'species': ["He"], 'lattice': [(0.0, 1.0, 0.0)]}
+            ]
+            manager.add_many(materials)
+        """
+        set_verbosity(verbose)
+        add_kwargs=dict(schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, 
+                        normalize_config=normalize_config, verbose=verbose)
+        logger.info(f"Adding {len(materials)} materials to the database.")
+        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, **add_kwargs)
+        entry_data=[result for result in results if result]
         
-    def _add_many(self, material):
+        df = pd.DataFrame(entry_data)
+        try:
+            self.db.create(df, **kwargs)
+        except Exception as e:
+            logger.error(f"Error adding material: {e}")
+        logger.info("All materials added successfully.")
+        
+    def _add_many(self, material, **kwargs):
         """
         Adds a material entry to the database without saving it immediately.
 
@@ -823,6 +396,8 @@ class MatDB:
         -----------
         material : dict
             A dictionary containing the material data, passed as arguments to the `add` method.
+        **kwargs
+            Additional keyword arguments passed to the `add` method.
 
         Returns:
         --------
@@ -845,8 +420,501 @@ class MatDB:
         """
 
         material['save_db']=False
-        return self.add(**material)
+        return self.add(**material, **kwargs)
 
+    def read(self, 
+        ids: List[int] = None,
+        columns: List[str] = None,
+        filters: List[pc.Expression] = None,
+        load_format: str = 'table',
+        batch_size:int=None,
+        include_cols: bool = True,
+        rebuild_nested_struct: bool = False,
+        rebuild_nested_from_scratch: bool = False,
+        load_config:LoadConfig=LoadConfig(),
+        normalize_config:NormalizeConfig=NormalizeConfig(),
+        verbose: int = 3
+        ):
+        """
+        Reads data from the database.
+
+        Parameters
+        ----------
+        
+        ids : list of int, optional
+            A list of IDs to read. If None, all data is read (default is None).
+        columns : list of str, optional
+            The columns to include in the output. If None, all columns are included (default is None).
+        filters : list of pyarrow.compute.Expression, optional
+            Filters to apply to the data (default is None).
+        load_format : str, optional
+            The format of the returned data: 'table' or 'batches' (default is 'table').
+        batch_size : int, optional
+            The batch size to use for loading data in batches. If None, data is loaded as a whole (default is None).
+        include_cols : bool, optional
+            If True, includes only the specified columns. If False, excludes the specified columns (default is True).
+        rebuild_nested_struct : bool, optional
+            If True, rebuilds the nested structure (default is False).
+        rebuild_nested_from_scratch : bool, optional
+            If True, rebuilds the nested structure from scratch (default is False).
+        load_config : LoadConfig, optional
+            Configuration for loading data, optimizing performance by managing memory usage.
+        normalize_config : NormalizeConfig, optional
+            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
+
+        Returns:
+        --------
+        Depends on `output_format`
+            The material data in the specified format (e.g., a dataset or another format supported by the database).
+
+        Examples:
+        ---------
+        # Example usage:
+        # Read specific materials by their IDs and select certain columns
+        .. highlight:: python
+        .. code-block:: python
+
+            # read materials by IDs, select certain columns, and choose a dataset output format
+            materials_dataset = manager.read(
+                ids=[1, 2, 3],
+                columns=['formula', 'density'],
+                load_format='table'
+            )
+
+            # Convert to pandas DataFrame
+            df=materials_dataset.to_pandas()
+
+            # Apply filters to the query
+            materials_dataset = manager.read(
+                filters=[pc.field('formula') == 'Fe', pc.field('density') > 7.0],
+                load_format='table'
+            )
+
+            # Read materials in batches
+            materials_generator = manager.read(
+                batch_size=100,
+                load_format='batch_generator'
+            )
+            for batch_table in materials_generator:
+                # Do something with the batch dataset
+
+
+            # Read materials as an unloaded dataset
+            dataset = manager.read()
+        """
+        set_verbosity(verbose)
+        
+        logger.debug(f"Reading materials.")
+        logger.debug(f"ids: {ids}")
+        logger.debug(f"columns: {columns}")
+        logger.debug(f"include_cols: {include_cols}")
+        logger.debug(f"filters: {filters}")
+        logger.debug(f"load_format: {load_format}")
+        logger.debug(f"batch_size: {batch_size}")
+
+        kwargs=dict(ids=ids, columns=columns, include_cols=include_cols, 
+                    filters=filters, load_format=load_format, batch_size=batch_size,
+                    rebuild_nested_struct=rebuild_nested_struct, rebuild_nested_from_scratch=rebuild_nested_from_scratch,
+                    load_config=load_config, normalize_config=normalize_config)
+        return self.db.read(**kwargs)
+    
+    def update(self, data: Union[List[dict], dict, pd.DataFrame, pa.Table], 
+               schema=None, 
+               metadata=None,
+               normalize_config=NormalizeConfig(), 
+               verbose: int = 3):
+        """
+        Updates existing records in the database.
+
+        This method updates records in the specified dataset based on the provided data. Each entry in the data 
+        must include an 'id' key that corresponds to the record to be updated. Field types can also be updated 
+        if specified in `field_type_dict`.
+
+        Parameters:
+        -----------
+        data : Union[List[dict], dict, pd.DataFrame]
+            The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame. 
+            Each dictionary should have an 'id' key for identifying the record to update.
+        schema : pyarrow.Schema, optional
+            A new schema to be applied to the dataset.
+        metadata : dict, optional
+            A dictionary containing the metadata to be set.
+        normalize_config : NormalizeConfig, optional
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Update a record in the database
+        .. highlight:: python
+        .. code-block:: python
+
+            # Update a record in the database
+            update_data = {'id': 1, 'density': 5.3, 'volume': 22.1}
+            manager.update(update_data)
+
+            # Update multiple records in the database
+            update_data = [
+                {'id': 1, 'density': 5.3, 'volume': 22.1},
+                {'id': 2, 'density': 7.8, 'volume': 33.2}
+            ]
+            manager.update(update_data)
+
+            # Update records with new field types
+
+        """
+        set_verbosity(verbose)
+
+        logger.info(f"Updating data")
+        self.db.update(data, schema=schema, metadata=metadata, normalize_config=normalize_config)
+        logger.info("Data updated successfully.")
+
+    def delete(self, ids:List[int]=None, columns:List[str]=None,
+               normalize_config: NormalizeConfig = NormalizeConfig(),
+               verbose: int = 3):
+        """
+        Deletes records from the database by ID.
+
+        This method deletes specific records from the database based on the provided list of IDs.
+
+        Parameters:
+        -----------
+        ids : List[int]
+            A list of record IDs to delete from the database.
+        columns : List[str], optional
+            A list of column names to delete from the database.
+        normalize_config : NormalizeConfig, optional
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Delete records by ID
+        .. highlight:: python
+        .. code-block:: python
+            manager.delete(ids=[1, 2, 3])
+        """
+        set_verbosity(verbose)
+        
+        logger.info(f"Deleting data {ids}")
+        self.db.delete(ids=ids, columns=columns, normalize_config=normalize_config)
+        logger.info("Data deleted successfully.")
+
+    def normalize(self, normalize_config:NormalizeConfig=NormalizeConfig()):
+        """
+        Normalizes the dataset.
+        """
+        self.db.normalize(normalize_config=normalize_config)
+    
+    def update_schema(self, field_dict:dict=None, schema:pa.Schema=None, normalize_config:NormalizeConfig=NormalizeConfig()):
+        """
+        Updates the schema of a specified dataset.
+
+        This method allows updating the schema of a dataset in the database. You can either provide a dictionary 
+        specifying new field types or directly pass a new schema.
+
+        Parameters:
+        -----------
+        field_dict : dict, optional
+            A dictionary where the keys are field names and the values are the new field types.
+        schema : pyarrow.Schema, optional
+            A new schema to be applied to the dataset.
+        normalize_config : NormalizeConfig, optional
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Update the schema of the 'main' dataset by adding a new field
+        .. highlight:: python
+        .. code-block:: python
+
+            # Update fields
+            field_dict = {'density': pa.float64()}
+            manager.update_schema(field_dict=field_dict)
+
+            # Update by passing a new schema. 
+            new_schema = pa.schema([
+                ('id', pa.int64()),
+                ('formula', pa.string()),
+                ('density', pa.float64()),
+                ('new_field', pa.float64())
+            ])
+            manager.update_schema(schema=new_schema)
+
+            # The field names must match the existing ones and be in the same order.
+            # Also the schema field type must be compatible with the existing entries.
+            # It would be useful to get the schema of a dataset before updating it.
+
+            current_schema = manager.get_schema()
+            density_field = current_schema.get_field_index('density')
+            new_schema = current_schema.set(density_field, pa.float32())
+            manager.update_schema(schema=new_schema)
+        """
+
+        self.db.update_schema(field_dict=field_dict, schema=schema, normalize_config=normalize_config)
+
+    def get_schema(self):
+        """
+        Retrieves the schema of a specified dataset.
+
+        This method returns the schema of the specified dataset in the database, which includes the 
+        field names and their data types.
+
+
+        Returns:
+        --------
+        pyarrow.Schema
+            The schema of the specified dataset, including field names and types.
+
+        Examples:
+        ---------
+        # Example usage:
+        # Get the schema of the 'main' dataset
+        .. highlight:: python
+        .. code-block:: python
+
+            schema = manager.get_schema()
+        """
+
+        return self.db.get_schema()
+    
+    def get_metadata(self):
+        """
+        Retrieves the metadata of a specified dataset.
+
+        This method returns the metadata associated with the specified dataset in the database.
+
+
+        Returns:
+        --------
+        dict
+            A dictionary containing the metadata of the specified dataset.
+
+        Examples:
+        ---------
+        # Example usage:
+        # Get the metadata of the 'main' dataset
+        .. highlight:: python
+        .. code-block:: python
+
+            metadata = manager.get_metadata()
+        """
+        return self.db.get_metadata()
+    
+    def get_field_names(self):
+        """
+        Retrieves the field names of a specified dataset.
+        """
+        return self.db.get_field_names()
+    
+    def get_metadata(self):
+        """
+        Retrieves the metadata of a specified dataset.
+        """
+        return self.db.get_metadata()
+    
+    def set_metadata(self, metadata: dict):
+        """
+        Sets the metadata for a specified dataset.
+
+        This method updates the metadata of the specified dataset with the provided dictionary.
+
+        Parameters:
+        -----------
+        metadata : dict
+            A dictionary containing the metadata to be set.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Set new metadata for a dataset
+        .. highlight:: python
+        .. code-block:: python
+
+            metadata = {'description': 'Material properties', 'version': 2}
+            manager.set_metadata(metadata=metadata)
+        """
+
+        self.db.set_metadata(metadata=metadata)
+
+    def drop_dataset(self):
+        """
+        Drops a specified dataset from the database.
+
+        This method permanently removes the specified dataset and its contents from the database.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Drop the 'main' dataset from the database
+        .. highlight:: python
+        .. code-block:: python
+
+            manager.drop_dataset()
+        """
+
+        self.db.drop_dataset()
+
+    def rename_dataset(self, new_name:str):
+        """
+        Renames a dataset in the database.
+
+        This method changes the name of an existing dataset to a new specified name.
+
+        Parameters:
+        -----------
+        new_name : str
+            The new name for the dataset.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Rename a dataset from 'old_dataset' to 'new_name'
+        .. highlight:: python
+        .. code-block:: python
+
+            manager.rename_dataset(new_name='new_name')
+        """
+
+        self.db.rename_dataset(new_name=new_name)
+
+    def copy_dataset(self, dest_name:str, overwrite:bool=False):
+        """
+        Copies a dataset in the database to a new dataset.
+
+        This method creates a copy of an existing dataset under a new name. Additional parameters 
+        can be passed to customize the copying process.
+
+        Parameters:
+        -----------
+        dest_name : str
+            The new name for the dataset.
+        overwrite : bool, optional
+            If True, overwrites the destination dataset if it already exists.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Copy a dataset from 'main' to 'main_backup'
+        .. highlight:: python
+        .. code-block:: python
+
+            manager.copy_dataset(dest_name='main_backup')
+        """
+
+        self.db.copy_dataset( dest_name=dest_name, overwrite=overwrite)
+
+
+    def export_dataset(self, export_dir:str=None, export_format:str='parquet'):
+        """Export a dataset in the database.
+
+        Args:
+            export_dir (str, optional): The directory where the exported dataset will be saved.
+            export_format (str, optional): The format of the exported dataset. Defaults to 'parquet'.
+            **kwargs: Additional keyword arguments to pass to the ParquetDB export_dataset method.
+
+        Returns:
+            None
+        """        
+        self.db.export_dataset(file_path=export_dir, format=export_format)
+
+    def export_partitioned_dataset(self, 
+                                   export_dir: str, 
+                                   partitioning,
+                                   partitioning_flavor=None,
+                                   load_config:LoadConfig=LoadConfig(),
+                                   load_format:str='parquet',
+                                   batch_size: int = None, 
+                                   **kwargs):
+        """
+        Exports a partitioned dataset to a specified directory.
+
+        This method exports a dataset to the specified directory using the provided partitioning scheme. 
+        Additional parameters allow customization of the export process, such as setting the partitioning flavor 
+        and controlling the batch size.
+
+        Parameters:
+        -----------
+        export_dir : str
+            The directory where the dataset will be exported.
+        partitioning : dict
+            The partitioning scheme to use for the dataset.
+        partitioning_flavor : str, optional
+            The partitioning flavor to use (e.g., 'hive' or another supported flavor).
+        load_config : LoadConfig, optional
+            The load configuration to use for the dataset.
+        load_format : str, optional
+            The format of the exported dataset. Defaults to 'parquet'.
+        batch_size : int, optional
+            The batch size to use during export.
+        **kwargs
+            Additional keyword arguments passed to the `pq.write_to_dataset` function.
+
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Export a partitioned dataset to a directory
+        .. highlight:: python
+        .. code-block:: python
+
+            manager.export_partitioned_dataset(
+                dataset_name='main',
+                export_dir='/path/to/export',
+                partitioning={'nelements': 'int', 'crystal_system': 'str'},
+                partitioning_flavor='hive',
+                batch_size=1000
+            )
+        """
+        if batch_size:
+            load_config.batch_size=batch_size
+        self.db.export_partitioned_dataset(
+                                           file_path=export_dir, 
+                                           partitioning=partitioning, 
+                                           partitioning_flavor=partitioning_flavor, 
+                                           load_config=load_config,
+                                           load_format=load_format,
+                                           **kwargs)
+    
+    
+        
+    
 
 def check_all_params_provided(**kwargs):
     """

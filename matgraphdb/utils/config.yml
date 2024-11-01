@@ -55,15 +55,15 @@ logging_config:
       formatter: user
       stream: ext://sys.stdout
 
-    file:
-      class: logging.FileHandler
-      formatter: simple
-      filename: "{{ log_dir }}/matgraphdb.log"
-      mode: a
+    # file:
+    #   class: logging.FileHandler
+    #   formatter: simple
+    #   filename: "{{ log_dir }}/matgraphdb.log"
+    #   mode: a
 
   loggers:
     matgraphdb:
-      level: INFO
+      level: CRITICAL
       handlers: [console]
       propagate: no
     parquetdb:
