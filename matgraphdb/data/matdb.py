@@ -14,6 +14,7 @@ import pyarrow.parquet as pq
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core import Structure, Composition
 from parquetdb import ParquetDB
+from parquetdb.core.parquetdb import NormalizeConfig
 import spglib
 
 from matgraphdb import config
@@ -346,8 +347,8 @@ class MatDB:
     
     def update(self, data: Union[List[dict], dict, pd.DataFrame], 
                schema=None, 
-               metadata=None, 
-               normalize_kwargs=None,
+               metadata=None,
+               normalize_config=NormalizeConfig(), 
                verbose: int = 3):
         """
         Updates existing records in the database.
@@ -398,7 +399,7 @@ class MatDB:
         set_verbosity(verbose)
 
         logger.info(f"Updating data")
-        self.db.update(data, schema=schema, metadata=metadata, normalize_kwargs=normalize_kwargs)
+        self.db.update(data, schema=schema, metadata=metadata, normalize_config=normalize_config)
         logger.info("Data updated successfully.")
 
     def delete(self, ids:List[int]=None, columns=None, verbose: int = 3):
