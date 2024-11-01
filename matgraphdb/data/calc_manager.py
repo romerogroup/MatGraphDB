@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # However, the former would be neater and if the user wants to speed up loading they can provide the need fields to read_args
 
 class CalculationManager:
-    def __init__(self, main_dir, db_manager, n_cores=1, job_submission_script_name='run.slurm'):
+    def __init__(self, main_dir, matdb, n_cores=1, job_submission_script_name='run.slurm'):
         """
         Initializes the `CalculationManager` with the specified main directory, database manager, number of cores, 
         and the name of the job submission script.
@@ -29,7 +29,7 @@ class CalculationManager:
         -----------
         main_dir : str
             Main directory path where calculations will be stored and accessed.
-        db_manager : object
+        matdb : object
             Database manager object for handling database operations.
         n_cores : int, optional
             Number of cores to use for multiprocessing. Defaults to `N_CORES`.
@@ -47,16 +47,16 @@ class CalculationManager:
             from matgraphdb.data.calc_manager import CalculationManager
 
             # Initialize the database manager
-            db_manager = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
+            matdb = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
 
             # Initialize the CalculationManager
             calc_manager = CalculationManager(main_dir="/path/to/main/directory/calculations", 
-                                            db_manager=db_manager, 
+                                            matdb=matdb, 
                                             n_cores=4, 
                                             job_submission_script_name='custom_script.slurm')
         """
 
-        self.db_manager = db_manager
+        self.matdb = matdb
         self.main_dir = main_dir
         self.n_cores = n_cores
         self.job_submission_script_name = job_submission_script_name
@@ -116,7 +116,7 @@ class CalculationManager:
         """
         logger.info("Setting up material directories.")
         logger.debug("Reading materials from the database.")
-        table=self.db_manager.read(columns=['id'])
+        table=self.matdb.read(columns=['id'])
         id_df=table.to_pandas()
 
         material_dirs = []
@@ -212,7 +212,7 @@ class CalculationManager:
         # read_args['columns'].append('id')
 
         logger.info("Running in-memory calculation on material data.")
-        df=self.db_manager.read(**read_args)
+        df=self.matdb.read(**read_args)
         ids=[]
         data=[]
         for i,row in df.iterrows():
@@ -227,7 +227,7 @@ class CalculationManager:
 
         if save_results:
             update_list=[(id,result) for id,result in zip(ids,results)]
-            self.db_manager.update_many(update_list)
+            self.matdb.update_many(update_list)
             logger.info("Results saved back to the database.")
 
         return results
@@ -255,8 +255,8 @@ class CalculationManager:
             from matgraphdb.data.material_manager import MaterialDatabaseManager
             from matgraphdb.data.calc_manager import CalculationManager
 
-            db_manager = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
-            calc_manager = CalculationManager(main_dir="/path/to/main/directory/calculations", db_manager=db_manager)
+            matdb = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
+            calc_manager = CalculationManager(main_dir="/path/to/main/directory/calculations", matdb=matdb)
 
             # Get the list of calculation names
             calculation_names = calc_manager.get_calculation_names()
@@ -317,7 +317,7 @@ class CalculationManager:
 
         logger.info(f"Creating calculation '{calc_name}' for all materials.")
 
-        table = self.db_manager.read(**read_args)
+        table = self.matdb.read(**read_args)
         df=table.to_pandas()
         logger.debug(f"Retrieved {len(table.shape[0])} rows from the database.")
 
@@ -365,8 +365,8 @@ class CalculationManager:
             from matgraphdb.data.material_manager import MaterialDatabaseManager
             from matgraphdb.data.calc_manager import CalculationManager
 
-            db_manager = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
-            calc_manager = CalculationManager(main_dir="/path/to/main/directory/calculations", db_manager=db_manager)
+            matdb = MaterialDatabaseManager(db_dir="/path/to/main/directory/db")
+            calc_manager = CalculationManager(main_dir="/path/to/main/directory/calculations", matdb=matdb)
 
             # Generate SLURM script with default settings
             calc_dir = "/path/to/material/calculation_directory"
@@ -732,7 +732,7 @@ class CalculationManager:
 
         logger.debug(f"Updating database with results.")
         
-        self.db_manager.update(update_list, **update_args)
+        self.matdb.update(update_list, **update_args)
         logger.info("Database updated with calculation data.")
 
     def load_metadata(self):
