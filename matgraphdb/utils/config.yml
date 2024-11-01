@@ -40,10 +40,19 @@ logging_config:
       format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
       datefmt: '%Y-%m-%d %H:%M:%S'
 
+    user:
+      format: '%(message)s'
+      datefmt: '%Y-%m-%d %H:%M:%S'
+
   handlers:
     console:
       class: logging.StreamHandler
       formatter: simple
+      stream: ext://sys.stdout
+
+    user_console:
+      class: logging.StreamHandler
+      formatter: user
       stream: ext://sys.stdout
 
     file:
@@ -57,7 +66,6 @@ logging_config:
       level: INFO
       handlers: [console]
       propagate: no
-
     parquetdb:
       level: CRITICAL
       propagate: no

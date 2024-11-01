@@ -10,10 +10,10 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from pymatgen.core import Structure
 
-from matgraphdb.data.material_manager import MaterialDatabaseManager
+from matgraphdb.data.matdb import MatDB
 from matgraphdb.data.calc_manager import CalculationManager
 from matgraphdb.graph_kit.graph_manager import GraphManager
-from matgraphdb.utils.multiprocess_utils import multiprocess_task
+from matgraphdb.utils.mp_utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class MatGraphDB:
         os.makedirs(self.db_dir, exist_ok=True)
         os.makedirs(self.graph_dir, exist_ok=True)
 
-        self.db_manager = MaterialDatabaseManager(db_dir=self.db_dir)
+        self.db_manager = MatDB(db_dir=self.db_dir)
         logger.debug("MaterialDatabaseManager initialized.")
 
         self.calc_manager = CalculationManager(main_dir=self.calculation_dir, 

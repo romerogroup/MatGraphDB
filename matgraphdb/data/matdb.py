@@ -4,7 +4,6 @@ import logging
 from typing import Callable, Union, List, Tuple, Dict
 from functools import partial
 from glob import glob
-from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -17,23 +16,25 @@ from pymatgen.core import Structure, Composition
 from parquetdb import ParquetDB
 import spglib
 
-from matgraphdb.calculations.mat_calcs.chemenv_calc import calculate_chemenv_connections
+from matgraphdb import config
 from matgraphdb.utils.mp_utils import multiprocess_task
+from matgraphdb.utils.general_utils import set_verbosity
 
 logger = logging.getLogger(__name__)
 
 
-class MaterialDatabaseManager:
+    
+class MatDB:
     """
     This class is intended to be the Data Access Layer for the Material Database.
     It provides methods for adding, reading, updating, and deleting materials from the database.
     """
 
-    def __init__(self, db_dir: str, n_cores=8):
+    def __init__(self,  db_name: str = 'main', db_dir: str = 'MatDB', n_cores=8, verbose=3):
         """
-        Initializes the `MaterialDatabaseManager` by setting the database directory and number of cores.
+        Initializes the `MatDB` by setting the database directory and number of cores.
 
-        This constructor sets up the `MaterialDatabaseManager` by specifying the directory where the database 
+        This constructor sets up the `MatDB` by specifying the directory where the database 
         is located and configuring the number of cores to be used. It also initializes the connection to the 
         database and defines the main dataset name.
 
@@ -43,6 +44,8 @@ class MaterialDatabaseManager:
             The directory where the database is stored.
         n_cores : int, optional
             The number of CPU cores to use for operations (default is 8).
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
 
         Returns:
         --------
@@ -51,20 +54,21 @@ class MaterialDatabaseManager:
         Examples:
         ---------
         # Example usage:
-        # Initialize the MaterialDatabaseManager with a database directory and the default number of cores
+        # Initialize the MatDB with a database directory and the default number of cores
         .. highlight:: python
         .. code-block:: python
 
-            from matgraphdb.data.material_manager import MaterialDatabaseManager
-            manager = MaterialDatabaseManager(db_dir='/path/to/db')
+            from matgraphdb.data.material_manager import MatDB
+            manager = MatDB(db_dir='/path/to/db')
         """
-
+        set_verbosity(verbose)
+        
         self.db_dir=db_dir
         self.n_cores=n_cores
-        self.main_dataset_name='main'
+        self.db_name=db_name
 
-        logger.info(f"Initializing MaterialDatabaseManager with database at {db_dir}")
-        self.db = ParquetDB(db_dir)
+        logger.info(f"Initializing MatDB with database at {db_dir}")
+        self.db = ParquetDB(self.db_name, dir = self.db_dir)
 
     def add(self, structure: Structure = None,
                 coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
@@ -74,8 +78,8 @@ class MaterialDatabaseManager:
                 properties: dict = None,
                 include_symmetry: bool = True,
                 calculate_funcs: List[Callable]=None,
-                dataset_name:str='main',
                 save_db: bool = True,
+                verbose: int = 3,
                 **kwargs
         ):
         """
@@ -103,10 +107,10 @@ class MaterialDatabaseManager:
             If True, performs symmetry analysis and includes symmetry information in the entry.
         calculate_funcs : List[Callable], optional
             A list of functions for calculating additional properties of the material.
-        dataset_name : str, optional
-            The name of the dataset to which the material data will be added (default is 'main').
         save_db : bool, optional
             If True, saves the material entry to the database (default is True).
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
         **kwargs
             Additional keyword arguments passed to the ParquetDB `create` method.
 
@@ -141,6 +145,7 @@ class MaterialDatabaseManager:
             structure = Structure.from_spacegroup("Fm-3m", Lattice.cubic(4.1437), ["Cs", "Cl"], [[0, 0, 0], [0.5, 0.5, 0.5]])
             material_data = manager.add(structure=structure)
         """
+        set_verbosity(verbose)
 
         # Generating entry data
         entry_data={}
@@ -153,53 +158,58 @@ class MaterialDatabaseManager:
             calculate_funcs.append(partial(perform_symmetry_analysis, symprec=kwargs.get('symprec',0.1)))
             
         logger.info("Adding a new material.")
-        try:
+        
 
-            structure = self._init_structure(structure, coords, coords_are_cartesian, species, lattice)
+        structure = self._init_structure(structure, coords, coords_are_cartesian, species, lattice)
 
-            if structure is None:
-                logger.error("A structure must be provided.")
-                raise ValueError("Either a structure must be provided")
-            
-      
-            composition=structure.composition
+        if structure is None:
+            logger.error("A structure must be provided.")
+            raise ValueError("Either a structure must be provided")
+        
     
-            entry_data['formula']=composition.formula
-            entry_data['elements']=list([element.symbol for element in composition.elements])
-            
-            entry_data['lattice']=structure.lattice.matrix.tolist()
-            entry_data['frac_coords']=structure.frac_coords.tolist()
-            entry_data['cartesian_coords']=structure.cart_coords.tolist()
-            entry_data['atomic_numbers']=structure.atomic_numbers
-            entry_data['species']=list([specie.symbol for specie in structure.species])
+        composition=structure.composition
 
-            entry_data["volume"]=structure.volume
-            entry_data["density"]=structure.density
-            entry_data["nsites"]=len(structure.sites)
-            entry_data["density_atomic"]=entry_data["nsites"]/entry_data["volume"]
+        entry_data['formula']=composition.formula
+        entry_data['elements']=list([element.symbol for element in composition.elements])
+        
+        entry_data['lattice']=structure.lattice.matrix.tolist()
+        entry_data['frac_coords']=structure.frac_coords.tolist()
+        entry_data['cartesian_coords']=structure.cart_coords.tolist()
+        entry_data['atomic_numbers']=structure.atomic_numbers
+        entry_data['species']=list([specie.symbol for specie in structure.species])
 
-            # Calculating additional properties
-            if calculate_funcs:
-                for func in calculate_funcs:
-                    try:
-                        func_results=partial(func, **kwargs)(structure)
-                        entry_data.update(func_results)
-                    except Exception as e:
-                        logger.error(f"Error calculating property: {e}")
+        entry_data["volume"]=structure.volume
+        entry_data["density"]=structure.density
+        entry_data["nsites"]=len(structure.sites)
+        entry_data["density_atomic"]=entry_data["nsites"]/entry_data["volume"]
 
-            # Adding other properties as columns
-            entry_data.update(properties)
-            
+        # Calculating additional properties
+        if calculate_funcs:
+            for func in calculate_funcs:
+                try:
+                    func_results=partial(func, **kwargs)(structure)
+                    entry_data.update(func_results)
+                except Exception as e:
+                    logger.error(f"Error calculating property: {e}")
+
+        # Adding other properties as columns
+        entry_data.update(properties)
+
+        df = pd.DataFrame([entry_data])
+        
+        logger.debug(f'Input dataframe head - \n{df.head(1)}')
+        logger.debug(f'Input dataframe shape - {df.shape}')
+        try:
             if save_db:
-                self.db.create(entry_data, dataset_name=dataset_name, **kwargs)
+                self.db.create(df, **kwargs)
                 logger.info("Material added successfully.")
             return entry_data
         except Exception as e:
-            logger.error(f"Error adding material: {e}")
+            logger.exception(f"Error adding material: {e}")
         
         return entry_data
     
-    def add_many(self, materials: List[Dict], dataset_name:str='main', **kwargs):
+    def add_many(self, materials: List[Dict],  verbose: int = 3, **kwargs):
         """
         Adds multiple materials to the database in a single transaction.
 
@@ -212,8 +222,8 @@ class MaterialDatabaseManager:
         materials : List[Dict]
             A list of dictionaries where each dictionary contains the material data and 
             corresponds to the arguments for the `add` method.
-        dataset_name : str, optional
-            The name of the dataset to add the data to (default is 'main').
+        verebose : int, optional
+            The verbosity level for logging (default is 3).
         **kwargs
             Additional keyword arguments passed to the ParquetDB `create` method.
 
@@ -234,23 +244,27 @@ class MaterialDatabaseManager:
             ]
             manager.add_many(materials)
         """
-
+        set_verbosity(verbose)
+        
         logger.info(f"Adding {len(materials)} materials to the database.")
-        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores)
+        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, verbose=verbose)
         entry_data=[result for result in results if result]
+        
+        df = pd.DataFrame(entry_data)
         try:
-            self.db.create(entry_data, dataset_name=dataset_name, **kwargs)
+            self.db.create(entry_data, **kwargs)
         except Exception as e:
             logger.error(f"Error adding material: {e}")
         logger.info("All materials added successfully.")
 
-    def read(self, ids=None, 
+    def read(self, 
+            ids=None, 
             columns:List[str]=None, 
             include_cols:bool=True, 
             filters: List[pc.Expression]=None,
-            output_format='dataset',
-            dataset_name:str='main', 
-            batch_size=None):
+            load_format='table',
+            batch_size=None,
+            verbose: int = 3):
         """
         Reads materials from the database by ID or based on specific filters.
 
@@ -271,10 +285,10 @@ class MaterialDatabaseManager:
             A list of filters to apply to the query, allowing for more fine-grained material selection.
         output_format : str, optional
             The format in which to return the data, such as 'dataset' or another supported format (default is 'dataset').
-        dataset_name : str, optional
-            The name of the dataset to read the data from (default is 'main').
         batch_size : int, optional
             The size of data batches to be read, useful for handling large datasets (default is None).
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
 
         Returns:
         --------
@@ -292,7 +306,7 @@ class MaterialDatabaseManager:
             materials_dataset = manager.read(
                 ids=[1, 2, 3],
                 columns=['formula', 'density'],
-                output_format='table'
+                load_format='table'
             )
 
             # Convert to pandas DataFrame
@@ -301,40 +315,40 @@ class MaterialDatabaseManager:
             # Apply filters to the query
             materials_dataset = manager.read(
                 filters=[pc.field('formula') == 'Fe', pc.field('density') > 7.0],
-                output_format='table'
+                load_format='table'
             )
 
             # Read materials in batches
             materials_generator = manager.read(
                 batch_size=100,
-                output_format='batch_generator'
+                load_format='batch_generator'
             )
             for batch_table in materials_generator:
                 # Do something with the batch dataset
 
 
             # Read materials as an unloaded dataset
-            dataset = manager.read(
-                output_format='dataset'
-            )
+            dataset = manager.read()
         """
-
+        set_verbosity(verbose)
+        
         logger.debug(f"Reading materials.")
         logger.debug(f"ids: {ids}")
-        logger.debug(f"dataset_name: {dataset_name}")
         logger.debug(f"columns: {columns}")
         logger.debug(f"include_cols: {include_cols}")
         logger.debug(f"filters: {filters}")
-        logger.debug(f"output_format: {output_format}")
+        logger.debug(f"load_format: {load_format}")
         logger.debug(f"batch_size: {batch_size}")
 
-        kwargs=dict(ids=ids, dataset_name=dataset_name, columns=columns, include_cols=include_cols, 
-                    filters=filters, output_format=output_format, batch_size=batch_size)
+        kwargs=dict(ids=ids, columns=columns, include_cols=include_cols, 
+                    filters=filters, load_format=load_format, batch_size=batch_size)
         return self.db.read(**kwargs)
     
     def update(self, data: Union[List[dict], dict, pd.DataFrame], 
-               dataset_name='main', 
-               field_type_dict=None):
+               schema=None, 
+               metadata=None, 
+               normalize_kwargs=None,
+               verbose: int = 3):
         """
         Updates existing records in the database.
 
@@ -347,10 +361,14 @@ class MaterialDatabaseManager:
         data : Union[List[dict], dict, pd.DataFrame]
             The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame. 
             Each dictionary should have an 'id' key for identifying the record to update.
-        dataset_name : str, optional
-            The name of the dataset where the data will be updated (default is 'main').
-        field_type_dict : dict, optional
-            A dictionary specifying new field types. The keys are field names, and the values are the desired types.
+        schema : pyarrow.Schema, optional
+            A new schema to be applied to the dataset.
+        metadata : dict, optional
+            A dictionary containing the metadata to be set.
+        normalize_kwargs : dict, optional
+            A dictionary of keyword arguments to be passed to the normalize function.
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
 
         Returns:
         --------
@@ -375,16 +393,15 @@ class MaterialDatabaseManager:
             manager.update(update_data)
 
             # Update records with new field types
-            field_type_dict = {'density': pa.float32(), 'volume': pa.float16()}
-            manager.update(update_data, field_type_dict=field_type_dict)
 
         """
+        set_verbosity(verbose)
 
         logger.info(f"Updating data")
-        self.db.update(data, dataset_name=dataset_name, field_type_dict=field_type_dict)
+        self.db.update(data, schema=schema, metadata=metadata, normalize_kwargs=normalize_kwargs)
         logger.info("Data updated successfully.")
 
-    def delete(self, ids:List[int], dataset_name:str='main'):
+    def delete(self, ids:List[int]=None, columns=None, verbose: int = 3):
         """
         Deletes records from the database by ID.
 
@@ -394,8 +411,10 @@ class MaterialDatabaseManager:
         -----------
         ids : List[int]
             A list of record IDs to delete from the database.
-        dataset_name : str, optional
-            The name of the dataset from which to delete the records (default is 'main').
+        columns : List[str], optional
+            A list of column names to delete from the database.
+        verbose : int, optional
+            The verbosity level for logging (default is 3).
 
         Returns:
         --------
@@ -410,22 +429,19 @@ class MaterialDatabaseManager:
 
             manager.delete(ids=[1, 2, 3])
         """
-
+        set_verbosity(verbose)
+        
         logger.info(f"Deleting data {ids}")
-        self.db.delete(ids, dataset_name=dataset_name)
+        self.db.delete(ids=ids, columns=columns)
         logger.info("Data deleted successfully.")
 
-    def get_schema(self, dataset_name:str ='main'):
+    def get_schema(self):
         """
         Retrieves the schema of a specified dataset.
 
         This method returns the schema of the specified dataset in the database, which includes the 
         field names and their data types.
 
-        Parameters:
-        -----------
-        dataset_name : str, optional
-            The name of the dataset for which the schema is to be retrieved (default is 'main').
 
         Returns:
         --------
@@ -439,12 +455,12 @@ class MaterialDatabaseManager:
         .. highlight:: python
         .. code-block:: python
 
-            schema = manager.get_schema(dataset_name='main')
+            schema = manager.get_schema()
         """
 
-        return self.db.get_schema(dataset_name=dataset_name)
+        return self.db.get_schema()
     
-    def update_schema(self, dataset_name:str='main', field_dict=None, schema=None):
+    def update_schema(self, field_dict:dict=None, schema:pa.Schema=None, normalize_kwargs:dict=None):
         """
         Updates the schema of a specified dataset.
 
@@ -453,12 +469,12 @@ class MaterialDatabaseManager:
 
         Parameters:
         -----------
-        dataset_name : str, optional
-            The name of the dataset whose schema will be updated (default is 'main').
         field_dict : dict, optional
             A dictionary where the keys are field names and the values are the new field types.
         schema : pyarrow.Schema, optional
             A new schema to be applied to the dataset.
+        normalize_kwargs : dict, optional
+            A dictionary of keyword arguments to be passed to the normalize function.
 
         Returns:
         --------
@@ -488,51 +504,20 @@ class MaterialDatabaseManager:
             # Also the schema field type must be compatible with the existing entries.
             # It would be useful to get the schema of a dataset before updating it.
 
-            current_schema = manager.get_schema(dataset_name='main')
+            current_schema = manager.get_schema()
             density_field = current_schema.get_field_index('density')
             new_schema = current_schema.set(density_field, pa.float32())
             manager.update_schema(schema=new_schema)
         """
 
-        self.db.update_schema(dataset_name=dataset_name, field_dict=field_dict, schema=schema)
+        self.db.update_schema(field_dict=field_dict, schema=schema, normalize_kwargs=normalize_kwargs)
 
-    def get_datasets(self):
-        """
-        Retrieves a list of all datasets in the database.
-
-        This method returns the names of all datasets currently stored in the database.
-
-        Parameters:
-        -----------
-        None
-
-        Returns:
-        --------
-        List[str]
-            A list of dataset names present in the database.
-
-        Examples:
-        ---------
-        # Example usage:
-        # Get all datasets in the database
-        .. highlight:: python
-        .. code-block:: python
-
-            datasets = manager.get_datasets()
-        """
-
-        return self.db.get_datasets()
-    
-    def get_metadata(self, dataset_name:str='main'):
+    def get_metadata(self):
         """
         Retrieves the metadata of a specified dataset.
 
         This method returns the metadata associated with the specified dataset in the database.
 
-        Parameters:
-        -----------
-        dataset_name : str, optional
-            The name of the dataset for which metadata is retrieved (default is 'main').
 
         Returns:
         --------
@@ -546,11 +531,11 @@ class MaterialDatabaseManager:
         .. highlight:: python
         .. code-block:: python
 
-            metadata = manager.get_metadata(dataset_name='main')
+            metadata = manager.get_metadata()
         """
-        return self.db.get_metadata(dataset_name=dataset_name)
+        return self.db.get_metadata()
     
-    def set_metadata(self, metadata: dict, dataset_name:str):
+    def set_metadata(self, metadata: dict):
         """
         Sets the metadata for a specified dataset.
 
@@ -560,8 +545,6 @@ class MaterialDatabaseManager:
         -----------
         metadata : dict
             A dictionary containing the metadata to be set.
-        dataset_name : str
-            The name of the dataset whose metadata will be updated.
 
         Returns:
         --------
@@ -575,21 +558,16 @@ class MaterialDatabaseManager:
         .. code-block:: python
 
             metadata = {'description': 'Material properties', 'version': 2}
-            manager.set_metadata(metadata=metadata, dataset_name='main')
+            manager.set_metadata(metadata=metadata)
         """
 
-        self.db.set_metadata(metadata=metadata, dataset_name=dataset_name)
+        self.db.set_metadata(metadata=metadata)
 
-    def drop_dataset(self, dataset_name:str='main'):
+    def drop_dataset(self):
         """
         Drops a specified dataset from the database.
 
         This method permanently removes the specified dataset and its contents from the database.
-
-        Parameters:
-        -----------
-        dataset_name : str
-            The name of the dataset to be dropped.
 
         Returns:
         --------
@@ -602,12 +580,12 @@ class MaterialDatabaseManager:
         .. highlight:: python
         .. code-block:: python
 
-            manager.drop_dataset(dataset_name='main')
+            manager.drop_dataset()
         """
 
-        self.db.drop_dataset(dataset_name=dataset_name)
+        self.db.drop_dataset()
 
-    def rename_dataset(self, old_dataset_name:str, new_dataset_name:str):
+    def rename_dataset(self, new_dataset_name:str):
         """
         Renames a dataset in the database.
 
@@ -615,8 +593,6 @@ class MaterialDatabaseManager:
 
         Parameters:
         -----------
-        old_dataset_name : str
-            The current name of the dataset to be renamed.
         new_dataset_name : str
             The new name for the dataset.
 
@@ -634,9 +610,9 @@ class MaterialDatabaseManager:
             manager.rename_dataset(old_dataset_name='old_dataset', new_dataset_name='new_dataset')
         """
 
-        self.db.rename_dataset(old_dataset_name=old_dataset_name, new_dataset_name=new_dataset_name)
+        self.db.rename_dataset(new_dataset_name=new_dataset_name)
 
-    def copy_dataset(self, old_dataset_name:str, new_dataset_name:str, **kwargs):
+    def copy_dataset(self, new_dataset_name:str, **kwargs):
         """
         Copies a dataset in the database to a new dataset.
 
@@ -645,8 +621,6 @@ class MaterialDatabaseManager:
 
         Parameters:
         -----------
-        old_dataset_name : str
-            The name of the dataset to be copied.
         new_dataset_name : str
             The name for the new copy of the dataset.
         **kwargs
@@ -663,65 +637,16 @@ class MaterialDatabaseManager:
         .. highlight:: python
         .. code-block:: python
 
-            manager.copy_dataset(old_dataset_name='main', new_dataset_name='main_backup')
+            manager.copy_dataset(new_dataset_name='main_backup')
         """
 
-        self.db.copy_dataset(old_dataset_name=old_dataset_name, new_dataset_name=new_dataset_name, **kwargs)
+        self.db.copy_dataset( new_dataset_name=new_dataset_name, **kwargs)
 
-    def optimize_dataset(self, dataset_name:str='main', 
-                    max_rows_per_file=10000,
-                    min_rows_per_group=0,
-                    max_rows_per_group=10000,
-                    batch_size=None,
-                    **kwargs):
-        """
-        Optimizes a specified dataset in the database.
 
-        This method optimizes the storage and performance of a dataset by controlling file and group sizes, 
-        potentially improving query performance and reducing disk usage.
-
-        Parameters:
-        -----------
-        dataset_name : str
-            The name of the dataset to be optimized.
-        max_rows_per_file : int
-            The maximum number of rows allowed per file.
-        min_rows_per_group : int
-            The minimum number of rows per group.
-        max_rows_per_group : int
-            The maximum number of rows per group.
-        batch_size : int
-            The batch size to be used during optimization.
-        **kwargs
-            Additional keyword arguments passed to the `pq.write_to_dataset` function.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Optimize the dataset with specific row and group limits
-        .. highlight:: python
-        .. code-block:: python
-
-            # The smaller parquet files will now only contain 100 rows per file
-            manager.optimize_dataset(
-                dataset_name='main',
-                max_rows_per_file=100,
-                min_rows_per_group=0,
-                max_rows_per_group=100,
-            )
-        """
-
-        self.db.optimize_dataset(dataset_name=dataset_name, **kwargs)
-
-    def export_dataset(self, dataset_name:str='main', export_dir:str=None, export_format:str='parquet', **kwargs):
+    def export_dataset(self, export_dir:str=None, export_format:str='parquet', **kwargs):
         """Export a dataset in the database.
 
         Args:
-            dataset_name (str): The name of the dataset to be exported.
             export_dir (str, optional): The directory where the exported dataset will be saved.
             export_format (str, optional): The format of the exported dataset. Defaults to 'parquet'.
             **kwargs: Additional keyword arguments to pass to the ParquetDB export_dataset method.
@@ -729,9 +654,9 @@ class MaterialDatabaseManager:
         Returns:
             None
         """        
-        self.db.export_dataset(dataset_name=dataset_name, file_path=export_dir, format=export_format, **kwargs)
+        self.db.export_dataset(file_path=export_dir, format=export_format, **kwargs)
 
-    def export_partitioned_dataset(self, dataset_name: str, 
+    def export_partitioned_dataset(self, 
                                    export_dir: str, 
                                    partitioning,
                                    partitioning_flavor=None,
@@ -746,8 +671,6 @@ class MaterialDatabaseManager:
 
         Parameters:
         -----------
-        dataset_name : str
-            The name of the dataset to export.
         export_dir : str
             The directory where the dataset will be exported.
         partitioning : dict
@@ -779,7 +702,7 @@ class MaterialDatabaseManager:
             )
         """
 
-        self.db.export_partitioned_dataset(dataset_name=dataset_name, 
+        self.db.export_partitioned_dataset(
                                            file_path=export_dir, 
                                            partitioning=partitioning, 
                                            partitioning_flavor=partitioning_flavor, 
@@ -1063,6 +986,6 @@ def perform_symmetry_analysis(structure: Structure, symprec: float = 0.1):
     symmetry_info['symmetry']["symbol"] = sym_analyzer.get_hall()
     symmetry_info['symmetry']["symprec"] = symprec
     symmetry_info['symmetry']["version"] = str(spglib.__version__)
-    symmetry_info['symmetry']["wyckoffs"] = sym_dataset['wyckoffs']
+    symmetry_info['symmetry']["wyckoffs"] = sym_dataset.wyckoffs
 
     return symmetry_info
