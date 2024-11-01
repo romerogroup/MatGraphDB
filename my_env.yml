@@ -1,4 +1,4 @@
-name: my_matgraphdb
+name: matgraphdb_thorny
 channels:
 - pytorch
 - nvidia
@@ -10,6 +10,7 @@ dependencies:
 - torchvision==0.16.2
 - torchaudio==2.1.2
 - pytorch-cuda=11.8
+- graph-tool
 - pip
 - pip:
 
@@ -44,8 +45,6 @@ dependencies:
   - tiktoken
   - tqdm
   - p-tqdm
-
-  - graph-tool; platform_system == "Linux"
   - pyg_lib ; platform_system == "Linux"
   - torch_geometric
   - torch_scatter 
