@@ -9,14 +9,12 @@ from matgraphdb.utils import timeit
 
 @timeit
 def init_matgraphdb():
-    mgdb = MatGraphDB(main_dir=os.path.join('data','MatGraphDB'))
+    mgdb = MatGraphDB(main_dir=os.path.join('data','MatGraphDB_dev'))
     return mgdb
 
 def main():
     mgdb = init_matgraphdb()
 
-
-
     mgdb.db_manager.add(coords=np.array([[0,0,0]]), 
                         species=['Fe'], 
                         lattice=[[1,0,0],[0,1,0],[0,0,1]], 
@@ -32,11 +30,11 @@ def main():
                         species=['Fe'], 
                         lattice=[[1,0,0],[0,1,0],[0,0,1]], 
                         properties={'density':1.0})
-    # mgdb.db_manager.add(composition='TiO2')
 
-    # mgdb.db_manager.delete(ids=[0])
+    mgdb.db_manager.delete(ids=[0,1])
     results=mgdb.db_manager.read(columns=['id'])
     df=results.to_pandas()
+    
     print(df)
     print(df.shape)
     
