@@ -372,9 +372,11 @@ class MatDB:
             manager.add_many(materials)
         """
         set_verbosity(verbose)
+        logger.info(f"Adding {len(materials)} materials to the database.")
+        
         add_kwargs=dict(schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, 
                         normalize_config=normalize_config, verbose=verbose)
-        logger.info(f"Adding {len(materials)} materials to the database.")
+        
         results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, **add_kwargs)
         entry_data=[result for result in results if result]
         
