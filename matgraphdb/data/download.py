@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from mp_api.client import MPRester
 
-from matgraphdb.utils import DATA_DIR, EXTERNAL_DATA_DIR
+
 
 load_dotenv()
 
@@ -149,8 +149,7 @@ def download_molecules_data(save_dir, endpoint, molecules_ids):
         print('-'*200)
 
 if __name__=='__main__':
-
-
+    from matgraphdb import config
     # Using the Mprester API
     # with MPRester(api_key=MP_API_KEY) as mpr:
     #     elasticity_doc = mpr.elasticity.search(material_ids=["mp-66"])
@@ -170,20 +169,18 @@ if __name__=='__main__':
     #                 'energy_above_hull_max':0.2
     #                 }
     # download_materials(save_dir=save_dir,**materials_filter)
-
-
-    external_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project','json_database')
+    external_dir=os.path.join(config.data_dir,'external')
     material_ids = [file.split('.')[0] for file in os.listdir(external_dir) if file.endswith('.json')]
 
-    save_dir=os.path.join(EXTERNAL_DATA_DIR,'materials_project')
+    save_dir=os.path.join(external_dir,'materials_project')
 
-    download_materials_data(save_dir, endpoint='bonds', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='elasticity', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='piezoelectric', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='thermo', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='dielectric', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='oxidation_states', material_ids=material_ids)
-    download_materials_data(save_dir, endpoint='phonon', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='bonds', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='elasticity', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='piezoelectric', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='thermo', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='dielectric', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='oxidation_states', material_ids=material_ids)
+    # download_materials_data(save_dir, endpoint='phonon', material_ids=material_ids)
 
 
 

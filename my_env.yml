@@ -52,4 +52,6 @@ dependencies:
   - torch_cluster
   - torch_spline_conv
   - -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
-  - -e .
+  - -e . --config-settings editable_mode=compat
+  - -e .[llm] --config-settings editable_mode=compat
+  - -e .[dev] --config-settings editable_mode=compat
