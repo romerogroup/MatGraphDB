@@ -25,6 +25,7 @@ def chunk_list(input_list, chunk_size):
 
 
 def download_materials(save_dir, chunk_size=10000, **kwargs):
+def download_materials(save_dir, chunk_size=10000, **kwargs):
     """
     Downloads materials from the Materials Project database and saves them in chunks of 10000 materials per JSON file.
     https://github.com/materialsproject/api/tree/main/mp_api/client/routes/materials
@@ -59,8 +60,8 @@ def download_materials_data(save_dir,  endpoint, material_ids, chunk_size=10000,
     """
     chunks = chunk_list(material_ids, chunk_size=chunk_size)
 
-    final_save_dir=os.path.join(save_dir,endpoint)
-    os.makedirs(final_save_dir,exist_ok=True)
+    final_save_dir = os.path.join(save_dir, endpoint)
+    os.makedirs(final_save_dir, exist_ok=True)
 
     for i_chunk,chunk in enumerate(chunks[:]):
         
