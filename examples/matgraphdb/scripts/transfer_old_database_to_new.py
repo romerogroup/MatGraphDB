@@ -14,11 +14,6 @@ def main():
     json_database_path = os.path.join(config.data_dir,'production','materials_project','json_database')
     
     
-    
-    
-    
-    
-    
     # # Create a list of 5 identical materials
     # materials = [material for _ in range(5)]
     
