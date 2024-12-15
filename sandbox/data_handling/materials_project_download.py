@@ -200,7 +200,7 @@ if __name__=='__main__':
     # #                 }
     # download_materials(save_dir=save_dir, chunk_size=10000, **materials_filter)
 
-    db=ParquetDB('materials_summary', dir=parquetdb_dir)
+    db=ParquetDB(db_path=os.path.join(parquetdb_dir, 'materials_summary'))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", "materials_summary", "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -229,7 +229,7 @@ if __name__=='__main__':
     
     # endpoint='chemenv'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -250,7 +250,7 @@ if __name__=='__main__':
     
     # endpoint='bonds'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -271,7 +271,7 @@ if __name__=='__main__':
     
     # endpoint='piezoelectric'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -292,7 +292,7 @@ if __name__=='__main__':
     
     # endpoint='thermo'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -318,7 +318,7 @@ if __name__=='__main__':
     
     # endpoint='dielectric'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -344,7 +344,7 @@ if __name__=='__main__':
     
     # endpoint='oxidation_states'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -366,7 +366,7 @@ if __name__=='__main__':
     
     # endpoint='electronic_structure'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -392,7 +392,7 @@ if __name__=='__main__':
     
     # endpoint='phonon'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -419,7 +419,7 @@ if __name__=='__main__':
     
     # endpoint='absorption'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -451,7 +451,7 @@ if __name__=='__main__':
     
     # endpoint='eos'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -472,7 +472,7 @@ if __name__=='__main__':
     
     # endpoint='grain_boundaries'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -495,7 +495,7 @@ if __name__=='__main__':
     
     # endpoint='insertion_electrodes'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -521,7 +521,7 @@ if __name__=='__main__':
 
     # endpoint='provenance'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -547,7 +547,7 @@ if __name__=='__main__':
     
     # endpoint='magnetism'
     # # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -573,7 +573,7 @@ if __name__=='__main__':
     
     # endpoint='robocrys'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids, use_search_docs=True)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -599,7 +599,7 @@ if __name__=='__main__':
     
     # endpoint='similarity'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -625,7 +625,7 @@ if __name__=='__main__':
     
     # endpoint='substrates'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -651,7 +651,7 @@ if __name__=='__main__':
 
     # endpoint='summary'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -677,7 +677,7 @@ if __name__=='__main__':
     
     # endpoint='synthesis'
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):
@@ -703,7 +703,7 @@ if __name__=='__main__':
     
     # endpoint='xas'  
     # download_materials_data(os.path.join(external_dir,'materials_project'), endpoint=endpoint, material_ids=material_ids)
-    # db = ParquetDB(dataset_name=endpoint, dir=parquetdb_dir)
+    # db = ParquetDB(db_path=os.path.join(parquetdb_dir, endpoint))
     # chunk_files = glob(os.path.join(external_dir, "materials_project", endpoint, "*.json"))
     # db.drop_dataset()
     # for i,chunk_file in enumerate(chunk_files[:]):

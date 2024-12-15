@@ -16,9 +16,9 @@ def main():
     dataset_name='materials'
     from_scratch=False
     
-    db = ParquetDB(dataset_name, dir=parquetdb_dir)
-    db_test = ParquetDB(dataset_name + '_test', dir=parquetdb_dir)
-    db_formated = ParquetDB(dataset_name + '_formated', dir=parquetdb_dir)
+    db = ParquetDB(db_path=os.path.join(parquetdb_dir, dataset_name))
+    db_test = ParquetDB(db_path=os.path.join(parquetdb_dir, dataset_name + '_test'))
+    db_formated = ParquetDB(db_path=os.path.join(parquetdb_dir, dataset_name + '_formated'))
     
     table = db_formated.read()
         

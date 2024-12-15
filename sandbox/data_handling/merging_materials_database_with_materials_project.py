@@ -9,7 +9,7 @@ from pyarrow import compute as pc
 
 def write_schema_summary(materials_parquetdb_dir,endpoint='chemenv', append_string=''):
 
-    db=ParquetDB(endpoint, dir=materials_parquetdb_dir)
+    db=ParquetDB(db_path=os.path.join(materials_parquetdb_dir,endpoint))
     table=db.read()
     print(table.shape)
     
@@ -27,12 +27,10 @@ def write_schema_summary(materials_parquetdb_dir,endpoint='chemenv', append_stri
 
 def main():
     # Example usage
+    materials_db = ParquetDB(db_path=os.path.join(config.data_dir,'materials'))
+    table=materials_db.read()
 
-    materials_db = ParquetDB('materials', dir=config.data_dir)
-    
-    write_schema_summary(config.data_dir,endpoint='materials')
-    
-    # table=materials_db.read()
+
     # print(table.shape)
     # data_dir=os.path.join(config.data_dir,'external','materials_project','materials','elasticity','elasticity_chunk_0.json')
     # with open(data_dir,'r') as f:
@@ -40,10 +38,10 @@ def main():
     
     # print(data['entries'][0])
     
-  
-    mp_db=ParquetDB('elasticity', dir=os.path.join(config.data_dir,'external','materials_project', 'materials_ParquetDB'))
+    mp_dir=os.path.join(config.data_dir,'external','materials_project', 'materials_ParquetDB')
+    mp_db=ParquetDB(db_path=os.path.join(mp_dir,'elasticity'))
     
-    # table=mp_db.read()
+    table=mp_db.read()
 
 
 
@@ -51,10 +49,10 @@ def main():
         'bulk_modulus.reuss': 'elasticity.k_reuss',
         'bulk_modulus.voigt': 'elasticity.k_voigt',
         'bulk_modulus.vrh': 'elasticity.k_vrh',
-        # 'compliance_tensor.ieee_format': 'elasticity.compliance_tensor_ieee_format',
-        # 'compliance_tensor.raw': 'elasticity.compliance_tensor_raw',
-        # 'elastic_tensor.ieee_format': 'elasticity.elastic_tensor_ieee_format',
-        # 'elastic_tensor.raw': 'elasticity.elastic_tensor_raw',
+        'compliance_tensor.ieee_format': 'elasticity.compliance_tensor_ieee_format',
+        'compliance_tensor.raw': 'elasticity.compliance_tensor_raw',
+        'elastic_tensor.ieee_format': 'elasticity.elastic_tensor_ieee_format',
+        'elastic_tensor.raw': 'elasticity.elastic_tensor_raw',
         'debye_temperature': 'elasticity.debye_temperature',
         'homogeneous_poisson': 'elasticity.homogeneous_poisson',
         'order': 'elasticity.order',
@@ -113,6 +111,9 @@ def main():
     
 
     materials_db.update(mp_table_with_ids)
+    
+    
+    write_schema_summary(config.data_dir,endpoint='materials')
     
     
         

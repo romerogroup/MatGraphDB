@@ -15,7 +15,7 @@ def main():
     
     
     chunk_files = glob(os.path.join(output_directory,'*.json'))
-    parquetdb = ParquetDB(dataset_name, dir=parquetdb_dir)
+    parquetdb = ParquetDB(db_path=os.path.join(parquetdb_dir, dataset_name))
     parquetdb.drop_dataset()
     for chunk_file in chunk_files[:]:
         start_time = time.time()
@@ -24,7 +24,7 @@ def main():
         print(f"Time taken: {end_time - start_time:.2f} seconds")
     
     
-    parquetdb = ParquetDB(dataset_name, dir=parquetdb_dir)
+    parquetdb = ParquetDB(db_path=os.path.join(parquetdb_dir, dataset_name))
     table = parquetdb.read()
     
     write_schema_summary(parquetdb_dir,endpoint='materials')
@@ -33,7 +33,7 @@ def main():
 
 def write_schema_summary(materials_parquetdb_dir,endpoint='chemenv'):
 
-    db=ParquetDB(endpoint, dir=materials_parquetdb_dir)
+    db=ParquetDB(db_path=os.path.join(materials_parquetdb_dir, endpoint))
     table=db.read()
     print(table.shape)
     

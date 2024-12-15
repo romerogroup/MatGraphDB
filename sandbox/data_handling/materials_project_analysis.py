@@ -30,7 +30,7 @@ def main():
     #     except Exception as e:
     #         print(f"Error writing schema summary for {endpoint}: {e}")
             
-    db=ParquetDB('elasticity', dir=materials_parquetdb_dir)
+    db=ParquetDB(db_path=os.path.join(materials_parquetdb_dir, 'elasticity'))
     table=db.read(filters=[pc.field('material_id')=='mp-28692'])
     
     print(table)
@@ -41,7 +41,7 @@ def main():
 
 def write_schema_summary(materials_parquetdb_dir,endpoint='chemenv'):
 
-    db=ParquetDB(endpoint, dir=materials_parquetdb_dir)
+    db=ParquetDB(db_path=os.path.join(materials_parquetdb_dir, endpoint))
     table=db.read()
     print(table.shape)
     
