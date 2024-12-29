@@ -6,8 +6,8 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pandas as pd
 
-from matgraphdb.core.nodes import NodeStore
-from matgraphdb.core.edges import EdgeStore
+from matgraphdb.core.node_store import NodeStore
+from matgraphdb.core.edge_store import EdgeStore
 
 
 logger = logging.getLogger(__name__)

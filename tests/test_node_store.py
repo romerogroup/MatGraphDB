@@ -3,7 +3,7 @@ import pandas as pd
 import pyarrow as pa
 import os
 import shutil
-from matgraphdb.core.nodes import NodeStore
+from matgraphdb.stores import NodeStore
 
 @pytest.fixture
 def temp_storage(tmp_path):

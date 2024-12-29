@@ -9,7 +9,7 @@ from pyarrow import compute as pc
 
 from matgraphdb.utils.parquet_tools import write_schema_summary
 from matgraphdb import config, MatGraphDB
-from matgraphdb.core.graphs import GraphStore
+from matgraphdb.core.graph_store import GraphStore
 
 
 config.logging_config.loggers.matgraphdb.level = 'DEBUG'
