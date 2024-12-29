@@ -37,7 +37,7 @@ class MatGraphDB:
         graph_manager : GraphManager
             Manages the graph database for material data.
         """
-    def __init__(self, main_dir: str,
+    def __init__(self, db_path: str = 'MatGraphDB',
                  calculation_dirname='calculations',
                  graph_dirname='graph_database',
                  db_dirname='materials', 
@@ -51,7 +51,7 @@ class MatGraphDB:
 
         Parameters:
         -----------
-        main_dir : str
+        db_path : str
             The path to the main directory where all data, including calculations and graphs, will be stored.
         calculation_dirname : str, optional
             Subdirectory name for storing calculation files (default is 'calculations').
@@ -75,23 +75,22 @@ class MatGraphDB:
         .. highlight:: python
         .. code-block:: python
 
-            matgraphdb = MatGraphDB(main_dir='/path/to/main_dir', n_cores=4)
+            matgraphdb = MatGraphDB(db_path='/path/to/db_path', n_cores=4)
         """
 
         logger.info("Initializing MaterialRepositoryHandler.")
         # Set up directories and database path
         self.n_cores = n_cores
-        self.main_dir = main_dir
-        self.calculation_dir=os.path.join(self.main_dir, calculation_dirname)
-        self.graph_dir=os.path.join(self.main_dir, graph_dirname)
-        self.db_dir=os.path.join(self.main_dir, db_dirname)
+        self.db_path = db_path
+        self.calculation_dir=os.path.join(self.db_path, calculation_dirname)
+        self.graph_dir=os.path.join(self.db_path, graph_dirname)
+        self.matdb_path=os.path.join(self.db_path, db_dirname)
 
-        os.makedirs(self.main_dir, exist_ok=True)
+        os.makedirs(self.matdb_path, exist_ok=True)
         os.makedirs(self.calculation_dir, exist_ok=True)
-        os.makedirs(self.db_dir, exist_ok=True)
         os.makedirs(self.graph_dir, exist_ok=True)
 
-        self.matdb = MatDB(db_dir=self.db_dir)
+        self.matdb = MatDB(db_path=self.matdb_path)
         logger.debug("MatDB initialized.")
 
         self.calc_manager = CalculationManager(main_dir=self.calculation_dir, 
@@ -103,12 +102,10 @@ class MatGraphDB:
         self.graph_manager = GraphManager(graph_dir=self.graph_dir)
         logger.debug("GraphManager initialized.")
 
-        self.parquet_schema_file = os.path.join(main_dir, 'material_schema.parquet')
-        logger.debug(f"Parquet schema file set to {self.parquet_schema_file}")
 
 
-        logger.info(f"Main directory: {self.main_dir}")
-        logger.info(f"Material Database directory: {self.db_dir}")
+        logger.info(f"Main directory: {self.db_path}")
+        logger.info(f"Material Database directory: {self.matdb_path}")
         logger.info(f"Material Calculation directory: {self.calculation_dir}")
         logger.info(f"Graph directory: {self.graph_dir}")
         logger.info(f"Cores: {self.n_cores}")
@@ -116,7 +113,7 @@ class MatGraphDB:
 
     
 if __name__=='__main__':
-    mgdb=MatGraphDB(main_dir=os.path.join('data','MatGraphDB'))
+    mgdb=MatGraphDB(db_path=os.path.join('data','MatGraphDB'))
 
     mgdb.get_materials()
         
