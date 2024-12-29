@@ -16,7 +16,7 @@ def temp_storage(tmp_path):
 @pytest.fixture
 def graph(temp_storage):
     """Fixture to create a GraphStore instance"""
-    return GraphStore(temp_storage)
+    return GraphStore(storage_path=temp_storage)
 
 @pytest.fixture
 def sample_nodes():

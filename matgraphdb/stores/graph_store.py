@@ -18,21 +18,22 @@ class GraphStore:
     Each node type and edge type is backed by a separate ParquetDB instance
     (wrapped by NodeStore or EdgeStore).
     """
-    def __init__(self, root_path: str):
+    def __init__(self, storage_path: str):
         """
         Parameters
         ----------
-        root_path : str
+        storage_path : str
             The root path for this graph, e.g. '/path/to/my_graph'.
             Subdirectories 'nodes/' and 'edges/' will be used.
         """
-        logger.info(f"Initializing GraphStore at root path: {root_path}")
-        self.root_path = os.path.abspath(root_path)
+        logger.info(f"Initializing GraphStore at root path: {storage_path}")
+        self.storage_path = os.path.abspath(storage_path)
         
-        self.nodes_path = os.path.join(self.root_path, 'nodes')
-        self.edges_path = os.path.join(self.root_path, 'edges')
-        
-        self.graph_name = os.path.basename(self.root_path)
+        self.nodes_path = os.path.join(self.storage_path, 'nodes')
+        self.edges_path = os.path.join(self.storage_path, 'edges')
+        self.graph_path = os.path.join(self.storage_path, 'graph')
+            
+        self.graph_name = os.path.basename(self.storage_path)
         
         # You might track node/edge stores by their types in dictionaries
         self.node_stores = {}
@@ -43,6 +44,7 @@ class GraphStore:
 
         logger.debug(f"Created node directory at: {self.nodes_path}")
         logger.debug(f"Created edge directory at: {self.edges_path}")
+        logger.debug(f"Created graph directory at: {self.graph_path}")
 
     def add_node_type(self, node_type: str) -> NodeStore:
         """
@@ -72,6 +74,13 @@ class GraphStore:
         self.edge_stores[edge_type] = store
         return store
     
+    def add_node_store(self, node_store: NodeStore):
+        self.node_stores[node_store.node_type] = node_store
+        
+    def add_edge_store(self, edge_store: EdgeStore):
+        self.edge_stores[edge_store.edge_type] = edge_store
+        
+        
     # ------------------
     # Node-level methods
     # ------------------
