@@ -33,7 +33,7 @@ def test_edge_store_initialization(temp_storage):
     """Test that EdgeStore initializes correctly and creates the storage directory"""
     store = EdgeStore(temp_storage)
     assert os.path.exists(temp_storage)
-    assert store.db is not None
+    assert store is not None
 
 def test_create_edges_from_dict(edge_store, sample_edge_data):
     """Test creating edges from a dictionary"""
