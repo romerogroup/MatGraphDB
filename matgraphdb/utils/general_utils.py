@@ -95,6 +95,7 @@ def set_verbosity(verbose: int):
         config.logging_config.loggers.matgraphdb.level = logging.INFO
     elif verbose == 4:
         config.logging_config.loggers.matgraphdb.level = logging.DEBUG
+        config.logging_config.loggers.parquetdb.level = logging.DEBUG
     else:
         raise ValueError("Verbose must be an integer between 0 and 4. The higher the number, the more verbose the logging.")
     config.apply()
