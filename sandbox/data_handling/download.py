@@ -24,7 +24,7 @@ def chunk_list(input_list, chunk_size):
     return chunks
 
 
-def download_materials(save_dir, chunk_size=10000, **kwargs):
+
 def download_materials(save_dir, chunk_size=10000, **kwargs):
     """
     Downloads materials from the Materials Project database and saves them in chunks of 10000 materials per JSON file.
@@ -152,10 +152,12 @@ if __name__=='__main__':
     molecules_parquetdb_dir=os.path.join(external_dir,'materials_project', 'molecules_ParquetDB')
     
     # Using the Mprester API
-    # with MPRester(api_key=MP_API_KEY) as mpr:
-    #     elasticity_doc = mpr.elasticity.search(material_ids=["mp-66"])
-    #     print(dir(elasticity_doc[0]))
-    #     print(elasticity_doc)
+    with MPRester(api_key=MP_API_KEY) as mpr:
+        docs = mpr.summary.search(material_ids=["mp-985554"])
+        
+        summary=docs[0].dict()
+        # print(dir(summary))
+        print(summary)
     
     ################################################################################################
     ################################################################################################
@@ -680,24 +682,24 @@ if __name__=='__main__':
 
     # Initial screening of materials
     
-    endpoint='molecules_summary'
-    download_molecules(save_dir=os.path.join(molecules_dir, endpoint), chunk_size=100000)
-    db=ParquetDB(endpoint, dir=molecules_parquetdb_dir)
-    chunk_files = glob(os.path.join(molecules_dir, endpoint, "*.json"))
-    db.drop_dataset()
-    for i,chunk_file in enumerate(chunk_files[:]):
-        print("Processing", chunk_file)
-        with open(chunk_file, "r") as f:
-            data = json.load(f)
-        # for entry in data['entries']:
-        #     for site in entry['structure_graph']['structure']['sites']:
-        #         for species in site['species']:
-        #             species['spin']=0
-        #             if 'spin' in species.keys():
-        #                 species.pop('spin')
-        db.create(data['entries'])
-    table=db.read()
-    print(table.shape)
+    # endpoint='molecules_summary'
+    # download_molecules(save_dir=os.path.join(molecules_dir, endpoint), chunk_size=100000)
+    # db=ParquetDB(endpoint, dir=molecules_parquetdb_dir)
+    # chunk_files = glob(os.path.join(molecules_dir, endpoint, "*.json"))
+    # db.drop_dataset()
+    # for i,chunk_file in enumerate(chunk_files[:]):
+    #     print("Processing", chunk_file)
+    #     with open(chunk_file, "r") as f:
+    #         data = json.load(f)
+    #     # for entry in data['entries']:
+    #     #     for site in entry['structure_graph']['structure']['sites']:
+    #     #         for species in site['species']:
+    #     #             species['spin']=0
+    #     #             if 'spin' in species.keys():
+    #     #                 species.pop('spin')
+    #     db.create(data['entries'])
+    # table=db.read()
+    # print(table.shape)
     
     
     

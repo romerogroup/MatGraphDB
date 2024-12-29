@@ -7,29 +7,163 @@ from parquetdb import ParquetDB
 import pyarrow as pa
 from pyarrow import compute as pc
 
-def write_schema_summary(materials_parquetdb_dir,endpoint='chemenv', append_string=''):
-
-    db=ParquetDB(db_path=os.path.join(materials_parquetdb_dir,endpoint))
-    table=db.read()
-    print(table.shape)
-    
-    with open(os.path.join(materials_parquetdb_dir,f'{endpoint}_schema_summary{append_string}.txt'), 'w') as f:
-        f.write(f"Number of rows: {table.shape[0]}\n")
-        f.write(f"Number of columns: {table.shape[1]}\n\n")
-        f.write('-'*100+'\n\n')
-        
-        f.write(f"{'Field Name':<50} | {'Field Type'}\n")
-        f.write('-'*50+'\n')
-        for field in table.schema:
-            f.write(f"{field.name:<50} | {field.type}\n")
-            
-
+from matgraphdb.utils.parquet_tools import write_schema_summary
 
 def main():
+
+    
+    merge_elasticity_materials_db()
+    
+    # merge_materials_summary_with_materials_db()
+
+
+def merge_materials_summary_with_materials_db():
+    
+    materials_db = ParquetDB(db_path=os.path.join(config.data_dir,'materials'))
+    
+    
+    mp_dir=os.path.join(config.data_dir,'external','materials_project', 'materials_ParquetDB')
+    mp_db=ParquetDB(db_path=os.path.join(mp_dir,'materials_summary'))
+    
+    
+    materials_table=mp_db.read()
+    # print(materials_table.shape)
+    # for field in materials_table.schema:
+    #     print(field.name, field.type)
+    
+    columns_to_keep={
+        'band_gap': 'electronic_structure.band_gap',
+        'cbm': 'electronic_structure.cbm',
+        'efermi': 'electronic_structure.efermi',
+        'vbm': 'electronic_structure.vbm',
+        'efermi': 'electronic_structure.efermi',
+        
+        'symmetry.crystal_system': 'symmetry.crystal_system',
+        'symmetry.number': 'symmetry.number',
+        'symmetry.point_group': 'symmetry.point_group',
+        'symmetry.symbol': 'symmetry.symbol',
+        'symmetry.symprec': 'symmetry.symprec',
+        'symmetry.version': 'symmetry.version',
+        'structure.@class': 'structure.@class',
+        'structure.@module': 'structure.@module',
+        'structure.charge': 'structure.charge',
+        'structure.lattice.a': 'structure.lattice.a',
+        'structure.lattice.alpha': 'structure.lattice.alpha',
+        'structure.lattice.b': 'structure.lattice.b',
+        'structure.lattice.beta': 'structure.lattice.beta',
+        'structure.lattice.c': 'structure.lattice.c',
+        'structure.lattice.gamma': 'structure.lattice.gamma',
+        'structure.lattice.matrix': 'structure.lattice.matrix',
+        'structure.lattice.pbc': 'structure.lattice.pbc',
+        'structure.lattice.volume': 'structure.lattice.volume',
+        'structure.sites': 'structure.sites',
+        
+        'surface_anisotropy': 'surface_properties.surface_anisotropy',
+        'weighted_surface_energy': 'surface_properties.weighted_surface_energy',
+        'weighted_surface_energy_EV_PER_ANG2': 'surface_properties.weighted_surface_energy_EV_PER_ANG2',
+        'weighted_work_function': 'surface_properties.weighted_work_function',
+        'shape_factor': 'surface_properties.shape_factor',
+        
+        'xas': 'xas',
+        
+        'theoretical': 'metadata.theoretical',
+        'last_updated': 'metadata.last_updated',
+        'deprecated': 'metadata.deprecated',
+        'database_IDs.icsd': 'metadata.database_IDs.icsd',
+        'database_IDs.pf': 'metadata.database_IDs.pf',
+        'builder_meta.build_date': 'metadata.builder_meta.build_date',
+        'builder_meta.database_version': 'metadata.builder_meta.database_version',
+        'builder_meta.emmet_version': 'metadata.builder_meta.emmet_version',
+        'builder_meta.license': 'metadata.builder_meta.license',
+        'builder_meta.pymatgen_version': 'metadata.builder_meta.pymatgen_version',
+        'builder_meta.run_id': 'metadata.builder_meta.run_id',
+        
+        'total_magnetization': 'magnetism.total_magnetization',
+        'total_magnetization_normalized_formula_units': 'magnetism.total_magnetization_normalized_formula_units',
+        'total_magnetization_normalized_vol': 'magnetism.total_magnetization_normalized_vol',
+        'types_of_magnetic_species': 'magnetism.types_of_magnetic_species',
+        'ordering': 'magnetism.ordering',
+        'num_magnetic_sites': 'magnetism.num_magnetic_sites',
+        'num_unique_magnetic_sites': 'magnetism.num_unique_magnetic_sites',
+        
+        'shear_modulus.reuss': 'elasticity.g_reuss',
+        'shear_modulus.voigt': 'elasticity.g_voigt',
+        'shear_modulus.vrh': 'elasticity.g_vrh',
+        'universal_anisotropy': 'elasticity.universal_anisotropy',
+        'homogeneous_poisson': 'elasticity.homogeneous_poisson',
+        'bulk_modulus.reuss': 'elasticity.k_reuss',
+        'bulk_modulus.voigt': 'elasticity.k_voigt',
+        'bulk_modulus.vrh': 'elasticity.k_vrh',
+        
+        'origins': 'origins',
+        
+        'material_id': 'core.material_id',
+        'nelements': 'core.nelements',
+        'nsites': 'core.nsites',
+        'is_gap_direct': 'core.is_gap_direct',
+        'is_magnetic': 'core.is_magnetic',
+        'is_metal': 'core.is_metal',
+        'is_stable': 'core.is_stable',
+        'formula_anonymous': 'core.formula_anonymous',
+        'formula_pretty': 'core.formula_pretty',
+        'elements': 'core.elements',
+        'density': 'core.density',
+        'density_atomic': 'core.density_atomic',
+        'chemsys': 'core.chemsys',
+        
+        'e_electronic': 'dielectric.e_electronic',
+        'e_ij_max': 'dielectric.e_ij_max',
+        'e_ionic': 'dielectric.e_ionic',
+        'e_total': 'dielectric.e_total',
+        
+        'grain_boundaries': 'grain_boundaries.grain_boundaries',
+        
+        'formation_energy_per_atom': 'thermo.formation_energy_per_atom',
+        'energy_above_hull': 'thermo.energy_above_hull',
+        'energy_per_atom': 'thermo.energy_per_atom',
+        'equilibrium_reaction_energy_per_atom': 'thermo.equilibrium_reaction_energy_per_atom',
+        'decomposes_to': 'thermo.decomposes_to',
+    }
+
+    mp_table=mp_db.read(columns=list(columns_to_keep.keys()))
+    
+    
+    
+    
+    materials_ids=materials_table['material_id'].combine_chunks()
+    mp_ids=mp_table['material_id'].combine_chunks()
+    
+    
+    # # Determine the indices of the materials database in the materials_project database
+    # material_indices = pc.index_in(mp_table['core.material_id'].combine_chunks(), main_table['core.material_id'].combine_chunks())
+    
+    # # Get the ids of the materials database
+    # ids = pc.take(main_table['id'].combine_chunks(), material_indices)
+    
+    
+    # # Rename columns such that they are compatible with the materials database
+    # mp_table = mp_table.rename_columns(columns_to_keep)
+    # print(mp_table.shape)
+    
+    #  # Read main table with id columen and the column to merge on ('core.material_id')
+    # main_table = materials_db.read(columns=['core.material_id','id'])
+    # print(main_table.shape)
+    
+    # Determine the indices of the materials database in the materials_project database
+    # material_indices = pc.index_in(mp_table['core.material_id'].combine_chunks(), main_table['core.material_id'].combine_chunks())
+
+
+def merge_elasticity_materials_db():
     # Example usage
     materials_db = ParquetDB(db_path=os.path.join(config.data_dir,'materials'))
     table=materials_db.read()
 
+    
+    table = materials_db.read(filters=[pc.field('core.material_id') == 'mp-985554'])
+    df=table.combine_chunks().to_pandas()
+    print(df)
+    print(df['structure.lattice.matrix'])
+    
 
     # print(table.shape)
     # data_dir=os.path.join(config.data_dir,'external','materials_project','materials','elasticity','elasticity_chunk_0.json')
@@ -110,10 +244,24 @@ def main():
                 print(f"  Are equal:           {are_equal}")
     
 
+    filtered_table = mp_table_with_ids.filter(pc.field('core.material_id') == 'mp-985554')
+    print(filtered_table.shape)
+    
+    # for x in 
+    df=filtered_table.combine_chunks().to_pandas()
+    
+    print(filtered_table.shape)
     materials_db.update(mp_table_with_ids)
     
     
-    write_schema_summary(config.data_dir,endpoint='materials')
+    
+    table = materials_db.read(filters=[pc.field('core.material_id') == 'mp-985554'])
+    df=table.combine_chunks().to_pandas()
+    print(df)
+    print(df['structure.lattice.matrix'])
+    
+    
+    write_schema_summary(os.path.join(config.data_dir,'materials'), output_path=os.path.join(config.data_dir,'materials_schema','schema_summary.txt'))
     
     
         
@@ -152,7 +300,7 @@ def merge_materials_ids(materials_db, mp_table):
     return mp_table_with_ids
     
     
-    
+            
     
     
 if __name__ == "__main__":
