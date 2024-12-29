@@ -29,7 +29,7 @@ class MatDB:
     It provides methods for adding, reading, updating, and deleting materials from the database.
     """
 
-    def __init__(self,  db_name: str = 'main', db_dir: str = 'MatDB', n_cores=8, verbose=3):
+    def __init__(self,  db_path: str = 'matdb', n_cores: int = 1, verbose: int =3):
         """
         Initializes the `MatDB` by setting the database directory and number of cores.
 
@@ -39,10 +39,10 @@ class MatDB:
 
         Parameters:
         -----------
-        db_dir : str
-            The directory where the database is stored.
+        db_path : str
+            The path to the database.
         n_cores : int, optional
-            The number of CPU cores to use for operations (default is 8).
+            The number of cores to be used for parallel operations.
         verbose : int, optional
             The verbosity level for logging (default is 3).
 
@@ -57,17 +57,16 @@ class MatDB:
         .. highlight:: python
         .. code-block:: python
 
-            from matgraphdb.data.material_manager import MatDB
-            manager = MatDB(db_dir='/path/to/db')
+            from matgraphdb.data.matdb import MatDB
+            manager = MatDB(db_path='matdb')
         """
         set_verbosity(verbose)
         
-        self.db_dir=db_dir
+        self.db_path=db_path
         self.n_cores=n_cores
-        self.db_name=db_name
-
-        logger.info(f"Initializing MatDB with database at {db_dir}")
-        self.db = ParquetDB(self.db_name, dir = self.db_dir)
+        
+        logger.info(f"Initializing MatDB with database at {self.db_path}")
+        self.db = ParquetDB(self.db_path)
 
     def add(self, structure: Structure = None,
                 coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
@@ -76,10 +75,11 @@ class MatDB:
                 lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
                 properties: dict = None,
                 include_symmetry: bool = True,
-                calculate_funcs: List[Callable]=None,
                 save_db: bool = True,
                 schema:pa.Schema=None,
                 metadata:dict=None,
+                treat_fields_as_ragged:List[str]=[],
+                convert_to_fixed_shape:bool=True,
                 normalize_dataset:bool=False,
                 normalize_config:NormalizeConfig=NormalizeConfig(),
                 verbose: int = 3,
@@ -108,14 +108,16 @@ class MatDB:
             Additional properties to include in the material entry.
         include_symmetry : bool, optional
             If True, performs symmetry analysis and includes symmetry information in the entry.
-        calculate_funcs : List[Callable], optional
-            A list of functions for calculating additional properties of the material.
         save_db : bool, optional
             If True, saves the material entry to the database (default is True).
         schema : pyarrow.Schema, optional
             A new schema to be applied to the dataset.
         metadata : dict, optional
             A dictionary containing the metadata to be set.
+        treat_fields_as_ragged : List[str], optional
+            A list of fields to be treated as ragged.
+        convert_to_fixed_shape : bool, optional
+            If True, converts the fields to fixed shape.
         normalize_dataset : bool, optional
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
@@ -160,11 +162,14 @@ class MatDB:
 
         # Generating entry data
         entry_data={}
-
+        
+        
+        treat_fields_as_ragged.extend(['core.frac_coords', 'core.cartesian_coords','core.atomic_numbers','core.species'])
+        
         if properties is None:
             properties={}
-        if calculate_funcs is None:
-            calculate_funcs=[]
+            
+        calculate_funcs=[]
         if include_symmetry:
             calculate_funcs.append(partial(perform_symmetry_analysis, symprec=kwargs.get('symprec',0.1)))
             
@@ -179,21 +184,22 @@ class MatDB:
         
     
         composition=structure.composition
-
-        entry_data['formula']=composition.formula
-        entry_data['elements']=list([element.symbol for element in composition.elements])
+        entry_data['core'] = {}
+        entry_data['core']['formula']=composition.formula
+        entry_data['core']['elements']=list([element.symbol for element in composition.elements])
         
-        entry_data['lattice']=structure.lattice.matrix.tolist()
-        entry_data['frac_coords']=structure.frac_coords.tolist()
-        entry_data['cartesian_coords']=structure.cart_coords.tolist()
-        entry_data['atomic_numbers']=structure.atomic_numbers
-        entry_data['species']=list([specie.symbol for specie in structure.species])
-
-        entry_data["volume"]=structure.volume
-        entry_data["density"]=structure.density
-        entry_data["nsites"]=len(structure.sites)
-        entry_data["density_atomic"]=entry_data["nsites"]/entry_data["volume"]
-
+        entry_data['core']['lattice']=structure.lattice.matrix.tolist()
+        entry_data['core']['frac_coords']=structure.frac_coords.tolist()
+        entry_data['core']['cartesian_coords']=structure.cart_coords.tolist()
+        entry_data['core']['atomic_numbers']=structure.atomic_numbers
+        entry_data['core']['species']=list([specie.symbol for specie in structure.species])
+        entry_data['core']['nelements']=len(structure.species)
+        entry_data["core"]["volume"]=structure.volume
+        entry_data["core"]["density"]=structure.density
+        entry_data["core"]["nsites"]=len(structure.sites)
+        entry_data["core"]["density_atomic"]=entry_data['core']['nsites']/entry_data['core']['volume']
+        entry_data['structure']=structure.as_dict()
+        
         # Calculating additional properties
         if calculate_funcs:
             for func in calculate_funcs:
@@ -212,7 +218,9 @@ class MatDB:
         logger.debug(f'Input dataframe shape - {df.shape}')
         try:
             if save_db:
-                create_kwargs=dict(data=df, schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, normalize_config=normalize_config)
+                logger.debug(f"Saving material to database")
+                create_kwargs=dict(data=df, schema=schema, metadata=metadata,treat_fields_as_ragged=treat_fields_as_ragged,
+                convert_to_fixed_shape=convert_to_fixed_shape, normalize_dataset=normalize_dataset, normalize_config=normalize_config)
                 self.db.create(**create_kwargs)
                 logger.info("Material added successfully.")
             return entry_data
@@ -326,6 +334,8 @@ class MatDB:
     def add_many(self, materials: Union[List[dict]],  
                 schema:pa.Schema=None,
                 metadata:dict=None,
+                treat_fields_as_ragged:List[str]=None,
+                convert_to_fixed_shape:bool=True,
                 normalize_dataset:bool=False,
                 normalize_config:NormalizeConfig=NormalizeConfig(),
                 verbose: int = 3, **kwargs):
@@ -345,6 +355,10 @@ class MatDB:
             A new schema to be applied to the dataset.
         metadata : dict, optional
             A dictionary containing the metadata to be set.
+        treat_fields_as_ragged : List[str], optional
+            A list of fields to be treated as ragged.
+        convert_to_fixed_shape : bool, optional
+            If True, converts the fields to fixed shape.
         normalize_dataset : bool, optional
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
@@ -375,7 +389,8 @@ class MatDB:
         logger.info(f"Adding {len(materials)} materials to the database.")
         
         add_kwargs=dict(schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, 
-                        normalize_config=normalize_config, verbose=verbose)
+                        normalize_config=normalize_config, verbose=verbose,
+                        treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
         
         results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, **add_kwargs)
         entry_data=[result for result in results if result]
@@ -523,6 +538,8 @@ class MatDB:
     def update(self, data: Union[List[dict], dict, pd.DataFrame, pa.Table], 
                schema=None, 
                metadata=None,
+               treat_fields_as_ragged=None,
+               convert_to_fixed_shape:bool=True,
                normalize_config=NormalizeConfig(), 
                verbose: int = 3):
         """
@@ -541,6 +558,10 @@ class MatDB:
             A new schema to be applied to the dataset.
         metadata : dict, optional
             A dictionary containing the metadata to be set.
+        treat_fields_as_ragged : List[str], optional
+            A list of fields to be treated as ragged.
+        convert_to_fixed_shape : bool, optional
+            If True, converts the fields to fixed shape.
         normalize_config : NormalizeConfig, optional
             The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
         verbose : int, optional
@@ -574,7 +595,8 @@ class MatDB:
         set_verbosity(verbose)
 
         logger.info(f"Updating data")
-        self.db.update(data, schema=schema, metadata=metadata, normalize_config=normalize_config)
+        self.db.update(data, schema=schema, metadata=metadata, normalize_config=normalize_config,
+                       treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
         logger.info("Data updated successfully.")
 
     def delete(self, ids:List[int]=None, columns:List[str]=None,
@@ -620,79 +642,15 @@ class MatDB:
         """
         self.db.normalize(normalize_config=normalize_config)
     
-    def update_schema(self, field_dict:dict=None, schema:pa.Schema=None, normalize_config:NormalizeConfig=NormalizeConfig()):
-        """
-        Updates the schema of a specified dataset.
-
-        This method allows updating the schema of a dataset in the database. You can either provide a dictionary 
-        specifying new field types or directly pass a new schema.
-
-        Parameters:
-        -----------
-        field_dict : dict, optional
-            A dictionary where the keys are field names and the values are the new field types.
-        schema : pyarrow.Schema, optional
-            A new schema to be applied to the dataset.
-        normalize_config : NormalizeConfig, optional
-            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Update the schema of the 'main' dataset by adding a new field
-        .. highlight:: python
-        .. code-block:: python
-
-            # Update fields
-            field_dict = {'density': pa.float64()}
-            manager.update_schema(field_dict=field_dict)
-
-            # Update by passing a new schema. 
-            new_schema = pa.schema([
-                ('id', pa.int64()),
-                ('formula', pa.string()),
-                ('density', pa.float64()),
-                ('new_field', pa.float64())
-            ])
-            manager.update_schema(schema=new_schema)
-
-            # The field names must match the existing ones and be in the same order.
-            # Also the schema field type must be compatible with the existing entries.
-            # It would be useful to get the schema of a dataset before updating it.
-
-            current_schema = manager.get_schema()
-            density_field = current_schema.get_field_index('density')
-            new_schema = current_schema.set(density_field, pa.float32())
-            manager.update_schema(schema=new_schema)
-        """
-
-        self.db.update_schema(field_dict=field_dict, schema=schema, normalize_config=normalize_config)
-
     def get_schema(self):
         """
         Retrieves the schema of a specified dataset.
-
-        This method returns the schema of the specified dataset in the database, which includes the 
-        field names and their data types.
-
 
         Returns:
         --------
         pyarrow.Schema
             The schema of the specified dataset, including field names and types.
 
-        Examples:
-        ---------
-        # Example usage:
-        # Get the schema of the 'main' dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            schema = manager.get_schema()
         """
 
         return self.db.get_schema()
@@ -701,22 +659,10 @@ class MatDB:
         """
         Retrieves the metadata of a specified dataset.
 
-        This method returns the metadata associated with the specified dataset in the database.
-
-
         Returns:
         --------
         dict
             A dictionary containing the metadata of the specified dataset.
-
-        Examples:
-        ---------
-        # Example usage:
-        # Get the metadata of the 'main' dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            metadata = manager.get_metadata()
         """
         return self.db.get_metadata()
     
@@ -759,161 +705,33 @@ class MatDB:
         """
 
         self.db.set_metadata(metadata=metadata)
-
-    def drop_dataset(self):
-        """
-        Drops a specified dataset from the database.
-
-        This method permanently removes the specified dataset and its contents from the database.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Drop the 'main' dataset from the database
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.drop_dataset()
-        """
-
-        self.db.drop_dataset()
-
-    def rename_dataset(self, new_name:str):
-        """
-        Renames a dataset in the database.
-
-        This method changes the name of an existing dataset to a new specified name.
-
-        Parameters:
-        -----------
-        new_name : str
-            The new name for the dataset.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Rename a dataset from 'old_dataset' to 'new_name'
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.rename_dataset(new_name='new_name')
-        """
-
-        self.db.rename_dataset(new_name=new_name)
-
-    def copy_dataset(self, dest_name:str, overwrite:bool=False):
-        """
-        Copies a dataset in the database to a new dataset.
-
-        This method creates a copy of an existing dataset under a new name. Additional parameters 
-        can be passed to customize the copying process.
-
-        Parameters:
-        -----------
-        dest_name : str
-            The new name for the dataset.
-        overwrite : bool, optional
-            If True, overwrites the destination dataset if it already exists.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Copy a dataset from 'main' to 'main_backup'
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.copy_dataset(dest_name='main_backup')
-        """
-
-        self.db.copy_dataset( dest_name=dest_name, overwrite=overwrite)
-
-
-    def export_dataset(self, export_dir:str=None, export_format:str='parquet'):
-        """Export a dataset in the database.
-
-        Args:
-            export_dir (str, optional): The directory where the exported dataset will be saved.
-            export_format (str, optional): The format of the exported dataset. Defaults to 'parquet'.
-            **kwargs: Additional keyword arguments to pass to the ParquetDB export_dataset method.
-
-        Returns:
-            None
-        """        
-        self.db.export_dataset(file_path=export_dir, format=export_format)
-
-    def export_partitioned_dataset(self, 
-                                   export_dir: str, 
-                                   partitioning,
-                                   partitioning_flavor=None,
-                                   load_config:LoadConfig=LoadConfig(),
-                                   load_format:str='parquet',
-                                   batch_size: int = None, 
-                                   **kwargs):
-        """
-        Exports a partitioned dataset to a specified directory.
-
-        This method exports a dataset to the specified directory using the provided partitioning scheme. 
-        Additional parameters allow customization of the export process, such as setting the partitioning flavor 
-        and controlling the batch size.
-
-        Parameters:
-        -----------
-        export_dir : str
-            The directory where the dataset will be exported.
-        partitioning : dict
-            The partitioning scheme to use for the dataset.
-        partitioning_flavor : str, optional
-            The partitioning flavor to use (e.g., 'hive' or another supported flavor).
-        load_config : LoadConfig, optional
-            The load configuration to use for the dataset.
-        load_format : str, optional
-            The format of the exported dataset. Defaults to 'parquet'.
-        batch_size : int, optional
-            The batch size to use during export.
-        **kwargs
-            Additional keyword arguments passed to the `pq.write_to_dataset` function.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Export a partitioned dataset to a directory
-        .. highlight:: python
-        .. code-block:: python
-
-            manager.export_partitioned_dataset(
-                dataset_name='main',
-                export_dir='/path/to/export',
-                partitioning={'nelements': 'int', 'crystal_system': 'str'},
-                partitioning_flavor='hive',
-                batch_size=1000
-            )
-        """
-        if batch_size:
-            load_config.batch_size=batch_size
-        self.db.export_partitioned_dataset(
-                                           file_path=export_dir, 
-                                           partitioning=partitioning, 
-                                           partitioning_flavor=partitioning_flavor, 
-                                           load_config=load_config,
-                                           load_format=load_format,
-                                           **kwargs)
     
+    def set_field_metadata(self, field_name:str, metadata:dict):
+        """
+        Sets the metadata for a specified field.
+        
+        Parameters:
+        -----------
+        field_name : str
+            The name of the field to set metadata for.
+        metadata : dict
+            A dictionary containing the metadata to be set.
+        
+        Returns:
+        --------
+        None
+
+        Examples:
+        ---------
+        # Example usage:
+        # Set new metadata for a dataset
+        .. highlight:: python
+        .. code-block:: python
+
+            metadata = {'description': 'Material properties', 'version': 2}
+            manager.set_field_metadata(field_name='formula', metadata=metadata)
+        """
+        self.db.set_field_metadata(field_name=field_name, metadata=metadata)
     
         
     
