@@ -79,7 +79,7 @@ class MaterialStore(NodeStore):
         normalize_dataset : bool, optional
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
-            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
         verbose : int, optional
             The verbosity level for logging (default is 3).
         save_db : bool, optional
@@ -146,7 +146,7 @@ class MaterialStore(NodeStore):
                                  convert_to_fixed_shape=convert_to_fixed_shape, 
                                  normalize_dataset=normalize_dataset, 
                                  normalize_config=normalize_config)
-                self.db.create(**create_kwargs)
+                self.create(**create_kwargs)
                 logger.info("Material added successfully.")
             else:
                 logger.info("Material not saved to database")
@@ -204,10 +204,11 @@ class MaterialStore(NodeStore):
     def create_materials(self, materials: Union[List[dict], dict, pd.DataFrame, pa.Table, pa.RecordBatch],
                           schema: pa.Schema = None,
                           metadata: dict = None,
-                          treat_fields_as_ragged: List[str] = None,
+                          treat_fields_as_ragged: List[str] = [],
                           convert_to_fixed_shape: bool = True,
                           normalize_dataset: bool = False,
                           normalize_config: NormalizeConfig = NormalizeConfig(),
+                          n_cores: int = 2,
                           verbose: int = 3, **kwargs):
         """
         Adds multiple materials to the database in a single transaction.
@@ -232,7 +233,7 @@ class MaterialStore(NodeStore):
         normalize_dataset : bool, optional
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
-            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
         verbose : int, optional
             The verbosity level for logging (default is 3).
         **kwargs
@@ -249,12 +250,12 @@ class MaterialStore(NodeStore):
                         normalize_config=normalize_config, verbose=verbose,
                         treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
         
-        results=multiprocess_task(self._add_many, materials, n_cores=self.n_cores, **add_kwargs)
+        results=multiprocess_task(self._create_material, materials, n_cores=n_cores, **add_kwargs)
         entry_data=[result for result in results if result]
         
         df = pd.DataFrame(entry_data)
         try:
-            self.db.create(df, **kwargs)
+            self.create(df, **kwargs)
         except Exception as e:
             logger.error(f"Error adding material: {e}")
         logger.info("All materials added successfully.")
@@ -348,7 +349,6 @@ class MaterialStore(NodeStore):
             treat_fields_as_ragged=None,
             convert_to_fixed_shape:bool=True,
             normalize_config=NormalizeConfig(), 
-            **kwargs
             ):
         """
         Updates existing records in the database.
@@ -371,7 +371,7 @@ class MaterialStore(NodeStore):
         convert_to_fixed_shape : bool, optional
             If True, converts the fields to fixed shape.
         normalize_config : NormalizeConfig, optional
-            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
         verbose : int, optional
             The verbosity level for logging (default is 3).
 
@@ -381,13 +381,13 @@ class MaterialStore(NodeStore):
         """
 
         logger.info(f"Updating data")
-        update_kwargs=dict(schema=schema, metadata=metadata, normalize_config=normalize_config,
+        update_kwargs=dict(data=data, schema=schema, metadata=metadata, normalize_config=normalize_config,
                        treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
-        update_kwargs.update(kwargs)
-        self.db.update_nodes(data, **update_kwargs)
+
+        self.update_nodes(**update_kwargs)
         logger.info("Data updated successfully.")
 
-    def delete(self, ids:List[int]=None, columns:List[str]=None,
+    def delete_materials(self, ids:List[int]=None, columns:List[str]=None,
                normalize_config: NormalizeConfig = NormalizeConfig(),
                verbose: int = 3):
         """
@@ -402,7 +402,7 @@ class MaterialStore(NodeStore):
         columns : List[str], optional
             A list of column names to delete from the database.
         normalize_config : NormalizeConfig, optional
-            The normalize configuration to be applied to the data. This is the NormalizeConfig object from ParquetDB.
+            The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
         verbose : int, optional
             The verbosity level for logging (default is 3).
 
@@ -421,106 +421,8 @@ class MaterialStore(NodeStore):
         set_verbosity(verbose)
         
         logger.info(f"Deleting data {ids}")
-        self.db.delete(ids=ids, columns=columns, normalize_config=normalize_config)
+        self.delete(ids=ids, columns=columns, normalize_config=normalize_config)
         logger.info("Data deleted successfully.")
-
-    def normalize(self, normalize_config:NormalizeConfig=NormalizeConfig()):
-        """
-        Normalizes the dataset.
-        """
-        self.db.normalize(normalize_config=normalize_config)
-    
-    def get_schema(self):
-        """
-        Retrieves the schema of a specified dataset.
-
-        Returns:
-        --------
-        pyarrow.Schema
-            The schema of the specified dataset, including field names and types.
-
-        """
-
-        return self.db.get_schema()
-    
-    def get_metadata(self):
-        """
-        Retrieves the metadata of a specified dataset.
-
-        Returns:
-        --------
-        dict
-            A dictionary containing the metadata of the specified dataset.
-        """
-        return self.db.get_metadata()
-    
-    def get_field_names(self):
-        """
-        Retrieves the field names of a specified dataset.
-        """
-        return self.db.get_field_names()
-    
-    def get_metadata(self):
-        """
-        Retrieves the metadata of a specified dataset.
-        """
-        return self.db.get_metadata()
-    
-    def set_metadata(self, metadata: dict):
-        """
-        Sets the metadata for a specified dataset.
-
-        This method updates the metadata of the specified dataset with the provided dictionary.
-
-        Parameters:
-        -----------
-        metadata : dict
-            A dictionary containing the metadata to be set.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Set new metadata for a dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            metadata = {'description': 'Material properties', 'version': 2}
-            manager.set_metadata(metadata=metadata)
-        """
-
-        self.db.set_metadata(metadata=metadata)
-    
-    def set_field_metadata(self, field_name:str, metadata:dict):
-        """
-        Sets the metadata for a specified field.
-        
-        Parameters:
-        -----------
-        field_name : str
-            The name of the field to set metadata for.
-        metadata : dict
-            A dictionary containing the metadata to be set.
-        
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Set new metadata for a dataset
-        .. highlight:: python
-        .. code-block:: python
-
-            metadata = {'description': 'Material properties', 'version': 2}
-            manager.set_field_metadata(field_name='formula', metadata=metadata)
-        """
-        self.db.set_field_metadata(field_name=field_name, metadata=metadata)
-        
         
 def check_all_params_provided(**kwargs):
     """
