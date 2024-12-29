@@ -21,52 +21,8 @@ class Nodes:
     A base class to manage node operations, including creating, loading, and saving nodes as Parquet files, 
     with options to format data as either Pandas or PyArrow DataFrames. Subclasses should implement custom 
     logic for node creation and schema generation.
-
-    Attributes:
-    -----------
-    node_type : str
-        The type of node being created or managed, used in file naming and within the node data.
-    node_dir : str
-        Directory path where the node files will be stored.
-    output_format : str, optional
-        Format for loading data, either 'pandas' (default) or 'pyarrow'. Controls the output format when loading the node data.
-    file_type : str
-        The file type for storing the nodes, which is set to 'parquet'.
-    filepath : str
-        Full path to the node file, combining the node directory and file type.
-    schema : pyarrow.Schema or None
-        The schema of the Parquet file. Must be implemented by subclasses.
-
-    Methods:
-    --------
-    get_dataframe(columns=None, include_cols=True, from_scratch=False, **kwargs):
-        Loads or creates a node dataframe. If the file exists, it will load it; otherwise, 
-        it will call the create_nodes() method, which must be implemented by subclasses.
-    
-    get_property_names():
-        Returns the names of the columns (properties) found in the Parquet file.
-    
-    create_nodes(**kwargs):
-        Abstract method for creating nodes. This should be implemented by subclasses to define 
-        the custom logic for creating nodes.
-    
-    create_schema(**kwargs):
-        Abstract method for creating a schema. This should be implemented by subclasses to define 
-        the schema for the Parquet file.
-    
-    load_dataframe(filepath, columns=None, include_cols=True, **kwargs):
-        Loads the nodes from a Parquet file, optionally filtering by columns.
-    
-    save_dataframe(df, filepath):
-        Saves the provided dataframe to a Parquet file at the specified filepath.
-
-    to_neo4j(save_dir):
-        Converts the node data to a format suitable for import into Neo4j, saving the resulting CSV file 
-        in the specified directory.
-
-    get_column_names(filepath):
-        Static method to retrieve the column names from the metadata of a Parquet file.
     """
+    
     def __init__(self, node_type, node_dir, output_format='pandas'):
         """
         Initializes a Nodes object with the given node type, directory, and output format.
