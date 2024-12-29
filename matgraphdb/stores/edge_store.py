@@ -25,6 +25,8 @@ class EdgeStore:
             The path where ParquetDB files for this edge type are stored.
         """
         os.makedirs(storage_path, exist_ok=True)
+        self.db_path = storage_path
+        self.storage_path = storage_path
         self.edge_type = os.path.basename(storage_path)
         self.db = ParquetDB(db_path=storage_path)
         logger.info(f"Initialized EdgeStore at {storage_path}")

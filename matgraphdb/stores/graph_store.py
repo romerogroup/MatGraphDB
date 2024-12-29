@@ -6,8 +6,8 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pandas as pd
 
-from matgraphdb.core.node_store import NodeStore
-from matgraphdb.core.edge_store import EdgeStore
+from matgraphdb.stores.node_store import NodeStore
+from matgraphdb.stores.edge_store import EdgeStore
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,8 @@ class GraphStore:
         """
         logger.info(f"Initializing GraphStore at root path: {root_path}")
         self.root_path = os.path.abspath(root_path)
+        self.db_path = self.root_path
+        self.storage_path = self.root_path
         self.nodes_path = os.path.join(self.root_path, 'nodes')
         self.edges_path = os.path.join(self.root_path, 'edges')
         
