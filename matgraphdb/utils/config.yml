@@ -3,6 +3,7 @@ data_dir: "{{ root_dir }}/data"
 external_data_dir: "{{ data_dir }}/external"
 log_dir: "{{ root_dir }}/logs"
 db_name: 'MatGraphDB'
+
 n_cores: 
 
 numpy_config:
@@ -68,6 +69,7 @@ logging_config:
       propagate: no
     parquetdb:
       level: CRITICAL
+      handlers: [console]
       propagate: no
     timing:
       level: DEBUG
