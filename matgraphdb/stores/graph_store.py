@@ -28,8 +28,7 @@ class GraphStore:
         """
         logger.info(f"Initializing GraphStore at root path: {root_path}")
         self.root_path = os.path.abspath(root_path)
-        self.db_path = self.root_path
-        self.storage_path = self.root_path
+        
         self.nodes_path = os.path.join(self.root_path, 'nodes')
         self.edges_path = os.path.join(self.root_path, 'edges')
         
