@@ -2,7 +2,7 @@
 
 ## Introduction to MatGraphDB
 
-Welcome to **MatGraphDB**, a powerful Python package designed to interface with primary and graph databases for advanced material analysis. MatGraphDB excels in managing vast datasets of materials data, performing complex computational tasks, and encoding material properties and relationships within a graph-based analytical model.
+Welcome to **MatGraphDB**, a Python package designed to interface with primary and graph databases for advanced material analysis. MatGraphDB excels in managing vast datasets of materials data, performing complex computational tasks, and encoding material properties and relationships within a graph-based analytical model.
 
 MatGraphDB is structured around several modular components that work together to streamline data management and analysis:
 
