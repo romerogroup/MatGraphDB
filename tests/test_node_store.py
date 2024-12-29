@@ -22,7 +22,7 @@ def test_node_store_initialization(temp_storage):
     """Test that NodeStore initializes correctly and creates the storage directory"""
     store = NodeStore(temp_storage)
     assert os.path.exists(temp_storage)
-    assert store.db is not None
+    assert store is not None
 
 def test_create_nodes_from_dict(node_store):
     """Test creating nodes from a dictionary"""

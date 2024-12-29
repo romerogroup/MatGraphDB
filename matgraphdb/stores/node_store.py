@@ -29,9 +29,9 @@ class NodeStore(ParquetDB):
         """
         os.makedirs(storage_path, exist_ok=True)
         self.node_type = os.path.basename(storage_path)
-        
         self.storage_path = storage_path
         logger.debug(f"Initialized NodeStore at {storage_path}")
+        super().__init__(db_path=storage_path)
 
     def create_nodes(self, 
             data:Union[List[dict],dict,pd.DataFrame],
