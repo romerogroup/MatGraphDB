@@ -10,9 +10,9 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from pymatgen.core import Structure
 
-from matgraphdb.data.matdb import MatDB
-from matgraphdb.data.calc_manager import CalculationManager
-from matgraphdb.graph_kit.graph_manager import GraphManager
+from matgraphdb.core.matdb import MatDB
+from matgraphdb.core.calc_manager import CalculationManager
+from matgraphdb.stores import GraphStore
 from matgraphdb.utils.mp_utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class MatGraphDB:
             Manages interactions with the material database.
         calc_manager : CalculationManager
             Handles calculation operations, including HPC-based tasks.
-        graph_manager : GraphManager
+        graph_manager : GraphStore
             Manages the graph database for material data.
         """
     def __init__(self, db_path: str = 'MatGraphDB',
@@ -63,22 +63,9 @@ class MatGraphDB:
             The number of CPU cores to use for parallel processing (default is `N_CORES`).
         **kwargs
             Additional keyword arguments for configuring the `CalculationManager`.
-
-        Returns:
-        --------
-        None
-
-        Examples:
-        ---------
-        # Example usage:
-        # Initialize MatGraphDB with a custom main directory
-        .. highlight:: python
-        .. code-block:: python
-
-            matgraphdb = MatGraphDB(db_path='/path/to/db_path', n_cores=4)
         """
 
-        logger.info("Initializing MaterialRepositoryHandler.")
+        logger.info("Initializing MatGraphDB.")
         # Set up directories and database path
         self.n_cores = n_cores
         self.db_path = db_path
@@ -99,8 +86,8 @@ class MatGraphDB:
                                                **kwargs)
         logger.debug("CalculationManager initialized.")
 
-        self.graph_manager = GraphManager(graph_dir=self.graph_dir)
-        logger.debug("GraphManager initialized.")
+        self.graph_store = GraphStore(graph_dir=self.graph_dir)
+        logger.debug("GraphStore initialized.")
 
 
 

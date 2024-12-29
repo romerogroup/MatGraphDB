@@ -1,1 +1,1 @@
-from matgraphdb.core.core import MatGraphDB
+from matgraphdb.core.database import MatGraphDB
