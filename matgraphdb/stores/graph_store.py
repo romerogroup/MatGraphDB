@@ -79,8 +79,7 @@ class GraphStore:
         
     def add_edge_store(self, edge_store: EdgeStore):
         self.edge_stores[edge_store.edge_type] = edge_store
-        
-        
+             
     # ------------------
     # Node-level methods
     # ------------------
@@ -147,8 +146,7 @@ class GraphStore:
         self,
         table: pa.Table,
         source_node_type: str,
-        target_node_type: str
-    ) -> None:
+        target_node_type: str) -> None:
         """
         Checks whether source_id and target_id in each edge record exist
         in the corresponding node stores.
