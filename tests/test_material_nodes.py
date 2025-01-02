@@ -7,13 +7,13 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from pymatgen.core import Structure
 
-from matgraphdb.stores.material_store import MaterialStore
+from matgraphdb.stores.nodes.materials import MaterialNodes
 
 class TestMaterialDatabaseManager(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.material_store = MaterialStore(storage_path=self.temp_dir)
+        self.material_store = MaterialNodes(storage_path=self.temp_dir)
 
     def tearDown(self):
         # Remove the temporary directory after the test

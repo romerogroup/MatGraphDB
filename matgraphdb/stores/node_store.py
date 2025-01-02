@@ -2,6 +2,7 @@ import os
 import logging
 from glob import glob
 from typing import Union, List, Dict
+from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -19,22 +20,61 @@ class NodeStore(ParquetDB):
     A wrapper around ParquetDB specifically for storing node features
     of a given node type.
     """
-
-    def __init__(self, storage_path: str):
+    
+    node_metadata_keys = ['class', 'class_module', 'node_type', 'name_column']
+    
+    def __init__(self, storage_path: str, initialize_kwargs:dict=None):
         """
         Parameters
         ----------
         storage_path : str
             The path where ParquetDB files for this node type are stored.
         """
-        os.makedirs(storage_path, exist_ok=True)
+        
+        
         self.node_type = os.path.basename(storage_path)
         self.storage_path = storage_path
-        logger.debug(f"Initialized NodeStore at {storage_path}")
+
+        if initialize_kwargs is None:
+            initialize_kwargs = {}
+        
         super().__init__(db_path=storage_path)
 
+        metadata = self.get_metadata()
+        
+        update_metadata = False
+        for key in self.node_metadata_keys:
+            if key not in metadata:
+                update_metadata = update_metadata or key not in metadata
+        if update_metadata:
+            self.set_metadata({'class':f"{self.__class__.__name__}",
+                               'class_module':f"{self.__class__.__module__}",
+                               'node_type':self.node_type,
+                               'name_column':'id'})
+            
+        if self.is_empty():
+            self._initialize(**initialize_kwargs)
+            
+        logger.debug(f"Initialized NodeStore at {storage_path}")
+    
+    def _initialize(self, **kwargs):
+        data = self.initialize(**kwargs)
+        if data is not None:
+            self.create_nodes(data=data)
+        
+    def initialize(self, **kwargs):
+        return None
+    
+    @property
+    def name_column(self):
+        return self.get_metadata()['name_column']
+    @name_column.setter
+    def name_column(self, value):
+        self.set_metadata({'name_column':value})
+    
+
     def create_nodes(self, 
-            data:Union[List[dict],dict,pd.DataFrame],
+            data:Union[List[dict],dict,pd.DataFrame,pa.Table],
             schema:pa.Schema=None,
             metadata:dict=None,
             treat_fields_as_ragged:List[str]=None,
@@ -258,3 +298,4 @@ class NodeStore(ParquetDB):
         except Exception as e:
             logger.error(f"Failed to normalize node store: {str(e)}")
             raise
+        

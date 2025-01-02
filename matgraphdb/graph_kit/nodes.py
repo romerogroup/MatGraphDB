@@ -14,8 +14,6 @@ from matgraphdb.graph_kit.metadata import NodeTypes
 
 logger = logging.getLogger(__name__)
 
-
-
 class Nodes:
     """
     A base class to manage node operations, including creating, loading, and saving nodes as Parquet files, 

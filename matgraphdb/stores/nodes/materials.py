@@ -27,10 +27,8 @@ from matgraphdb.utils.general_utils import set_verbosity
 logger = logging.getLogger(__name__)
 
 
-class MaterialStore(NodeStore):
-    def __init__(self, storage_path: str):
-        super().__init__(storage_path=storage_path)
-
+class MaterialNodes(NodeStore):
+    
     def create_material(self, structure: Structure = None,
                          coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
                          coords_are_cartesian: bool = False,
