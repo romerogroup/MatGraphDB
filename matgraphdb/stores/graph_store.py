@@ -3,7 +3,7 @@ import logging
 import shutil
 import time
 import importlib
-from typing import List
+from typing import List, Union
 from glob import glob
 
 import pyarrow as pa
@@ -14,6 +14,7 @@ from pyarrow import parquet as pq
 
 from matgraphdb.stores.node_store import NodeStore
 from matgraphdb.stores.edge_store import EdgeStore
+from matgraphdb.stores.utils import load_store
 
 # from matgraphdb.stores.nodes import *
 from parquetdb import ParquetDB
@@ -57,39 +58,57 @@ class GraphStore:
 
 
     def _load_existing_node_stores(self, load_custom_stores: bool = True):
-        return self._load_existing_stores(NodeStore, self.nodes_path, load_custom_stores)
+        return self._load_existing_stores(self.nodes_path, default_store_class=NodeStore, load_custom_stores=load_custom_stores)
 
     def _load_existing_edge_stores(self, load_custom_stores: bool = True):
-        return self._load_existing_stores(EdgeStore, self.edges_path, load_custom_stores)
+        return self._load_existing_stores(self.edges_path, default_store_class=EdgeStore, load_custom_stores=load_custom_stores)
         
-    def _load_existing_stores(self, store_class, storage_path, load_custom_stores: bool = True):
-        logger.info(f"Attempting to load {store_class.__name__}")
-        logger.debug(f"Load custom stores: {load_custom_stores}")
+    # def _load_existing_stores(self, store_class, storage_path, load_custom_stores: bool = True):
+    #     logger.info(f"Attempting to load {store_class.__name__}")
+    #     logger.debug(f"Load custom stores: {load_custom_stores}")
 
+    #     store_dict = {}
+    #     for store_type in os.listdir(storage_path):
+    #         store_path = os.path.join(storage_path, store_type)
+    #         logger.debug(f"Store path: {store_path}")
+    #         if os.path.isdir(store_path):
+    #             logger.info(f"Loading existing store: {store_type}")
+                
+    #             store_metadata=ParquetDB(store_path).get_metadata()
+    #             class_module = store_metadata.get('class_module', None)
+    #             class_name = store_metadata.get('class', None)
+                
+    #             if class_module and class_name and load_custom_stores:
+    #                 try:
+    #                     logger.debug(f"Attempting to import class from module: {class_module}")
+    #                     module = importlib.import_module(class_module)
+    #                     class_obj = getattr(module, class_name)
+    #                     store_dict[store_type] = class_obj(storage_path=store_path)
+    #                 except Exception as e:
+    #                     logger.error(f"Error initializing store {store_type}: {e}")
+    #                     logger.debug(f"Falling back to base default store for {store_type}")
+    #                     store_dict[store_type] = store_class(storage_path=store_path)
+    #             else:
+    #                 logger.debug(f"Initializing default store")
+    #                 store_dict[store_type] = store_class(storage_path=store_path)
+    #     return store_dict
+    
+    def _load_existing_stores(self, stores_path, default_store_class: Union[NodeStore, EdgeStore]=None, load_custom_stores: bool = True):
+        
+        if load_custom_stores:
+            default_store_class=None
+
+        logger.info(f"Loading store from {stores_path}")
+        logger.debug(f"Load custom stores: {load_custom_stores}")
+        
         store_dict = {}
-        for store_type in os.listdir(storage_path):
-            store_path = os.path.join(storage_path, store_type)
-            logger.debug(f"Store path: {store_path}")
+        for store_type in os.listdir(stores_path):
+            store_path = os.path.join(stores_path, store_type)
+            logger.debug(f"Found store: {store_type}")
             if os.path.isdir(store_path):
-                logger.info(f"Loading existing store: {store_type}")
-                
-                store_metadata=ParquetDB(store_path).get_metadata()
-                class_module = store_metadata.get('class_module', None)
-                class_name = store_metadata.get('class', None)
-                
-                if class_module and class_name and load_custom_stores:
-                    try:
-                        logger.debug(f"Attempting to import class from module: {class_module}")
-                        module = importlib.import_module(class_module)
-                        class_obj = getattr(module, class_name)
-                        store_dict[store_type] = class_obj(storage_path=store_path)
-                    except Exception as e:
-                        logger.error(f"Error initializing store {store_type}: {e}")
-                        logger.debug(f"Falling back to base default store for {store_type}")
-                        store_dict[store_type] = store_class(storage_path=store_path)
-                else:
-                    logger.debug(f"Initializing default store")
-                    store_dict[store_type] = store_class(storage_path=store_path)
+                store_dict[store_type] = load_store(store_path, default_store_class)
+            else:
+                raise ValueError(f"Store path {store_path} is not a directory. Likely does not exist.")
         return store_dict
                     
     def add_node_type(self, node_type: str) -> NodeStore:
