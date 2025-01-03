@@ -8,6 +8,9 @@ def write_schema_summary(materials_parquetdb_path, output_path):
     table=db.read()
     print(table.shape)
     
+    dir_path=os.path.dirname(output_path)
+    os.makedirs(dir_path, exist_ok=True)
+    
     with open(os.path.join(output_path), 'w') as f:
         f.write(f"Number of rows: {table.shape[0]}\n")
         f.write(f"Number of columns: {table.shape[1]}\n\n")
