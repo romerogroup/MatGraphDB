@@ -21,6 +21,7 @@ class SpaceGroupNodes(NodeStore):
         try:
             space_groups = [f'spg_{i}' for i in np.arange(1, 231)]
             space_groups_properties = [{"spg": int(space_group.split('_')[1])} for space_group in space_groups]
+            
 
             # Create DataFrame with the space group properties
             df = pd.DataFrame(space_groups_properties)

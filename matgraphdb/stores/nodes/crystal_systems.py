@@ -19,7 +19,7 @@ class CrystalSystemNodes(NodeStore):
         
         logger.info(f"Initializing CrystalSystemNodes with storage path: {self.storage_path}")
         try:
-            crystal_systems = ['triclinic', 'monoclinic', 'orthorhombic', 'tetragonal', 'trigonal', 'hexagonal', 'cubic']
+            crystal_systems = ['Triclinic', 'Monoclinic', 'Orthorhombic', 'Tetragonal', 'Trigonal', 'Hexagonal', 'Cubic']
             crystal_systems_properties = [{"crystal_system": cs} for cs in crystal_systems]
             df = pd.DataFrame(crystal_systems_properties)
         except Exception as e:

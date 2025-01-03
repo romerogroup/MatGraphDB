@@ -7,3 +7,4 @@ from matgraphdb.stores.nodes.material_sites import MaterialSiteNodes
 from matgraphdb.stores.nodes.magnetic_states import MagneticStatesNodes
 from matgraphdb.stores.nodes.space_groups import SpaceGroupNodes
 from matgraphdb.stores.nodes.wyckoffs import WyckoffNodes
+from matgraphdb.stores.nodes.oxidation_states import OxidationStatesNodes

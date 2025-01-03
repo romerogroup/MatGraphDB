@@ -19,7 +19,7 @@ class OxidationStatesNodes(NodeStore):
         self.name_column = 'oxidation_state'
         try:
             oxidation_states = np.arange(-9, 10)
-            oxidation_states_names = [f'ox_{i}' for i in oxidation_states]
+            oxidation_states_names = [f'OxidationState{i}' for i in oxidation_states]
             data={
                 'oxidation_state': oxidation_states_names,
                 'value': oxidation_states

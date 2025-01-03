@@ -186,7 +186,7 @@ class NodeStore(ParquetDB):
             data: Union[List[dict], dict, pd.DataFrame], 
             schema:pa.Schema=None, 
             metadata:dict=None,
-            update_key:str='id',
+            update_keys:Union[str,List[str]]='id',
             treat_fields_as_ragged=None,
             convert_to_fixed_shape:bool=True,
             normalize_config:NormalizeConfig=NormalizeConfig()):
@@ -202,6 +202,8 @@ class NodeStore(ParquetDB):
             The schema for the data being added. If not provided, it will be inferred.
         metadata : dict, optional
             Additional metadata to store alongside the data.
+        update_keys : str or list of str, optional
+            The keys to use for updating the data. If a list, the data must contain a row for each key.
         treat_fields_as_ragged : list of str, optional
             A list of fields to treat as ragged arrays.
         convert_to_fixed_shape : bool, optional
@@ -217,7 +219,7 @@ class NodeStore(ParquetDB):
         num_records = len(data) if isinstance(data, (list, pd.DataFrame)) else 1
         logger.info(f"Updating {num_records} node records")
         
-        update_kwargs = dict(data=data, update_key=update_key, schema=schema, 
+        update_kwargs = dict(data=data, update_keys=update_keys, schema=schema, 
                             metadata=metadata, normalize_config=normalize_config,
                             treat_fields_as_ragged=treat_fields_as_ragged,
                             convert_to_fixed_shape=convert_to_fixed_shape)
