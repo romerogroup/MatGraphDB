@@ -9,28 +9,103 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from parquetdb.core.parquetdb import NormalizeConfig, LoadConfig
 
-logger = logging.getLogger(__name__)
+from matgraphdb.stores.node_store import NodeStore
+from matgraphdb.stores.utils import load_store
 
+logger = logging.getLogger(__name__)
 
 class EdgeStore(ParquetDB):
     """
     A wrapper around ParquetDB specifically for storing edge features
     of a given edge type.
     """
-    required_fields = ['source_id', 'target_id', 'source_type', 'target_type']
+    required_fields = ['source_id', 'source_type', 'target_id', 'target_type']
+    edge_metadata_keys = ['class', 'class_module', 'edge_type', 'name_column', 'source_type', 'source_path', 'target_type', 'target_path', 'is_bidirectional']
 
-    def __init__(self, storage_path: str):
+    def __init__(self, storage_path: str, 
+                 node_store_path_1: str = None, 
+                 node_store_path_2: str = None, 
+                 post_initialize_kwargs:dict=None):
         """
         Parameters
         ----------
         storage_path : str
             The path where ParquetDB files for this edge type are stored.
+        node_store_path_1 : str
+            The path where the first node store is stored.
+        node_store_path_2 : str
+            The path where the second node store is stored.
         """
-        os.makedirs(storage_path, exist_ok=True)
-        self.storage_path = storage_path
+
         self.edge_type = os.path.basename(storage_path)
-        logger.info(f"Initialized EdgeStore at {storage_path}")
-        super().__init__(db_path=storage_path)
+        self.storage_path = storage_path
+        
+        super().__init__(db_path=storage_path, 
+                         initial_fields=[pa.field('source_id', pa.int64()), 
+                                         pa.field('source_type', pa.string()), 
+                                         pa.field('target_id', pa.int64()), 
+                                         pa.field('target_type', pa.string())])
+        
+        metadata = self.get_metadata()
+        if node_store_path_1 is None:
+            node_store_path_1 = metadata['node_store_path_1']
+        if node_store_path_2 is None:
+            node_store_path_2 = metadata['node_store_path_2']
+            
+        self.node_store_path_1 = node_store_path_1
+        self.node_store_path_2 = node_store_path_2
+        self.node_store_1 = load_store(node_store_path_1, default_store_class=NodeStore)
+        self.node_store_2 = load_store(node_store_path_2, default_store_class=NodeStore)
+        self.node_type_1 = self.node_store_1.node_type
+        self.node_type_2 = self.node_store_2.node_type
+        
+        self._initialize_metadata()
+        self._initialize_field_metadata()
+        
+        
+        
+        logger.debug(f"Initialized EdgeStore at {storage_path}")
+        
+        if post_initialize_kwargs is None:
+            post_initialize_kwargs = {}
+            
+        if self.is_empty():
+            self._post_initialize(**post_initialize_kwargs)
+
+    def _post_initialize(self, **kwargs):
+        data = self.post_initialize(**kwargs)
+        if data is not None:
+            self.create_edges(data=data)
+        
+    def post_initialize(self, **kwargs):
+        return None
+    
+    def _initialize_metadata(self, **kwargs):
+        metadata = self.get_metadata()
+        update_metadata = False
+        for key in self.edge_metadata_keys:
+            if key not in metadata:
+                update_metadata = update_metadata or key not in metadata
+                
+        if update_metadata:
+            self.set_metadata({'class':f"{self.__class__.__name__}",
+                               'class_module':f"{self.__class__.__module__}",
+                               'edge_type':self.edge_type,
+                               'name_column':'id',
+                               'node_store_path_1':self.node_store_path_1,
+                               'node_store_path_2':self.node_store_path_2,
+                               'node_type_1':self.node_type_1,
+                               'node_type_2':self.node_type_2})
+    
+    def _initialize_field_metadata(self, **kwargs):
+        pass
+    
+    @property
+    def name_column(self):
+        return self.get_metadata()['name_column']
+    @name_column.setter
+    def name_column(self, value):
+        self.set_metadata({'name_column':value})
 
     def create_edges(self,
                data:Union[List[dict],dict,pd.DataFrame],
@@ -64,22 +139,31 @@ class EdgeStore(ParquetDB):
         -------
         >>> db.create(data=my_data, schema=my_schema, metadata={'source': 'api'}, normalize_dataset=True)
         """
-        logger.debug(f"Creating edges with schema: {schema}")
+        
 
-        if not self.validate_edges(data):
-            logger.error(
-                "Edge data validation failed - missing required fields")
-            raise ValueError(
-                "Edge data is missing required fields. Must include: " + ", ".join(EdgeStore.required_fields))
+        
         create_kwargs = dict(data=data, schema=schema, metadata=metadata,
                              treat_fields_as_ragged=treat_fields_as_ragged,
                              convert_to_fixed_shape=convert_to_fixed_shape,
                              normalize_dataset=normalize_dataset,
                              normalize_config=normalize_config)
         self.create(**create_kwargs)
+        
+    def create(self, **kwargs):
+        logger.debug(f"Creating edges")
+        
+        if not self.validate_edges(kwargs['data']):
+            logger.error(
+                "Edge data validation failed - missing required fields")
+            raise ValueError(
+                "Edge data is missing required fields. Must include: " + ", ".join(EdgeStore.required_fields))
+        
+        super().create(**kwargs)
+        
         logger.info(f"Successfully created edges")
 
-    def read_edges(self, ids: List[int] = None,
+    def read_edges(self, 
+        ids: List[int] = None,
         columns: List[str] = None,
         filters: List[pc.Expression] = None,
         load_format: str = 'table',
@@ -135,54 +219,20 @@ class EdgeStore(ParquetDB):
                            load_config=load_config, normalize_config=normalize_config)
         return self.read(**read_kwargs)
     
-    def update(self, 
-            data: Union[List[dict], dict, pd.DataFrame], 
-            schema:pa.Schema=None, 
-            metadata:dict=None,
-            update_key:str='id',
-            treat_fields_as_ragged=None,
-            convert_to_fixed_shape:bool=True,
-            normalize_config:NormalizeConfig=NormalizeConfig()):
-        """
-        Updates existing records in the database.
-
-        Parameters
-        ----------
-        data : dict, list of dicts, or pandas.DataFrame
-            The data to be updated in the database. Each record must contain an 'id' key 
-            corresponding to the record to be updated.
-        schema : pyarrow.Schema, optional
-            The schema for the data being added. If not provided, it will be inferred.
-        metadata : dict, optional
-            Additional metadata to store alongside the data.
-        treat_fields_as_ragged : list of str, optional
-            A list of fields to treat as ragged arrays.
-        convert_to_fixed_shape : bool, optional
-            If True, the ragged arrays will be converted to fixed shape arrays.
-        normalize_config : NormalizeConfig, optional
-            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-        
-        Example
-        -------
-        >>> db.update(data=[{'id': 1, 'name': 'John', 'age': 30}, {'id': 2, 'name': 'Jane', 'age': 25}])
-        """
-        
-        if not self.validate_edges(data):
+    def update(self, **kwargs):
+        logger.debug(f"Updating edges")
+        if not self.validate_edges(kwargs['data']):
             logger.error( "Edge data validation failed - missing required fields")
             raise ValueError("Edge data is missing required fields. Must include: " + ", ".join(EdgeStore.required_fields))
-            
-        update_kwargs = dict(data=data, schema=schema, metadata=metadata,
-                             update_key=update_key,
-                             treat_fields_as_ragged=treat_fields_as_ragged,
-                             convert_to_fixed_shape=convert_to_fixed_shape,
-                             normalize_config=normalize_config)
-        super().update(**update_kwargs) 
-
+        
+        super().update(**kwargs) 
+        logger.info("Successfully updated edges")
+        
     def update_edges(self, 
             data: Union[List[dict], dict, pd.DataFrame], 
             schema:pa.Schema=None, 
             metadata:dict=None,
-            update_key:str='id',
+            update_keys:Union[List[str],str]='id',
             treat_fields_as_ragged=None,
             convert_to_fixed_shape:bool=True,
             normalize_config:NormalizeConfig=NormalizeConfig()):
@@ -198,6 +248,8 @@ class EdgeStore(ParquetDB):
             The schema for the data being added. If not provided, it will be inferred.
         metadata : dict, optional
             Additional metadata to store alongside the data.
+        update_keys : list of str or str, optional
+            The keys to use for updating the data. If a list, the data must contain a value for each key.
         treat_fields_as_ragged : list of str, optional
             A list of fields to treat as ragged arrays.
         convert_to_fixed_shape : bool, optional
@@ -209,15 +261,16 @@ class EdgeStore(ParquetDB):
         -------
         >>> db.update(data=[{'id': 1, 'name': 'John', 'age': 30}, {'id': 2, 'name': 'Jane', 'age': 25}])
         """
-        logger.debug(f"Updating edges with schema: {schema}")
+        logger.debug(f"Updating edges")
 
         if not self.validate_edges(data):
             logger.error(
                 "Edge data validation failed - missing required fields")
             raise ValueError(
                 "Edge data is missing required fields. Must include: " + ", ".join(EdgeStore.required_fields))
+        
         update_kwargs = dict(data=data, schema=schema, metadata=metadata,
-                             update_key=update_key,
+                             update_keys=update_keys,
                              treat_fields_as_ragged=treat_fields_as_ragged,
                              convert_to_fixed_shape=convert_to_fixed_shape,
                              normalize_config=normalize_config)
@@ -265,13 +318,10 @@ class EdgeStore(ParquetDB):
         Validates the edges to ensure they contain the required fields.
         """
         logger.debug("Validating edge data")
-        if isinstance(data, pd.DataFrame):
-            fields = data.columns.tolist()
-        elif isinstance(data, dict):
-            fields = list(data.keys())
-        elif isinstance(data, list):
-            fields = list(data[0].keys())
-        elif isinstance(data, pa.Table) or isinstance(data, pa.RecordBatch):
+        
+        data = ParquetDB.construct_table(data)
+        
+        if isinstance(data, pa.Table) or isinstance(data, pa.RecordBatch):
             fields = data.schema.names
         else:
             logger.error(

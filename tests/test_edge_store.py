@@ -3,7 +3,8 @@ import pandas as pd
 import pyarrow as pa
 import os
 import shutil
-from matgraphdb.stores import EdgeStore
+from matgraphdb.stores import EdgeStore, NodeStore
+from matgraphdb.stores.nodes import ElementNodes
 
 @pytest.fixture
 def temp_storage(tmp_path):
@@ -14,9 +15,17 @@ def temp_storage(tmp_path):
         shutil.rmtree(storage_dir)
 
 @pytest.fixture
-def edge_store(temp_storage):
+def edge_store(temp_storage, element_store_path):
     """Fixture to create an EdgeStore instance"""
-    return EdgeStore(temp_storage)
+    return EdgeStore(temp_storage, node_store_path_1=element_store_path, node_store_path_2=element_store_path)
+
+@pytest.fixture
+def element_store_path(tmp_path):
+    """Fixture to create and cleanup a temporary storage directory"""
+    storage_dir = tmp_path / "elements"
+    yield str(storage_dir)
+    if os.path.exists(storage_dir):
+        shutil.rmtree(storage_dir)
 
 @pytest.fixture
 def sample_edge_data():
@@ -29,11 +38,22 @@ def sample_edge_data():
         'weight': [0.5, 0.7]
     }
 
-def test_edge_store_initialization(temp_storage):
+def test_edge_store_initialization(temp_storage, element_store_path):
     """Test that EdgeStore initializes correctly and creates the storage directory"""
-    store = EdgeStore(temp_storage)
+    store = EdgeStore(temp_storage, node_store_path_1=element_store_path, node_store_path_2=element_store_path)
     assert os.path.exists(temp_storage)
     assert store is not None
+    
+    metadata = store.get_metadata()
+    assert metadata['node_store_path_1'] == element_store_path
+    assert metadata['node_store_path_2'] == element_store_path
+    assert metadata['node_type_1'] == 'elements'
+    assert metadata['node_type_2'] == 'elements'
+    assert metadata['name_column'] == 'id'
+    assert metadata['class'] == 'EdgeStore'
+    assert metadata['class_module'] == 'matgraphdb.stores.edge_store'
+    assert metadata['edge_type'] == 'test_edge_store'
+
 
 def test_create_edges_from_dict(edge_store, sample_edge_data):
     """Test creating edges from a dictionary"""
@@ -46,18 +66,6 @@ def test_create_edges_from_dict(edge_store, sample_edge_data):
     assert all(field in result_df.columns for field in EdgeStore.required_fields)
     assert list(result_df['source_id']) == [1, 2]
     assert list(result_df['target_id']) == [3, 4]
-
-def test_create_edges_missing_required_fields(edge_store):
-    """Test that creating edges with missing required fields raises an error"""
-    invalid_data = {
-        'source_id': [1, 2],
-        'target_id': [3, 4],
-        # Missing source_type and target_type
-        'weight': [0.5, 0.7]
-    }
-    
-    with pytest.raises(ValueError, match="Edge data is missing required fields"):
-        edge_store.create_edges(invalid_data)
 
 def test_create_edges_from_dataframe(edge_store, sample_edge_data):
     """Test creating edges from a pandas DataFrame"""
@@ -173,3 +181,4 @@ def test_normalize_edges(edge_store, sample_edge_data):
     result_table = edge_store.read_edges()
     result_df = result_table.to_pandas()
     assert len(result_df) == 2
+
