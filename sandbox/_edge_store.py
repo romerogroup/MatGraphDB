@@ -25,7 +25,7 @@ class EdgeStore(ParquetDB):
     def __init__(self, storage_path: str, 
                  node_store_path_1: str = None, 
                  node_store_path_2: str = None, 
-                 post_initialize_kwargs:dict=None):
+                 setup_kwargs:dict=None):
         """
         Parameters
         ----------
@@ -37,10 +37,9 @@ class EdgeStore(ParquetDB):
             The path where the second node store is stored.
         """
 
-        self.edge_type = os.path.basename(storage_path)
-        self.storage_path = storage_path
         
-        super().__init__(db_path=storage_path, 
+        self.storage_path = storage_path
+        super().__init__(db_path=self.storage_path, 
                          initial_fields=[pa.field('source_id', pa.int64()), 
                                          pa.field('source_type', pa.string()), 
                                          pa.field('target_id', pa.int64()), 
@@ -62,22 +61,22 @@ class EdgeStore(ParquetDB):
         self._initialize_metadata()
         self._initialize_field_metadata()
         
-        
-        
         logger.debug(f"Initialized EdgeStore at {storage_path}")
-        
-        if post_initialize_kwargs is None:
-            post_initialize_kwargs = {}
-            
         if self.is_empty():
-            self._post_initialize(**post_initialize_kwargs)
-
-    def _post_initialize(self, **kwargs):
-        data = self.post_initialize(**kwargs)
+            if setup_kwargs is None:
+                setup_kwargs = {}
+            self._setup(**setup_kwargs)
+        
+        metadata = self.get_metadata()
+        self.__dict__.update(metadata)
+        
+    def _setup(self, **kwargs):
+        data = self.setup(**kwargs)
         if data is not None:
             self.create_edges(data=data)
+            self.set_metadata(kwargs)
         
-    def post_initialize(self, **kwargs):
+    def setup(self, **kwargs):
         return None
     
     def _initialize_metadata(self, **kwargs):
@@ -90,7 +89,7 @@ class EdgeStore(ParquetDB):
         if update_metadata:
             self.set_metadata({'class':f"{self.__class__.__name__}",
                                'class_module':f"{self.__class__.__module__}",
-                               'edge_type':self.edge_type,
+                               'edge_type':os.path.basename(self.db_path),
                                'name_column':'id',
                                'node_store_path_1':self.node_store_path_1,
                                'node_store_path_2':self.node_store_path_2,
@@ -106,7 +105,7 @@ class EdgeStore(ParquetDB):
     @name_column.setter
     def name_column(self, value):
         self.set_metadata({'name_column':value})
-
+        
     def create_edges(self,
                data:Union[List[dict],dict,pd.DataFrame],
                schema:pa.Schema=None,

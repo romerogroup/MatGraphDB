@@ -1,12 +1,9 @@
-from matgraphdb.stores.node_store import NodeStore
-
-
 import json
-import os
 import logging
-from typing import Callable, Union, List, Tuple, Dict
+import os
 from functools import partial
 from glob import glob
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -14,42 +11,44 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.core import Structure, Composition
-from parquetdb import ParquetDB
-from parquetdb.core.parquetdb import NormalizeConfig, LoadConfig
 import spglib
+from parquetdb import ParquetDB
+from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
+from pymatgen.core import Composition, Structure
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from matgraphdb import config
-from matgraphdb.utils.mp_utils import multiprocess_task
+from matgraphdb.core.node_store import NodeStore
 from matgraphdb.utils.general_utils import set_verbosity
+from matgraphdb.utils.mp_utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
 
 
 class MaterialNodes(NodeStore):
-    
-    def create_material(self, structure: Structure = None,
-                         coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
-                         coords_are_cartesian: bool = False,
-                         species: List[str] = None,
-                         lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
-                         properties: dict = None,
-                         schema: pa.Schema = None,
-                         metadata: dict = None,
-                         treat_fields_as_ragged: List[str] = [],
-                         convert_to_fixed_shape: bool = True,
-                         normalize_dataset: bool = False,
-                         normalize_config: NormalizeConfig = NormalizeConfig(),
-                         verbose: int = 3,
-                         save_db: bool = True,
-                         **kwargs
-                         ):
+
+    def create_material(
+        self,
+        structure: Structure = None,
+        coords: Union[List[Tuple[float, float, float]], np.ndarray] = None,
+        coords_are_cartesian: bool = False,
+        species: List[str] = None,
+        lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
+        properties: dict = None,
+        schema: pa.Schema = None,
+        metadata: dict = None,
+        treat_fields_as_ragged: List[str] = [],
+        convert_to_fixed_shape: bool = True,
+        normalize_dataset: bool = False,
+        normalize_config: NormalizeConfig = NormalizeConfig(),
+        verbose: int = 3,
+        save_db: bool = True,
+        **kwargs,
+    ):
         """
         Adds a material to the database with optional symmetry and calculated properties.
 
-        This method generates an entry for a material based on its structure, atomic coordinates, species, 
-        and lattice parameters. It also allows for the calculation of additional properties and saves the 
+        This method generates an entry for a material based on its structure, atomic coordinates, species,
+        and lattice parameters. It also allows for the calculation of additional properties and saves the
         material to the database.
 
         Parameters:
@@ -94,16 +93,19 @@ class MaterialNodes(NodeStore):
 
         # Generating entry data
         entry_data = {}
-        
+
         if properties is None:
             properties = {}
-            
-        treat_fields_as_ragged.extend(['frac_coords', 'cartesian_coords', 'atomic_numbers', 'species'])
+
+        treat_fields_as_ragged.extend(
+            ["frac_coords", "cartesian_coords", "atomic_numbers", "species"]
+        )
 
         logger.info("Adding a new material.")
 
         structure = self._init_structure(
-            structure, coords, coords_are_cartesian, species, lattice)
+            structure, coords, coords_are_cartesian, species, lattice
+        )
 
         if structure is None:
             logger.error("A structure must be provided.")
@@ -111,39 +113,43 @@ class MaterialNodes(NodeStore):
 
         composition = structure.composition
         entry_data = {}
-        entry_data['formula'] = composition.formula
-        entry_data['elements'] = list(
-            [element.symbol for element in composition.elements])
+        entry_data["formula"] = composition.formula
+        entry_data["elements"] = list(
+            [element.symbol for element in composition.elements]
+        )
 
-        entry_data['lattice'] = structure.lattice.matrix.tolist()
-        entry_data['frac_coords'] = structure.frac_coords.tolist()
-        entry_data['cartesian_coords'] = structure.cart_coords.tolist()
-        entry_data['atomic_numbers'] = structure.atomic_numbers
-        entry_data['species'] = list([specie.symbol for specie in structure.species])
-        entry_data['nelements'] = len(structure.species)
+        entry_data["lattice"] = structure.lattice.matrix.tolist()
+        entry_data["frac_coords"] = structure.frac_coords.tolist()
+        entry_data["cartesian_coords"] = structure.cart_coords.tolist()
+        entry_data["atomic_numbers"] = structure.atomic_numbers
+        entry_data["species"] = list([specie.symbol for specie in structure.species])
+        entry_data["nelements"] = len(structure.species)
         entry_data["volume"] = structure.volume
         entry_data["density"] = structure.density
         entry_data["nsites"] = len(structure.sites)
-        entry_data["density_atomic"] = entry_data['nsites'] / entry_data['volume']
-        entry_data['structure'] = structure.as_dict()
+        entry_data["density_atomic"] = entry_data["nsites"] / entry_data["volume"]
+        entry_data["structure"] = structure.as_dict()
 
         # Adding other properties as columns
         entry_data.update(properties)
 
         df = pd.DataFrame([entry_data])
 
-        logger.debug(f'Input dataframe head - \n{df.head(1)}')
-        logger.debug(f'Input dataframe shape - {df.shape}')
+        logger.debug(f"Input dataframe head - \n{df.head(1)}")
+        logger.debug(f"Input dataframe shape - {df.shape}")
 
-        
         try:
             if save_db:
                 logger.debug(f"Saving material to database")
-                create_kwargs = dict(data=df, schema=schema, metadata=metadata, 
-                                 treat_fields_as_ragged=treat_fields_as_ragged,
-                                 convert_to_fixed_shape=convert_to_fixed_shape, 
-                                 normalize_dataset=normalize_dataset, 
-                                 normalize_config=normalize_config)
+                create_kwargs = dict(
+                    data=df,
+                    schema=schema,
+                    metadata=metadata,
+                    treat_fields_as_ragged=treat_fields_as_ragged,
+                    convert_to_fixed_shape=convert_to_fixed_shape,
+                    normalize_dataset=normalize_dataset,
+                    normalize_config=normalize_config,
+                )
                 self.create(**create_kwargs)
                 logger.info("Material added successfully.")
             else:
@@ -151,15 +157,17 @@ class MaterialNodes(NodeStore):
 
         except Exception as e:
             logger.exception(f"Error adding material: {e}")
-            
+
         return entry_data
 
-    def _init_structure(self, structure, coords, coords_are_cartesian, species, lattice):
+    def _init_structure(
+        self, structure, coords, coords_are_cartesian, species, lattice
+    ):
         """
         Initializes a structure object from provided data.
 
-        This method checks whether a structure object is provided directly or if it needs to be built 
-        from coordinates, species, and lattice parameters. It returns the structure or raises an error 
+        This method checks whether a structure object is provided directly or if it needs to be built
+        from coordinates, species, and lattice parameters. It returns the structure or raises an error
         if invalid input is provided.
 
         Parameters:
@@ -190,35 +198,51 @@ class MaterialNodes(NodeStore):
             logger.debug("Using provided Structure structure.")
             return structure
         elif coords is not None and species is not None and lattice is not None:
-            logger.debug("Building Structure structure from provided coordinates, species, and lattice.")
+            logger.debug(
+                "Building Structure structure from provided coordinates, species, and lattice."
+            )
             if coords_are_cartesian:
-                return Structure(lattice=lattice, species=species, coords=coords, coords_are_cartesian=True)
+                return Structure(
+                    lattice=lattice,
+                    species=species,
+                    coords=coords,
+                    coords_are_cartesian=True,
+                )
             else:
-                return Structure(lattice=lattice, species=species, coords=coords, coords_are_cartesian=False)
+                return Structure(
+                    lattice=lattice,
+                    species=species,
+                    coords=coords,
+                    coords_are_cartesian=False,
+                )
         else:
             logger.debug("No valid structure information provided.")
             return None
-        
-    def create_materials(self, materials: Union[List[dict], dict, pd.DataFrame, pa.Table, pa.RecordBatch],
-                          schema: pa.Schema = None,
-                          metadata: dict = None,
-                          treat_fields_as_ragged: List[str] = [],
-                          convert_to_fixed_shape: bool = True,
-                          normalize_dataset: bool = False,
-                          normalize_config: NormalizeConfig = NormalizeConfig(),
-                          n_cores: int = 2,
-                          verbose: int = 3, **kwargs):
+
+    def create_materials(
+        self,
+        materials: Union[List[dict], dict, pd.DataFrame, pa.Table, pa.RecordBatch],
+        schema: pa.Schema = None,
+        metadata: dict = None,
+        treat_fields_as_ragged: List[str] = [],
+        convert_to_fixed_shape: bool = True,
+        normalize_dataset: bool = False,
+        normalize_config: NormalizeConfig = NormalizeConfig(),
+        n_cores: int = 2,
+        verbose: int = 3,
+        **kwargs,
+    ):
         """
         Adds multiple materials to the database in a single transaction.
 
-        This method processes a list of materials and writes their data to the specified 
-        database dataset in a single transaction. Each material should be represented as a 
+        This method processes a list of materials and writes their data to the specified
+        database dataset in a single transaction. Each material should be represented as a
         dictionary with keys corresponding to the arguments for the `add` method.
 
         Parameters:
         -----------
         materials : Union[List[dict]]
-            A list of dictionaries where each dictionary contains the material data and 
+            A list of dictionaries where each dictionary contains the material data and
             corresponds to the arguments for the `add` method.
         schema : pyarrow.Schema, optional
             A new schema to be applied to the dataset.
@@ -243,26 +267,34 @@ class MaterialNodes(NodeStore):
         """
         set_verbosity(verbose)
         logger.info(f"Adding {len(materials)} materials to the database.")
-        
-        add_kwargs=dict(schema=schema, metadata=metadata, normalize_dataset=normalize_dataset, 
-                        normalize_config=normalize_config, verbose=verbose,
-                        treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
-        
-        results=multiprocess_task(self._create_material, materials, n_cores=n_cores, **add_kwargs)
-        entry_data=[result for result in results if result]
-        
+
+        add_kwargs = dict(
+            schema=schema,
+            metadata=metadata,
+            normalize_dataset=normalize_dataset,
+            normalize_config=normalize_config,
+            verbose=verbose,
+            treat_fields_as_ragged=treat_fields_as_ragged,
+            convert_to_fixed_shape=convert_to_fixed_shape,
+        )
+
+        results = multiprocess_task(
+            self._create_material, materials, n_cores=n_cores, **add_kwargs
+        )
+        entry_data = [result for result in results if result]
+
         df = pd.DataFrame(entry_data)
         try:
             self.create(df, **kwargs)
         except Exception as e:
             logger.error(f"Error adding material: {e}")
         logger.info("All materials added successfully.")
-        
+
     def _create_material(self, material, **kwargs):
         """
         Adds a material entry to the database without saving it immediately.
 
-        This method prepares the material data by disabling automatic database saving and then calls 
+        This method prepares the material data by disabling automatic database saving and then calls
         the `add` method to process the material. It is typically used in batch processing scenarios.
 
         Parameters:
@@ -278,27 +310,28 @@ class MaterialNodes(NodeStore):
             The processed material data returned by the `add` method.
         """
 
-        material['save_db']=False
+        material["save_db"] = False
         return self.create_material(**material, **kwargs)
-    
-    def read_materials(self, 
+
+    def read_materials(
+        self,
         ids: List[int] = None,
         columns: List[str] = None,
         filters: List[pc.Expression] = None,
-        load_format: str = 'table',
-        batch_size:int=None,
+        load_format: str = "table",
+        batch_size: int = None,
         include_cols: bool = True,
         rebuild_nested_struct: bool = False,
         rebuild_nested_from_scratch: bool = False,
-        load_config:LoadConfig=LoadConfig(),
-        normalize_config:NormalizeConfig=NormalizeConfig()
-        ):
+        load_config: LoadConfig = LoadConfig(),
+        normalize_config: NormalizeConfig = NormalizeConfig(),
+    ):
         """
         Reads data from the MaterialStore.
 
         Parameters
         ----------
-        
+
         ids : list of int, optional
             A list of IDs to read. If None, all data is read (default is None).
         columns : list of str, optional
@@ -325,7 +358,7 @@ class MaterialNodes(NodeStore):
         Depends on `output_format`
             The material data in the specified format (e.g., a dataset or another format supported by the database).
         """
-        
+
         logger.debug(f"Reading materials.")
         logger.debug(f"ids: {ids}")
         logger.debug(f"columns: {columns}")
@@ -334,31 +367,40 @@ class MaterialNodes(NodeStore):
         logger.debug(f"load_format: {load_format}")
         logger.debug(f"batch_size: {batch_size}")
 
-        kwargs=dict(ids=ids, columns=columns, include_cols=include_cols, 
-                    filters=filters, load_format=load_format, batch_size=batch_size,
-                    rebuild_nested_struct=rebuild_nested_struct, rebuild_nested_from_scratch=rebuild_nested_from_scratch,
-                    load_config=load_config, normalize_config=normalize_config)
+        kwargs = dict(
+            ids=ids,
+            columns=columns,
+            include_cols=include_cols,
+            filters=filters,
+            load_format=load_format,
+            batch_size=batch_size,
+            rebuild_nested_struct=rebuild_nested_struct,
+            rebuild_nested_from_scratch=rebuild_nested_from_scratch,
+            load_config=load_config,
+            normalize_config=normalize_config,
+        )
         return self.read_nodes(**kwargs)
-    
-    def update_materials(self, 
-            data: Union[List[dict], dict, pd.DataFrame, pa.Table], 
-            schema=None, 
-            metadata=None,
-            treat_fields_as_ragged=None,
-            convert_to_fixed_shape:bool=True,
-            normalize_config=NormalizeConfig(), 
-            ):
+
+    def update_materials(
+        self,
+        data: Union[List[dict], dict, pd.DataFrame, pa.Table],
+        schema=None,
+        metadata=None,
+        treat_fields_as_ragged=None,
+        convert_to_fixed_shape: bool = True,
+        normalize_config=NormalizeConfig(),
+    ):
         """
         Updates existing records in the database.
 
-        This method updates records in the specified dataset based on the provided data. Each entry in the data 
-        must include an 'id' key that corresponds to the record to be updated. Field types can also be updated 
+        This method updates records in the specified dataset based on the provided data. Each entry in the data
+        must include an 'id' key that corresponds to the record to be updated. Field types can also be updated
         if specified in `field_type_dict`.
 
         Parameters:
         -----------
         data : Union[List[dict], dict, pd.DataFrame]
-            The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame. 
+            The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame.
             Each dictionary should have an 'id' key for identifying the record to update.
         schema : pyarrow.Schema, optional
             A new schema to be applied to the dataset.
@@ -379,15 +421,25 @@ class MaterialNodes(NodeStore):
         """
 
         logger.info(f"Updating data")
-        update_kwargs=dict(data=data, schema=schema, metadata=metadata, normalize_config=normalize_config,
-                       treat_fields_as_ragged=treat_fields_as_ragged, convert_to_fixed_shape=convert_to_fixed_shape)
+        update_kwargs = dict(
+            data=data,
+            schema=schema,
+            metadata=metadata,
+            normalize_config=normalize_config,
+            treat_fields_as_ragged=treat_fields_as_ragged,
+            convert_to_fixed_shape=convert_to_fixed_shape,
+        )
 
         self.update_nodes(**update_kwargs)
         logger.info("Data updated successfully.")
 
-    def delete_materials(self, ids:List[int]=None, columns:List[str]=None,
-               normalize_config: NormalizeConfig = NormalizeConfig(),
-               verbose: int = 3):
+    def delete_materials(
+        self,
+        ids: List[int] = None,
+        columns: List[str] = None,
+        normalize_config: NormalizeConfig = NormalizeConfig(),
+        verbose: int = 3,
+    ):
         """
         Deletes records from the database by ID.
 
@@ -417,17 +469,18 @@ class MaterialNodes(NodeStore):
             manager.delete(ids=[1, 2, 3])
         """
         set_verbosity(verbose)
-        
+
         logger.info(f"Deleting data {ids}")
         self.delete(ids=ids, columns=columns, normalize_config=normalize_config)
         logger.info("Data deleted successfully.")
-        
+
+
 def check_all_params_provided(**kwargs):
     """
     Ensures that all or none of the provided parameters are given.
 
-    This utility function checks whether either all or none of the provided parameters 
-    are set. If only some parameters are provided, it raises a `ValueError`, indicating 
+    This utility function checks whether either all or none of the provided parameters
+    are set. If only some parameters are provided, it raises a `ValueError`, indicating
     which parameters are missing and which are provided.
 
     Parameters:
@@ -445,7 +498,7 @@ def check_all_params_provided(**kwargs):
 
     all_provided = all(value is not None for value in param_values)
     none_provided = all(value is None for value in param_values)
-    
+
     if not (all_provided or none_provided):
         missing = [name for name, value in kwargs.items() if value is None]
         provided = [name for name, value in kwargs.items() if value is not None]
