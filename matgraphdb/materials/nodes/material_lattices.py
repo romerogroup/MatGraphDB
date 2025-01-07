@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from matgraphdb.core import NodeStore
-from matgraphdb.materials.nodes import MaterialNodes
+from matgraphdb.materials.nodes.materials import MaterialNodes
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,3 @@
 from matgraphdb._version import __version__
-
-from matgraphdb.utils.config import config, PKG_DIR
-
-from matgraphdb.core import MatGraphDB
-
-
-
-
-
-
+from matgraphdb.materials import MatGraphDB
+from matgraphdb.utils.config import PKG_DIR, config
