@@ -1,6 +1,6 @@
-import os
-import logging
 import inspect
+import logging
+import os
 from typing import Callable, List
 
 from matgraphdb import config

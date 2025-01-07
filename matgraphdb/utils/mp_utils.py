@@ -1,7 +1,7 @@
-import os
 import logging
-from multiprocessing import Pool
+import os
 from functools import partial
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 

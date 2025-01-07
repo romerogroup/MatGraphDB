@@ -1,10 +1,10 @@
-import os
 import logging
+import os
 
-import networkx as nx
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import seaborn as sns
 

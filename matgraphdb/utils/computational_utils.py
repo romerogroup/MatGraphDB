@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
+
 def rot_z(theta):
     """
     Returns a 3x3 rotation matrix for rotating around the z-axis.

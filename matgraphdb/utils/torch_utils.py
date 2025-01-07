@@ -3,7 +3,8 @@ import logging
 import torch
 from torch_geometric.profile.utils import get_model_size
 
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
+
 
 def get_total_dataset_bytes(dataset):
     """

@@ -4,10 +4,10 @@ import os
 import traceback
 from typing import List, Union
 
-import pyarrow as pa
-import pyarrow.parquet as pq
-import pyarrow.compute as pc
 import pandas as pd
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
 logger = logging.getLogger(__name__)
 

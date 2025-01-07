@@ -1,8 +1,8 @@
 import json
+
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-
 
 t_string=pa.string()
 t_int=pa.int64()
