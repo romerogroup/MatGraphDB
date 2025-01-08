@@ -19,12 +19,21 @@ class MatGraphDB(GraphDB):
       - MaterialStore for specialized 'material' node data.
     """
 
-    def __init__(self, storage_path: str, load_custom_stores: bool = True):
+    def __init__(
+        self,
+        storage_path: str,
+        materials_store: MaterialNodes = None,
+        load_custom_stores: bool = True,
+    ):
         """
         Parameters
         ----------
         storage_path : str
             The root directory for the entire MatGraphDB (nodes, edges, materials, etc.).
+        materials_store : MaterialNodes
+            The materials store to use. If None, a new materials store will be created in the storage_path.
+        load_custom_stores : bool
+            Whether to load custom stores.
         """
         self.storage_path = os.path.abspath(storage_path)
         super().__init__(
@@ -32,12 +41,16 @@ class MatGraphDB(GraphDB):
         )
         logger.info(f"Initializing MatGraphDB at: {self.storage_path}")
 
+        self.materials_path = os.path.join(self.nodes_path, "materials")
+
         if not self.node_exists("materials"):
-            self.materials_path = os.path.join(self.nodes_path, "materials")
             logger.info(
                 "Material nodes do not exist. Adding empty materials node store"
             )
-            self.add_node_store(MaterialNodes(storage_path=self.materials_path))
+            if materials_store is None:
+                self.add_node_store(MaterialNodes(storage_path=self.materials_path))
+            else:
+                self.add_node_store(materials_store)
         self.material_nodes = self.node_stores["materials"]
 
     def create_materials(self, data, **kwargs):
@@ -57,7 +70,3 @@ class MatGraphDB(GraphDB):
     def delete_materials(self, ids: List[int] = None, columns: List[str] = None):
         logger.info("Deleting materials.")
         self.material_nodes.delete_materials(ids=ids, columns=columns)
-
-    def normalize_materials(self):
-        logger.info("Normalizing materials store.")
-        self.material_nodes.normalize_materials()

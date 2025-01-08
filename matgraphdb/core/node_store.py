@@ -85,6 +85,7 @@ class NodeStore(ParquetDB):
         data: Union[List[dict], dict, pd.DataFrame, pa.Table],
         schema: pa.Schema = None,
         metadata: dict = None,
+        fields_metadata: dict = None,
         treat_fields_as_ragged: List[str] = None,
         convert_to_fixed_shape: bool = True,
         normalize_dataset: bool = False,
@@ -101,6 +102,8 @@ class NodeStore(ParquetDB):
             The schema for the incoming data.
         metadata : dict, optional
             Metadata to be attached to the table.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
         normalize_dataset : bool, optional
             If True, the dataset will be normalized after the data is added (default is True).
         treat_fields_as_ragged : list of str, optional
@@ -117,6 +120,7 @@ class NodeStore(ParquetDB):
             data=data,
             schema=schema,
             metadata=metadata,
+            fields_metadata=fields_metadata,
             treat_fields_as_ragged=treat_fields_as_ragged,
             convert_to_fixed_shape=convert_to_fixed_shape,
             normalize_dataset=normalize_dataset,
@@ -211,6 +215,7 @@ class NodeStore(ParquetDB):
         data: Union[List[dict], dict, pd.DataFrame],
         schema: pa.Schema = None,
         metadata: dict = None,
+        fields_metadata: dict = None,
         update_keys: Union[str, List[str]] = "id",
         treat_fields_as_ragged=None,
         convert_to_fixed_shape: bool = True,
@@ -228,6 +233,8 @@ class NodeStore(ParquetDB):
             The schema for the data being added. If not provided, it will be inferred.
         metadata : dict, optional
             Additional metadata to store alongside the data.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
         update_keys : str or list of str, optional
             The keys to use for updating the data. If a list, the data must contain a row for each key.
         treat_fields_as_ragged : list of str, optional
@@ -250,6 +257,7 @@ class NodeStore(ParquetDB):
             update_keys=update_keys,
             schema=schema,
             metadata=metadata,
+            fields_metadata=fields_metadata,
             normalize_config=normalize_config,
             treat_fields_as_ragged=treat_fields_as_ragged,
             convert_to_fixed_shape=convert_to_fixed_shape,

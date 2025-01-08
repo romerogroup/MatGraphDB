@@ -86,6 +86,13 @@ class EdgeStore(ParquetDB):
     def create_edges(
         self,
         data: Union[List[dict], dict, pd.DataFrame],
+        schema: pa.Schema = None,
+        metadata: dict = None,
+        fields_metadata: dict = None,
+        treat_fields_as_ragged: List[str] = None,
+        convert_to_fixed_shape: bool = True,
+        normalize_dataset: bool = False,
+        normalize_config: dict = NormalizeConfig(),
     ):
         """
         Adds new data to the database.
@@ -94,8 +101,34 @@ class EdgeStore(ParquetDB):
         ----------
         data : dict, list of dict, or pandas.DataFrame
             The data to be added to the database.
+        schema : pyarrow.Schema, optional
+            The schema for the incoming data.
+        metadata : dict, optional
+            Metadata to be attached to the table.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
+        normalize_dataset : bool, optional
+            If True, the dataset will be normalized after the data is added (default is True).
+        treat_fields_as_ragged : list of str, optional
+            A list of fields to treat as ragged arrays.
+        convert_to_fixed_shape : bool, optional
+            If True, the ragged arrays will be converted to fixed shape arrays.
+        normalize_config : NormalizeConfig, optional
+            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
+        Example
+        -------
+        >>> db.create_nodes(data=my_data, schema=my_schema, metadata={'source': 'api'}, normalize_dataset=True)
         """
-        create_kwargs = dict(data=data)
+        create_kwargs = dict(
+            data=data,
+            schema=schema,
+            metadata=metadata,
+            fields_metadata=fields_metadata,
+            treat_fields_as_ragged=treat_fields_as_ragged,
+            convert_to_fixed_shape=convert_to_fixed_shape,
+            normalize_dataset=normalize_dataset,
+            normalize_config=normalize_config,
+        )
         self.create(**create_kwargs)
 
     def create(self, **kwargs):
@@ -194,6 +227,7 @@ class EdgeStore(ParquetDB):
         data: Union[List[dict], dict, pd.DataFrame],
         schema: pa.Schema = None,
         metadata: dict = None,
+        fields_metadata: dict = None,
         update_keys: Union[List[str], str] = "id",
         treat_fields_as_ragged=None,
         convert_to_fixed_shape: bool = True,
@@ -211,6 +245,8 @@ class EdgeStore(ParquetDB):
             The schema for the data being added. If not provided, it will be inferred.
         metadata : dict, optional
             Additional metadata to store alongside the data.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
         update_keys : list of str or str, optional
             The keys to use for updating the data. If a list, the data must contain a value for each key.
         treat_fields_as_ragged : list of str, optional

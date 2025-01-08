@@ -34,6 +34,7 @@ class MaterialNodes(NodeStore):
         species: List[str] = None,
         lattice: Union[List[Tuple[float, float, float]], np.ndarray] = None,
         properties: dict = None,
+        fields_metadata: dict = None,
         schema: pa.Schema = None,
         metadata: dict = None,
         treat_fields_as_ragged: List[str] = [],
@@ -65,6 +66,8 @@ class MaterialNodes(NodeStore):
             Lattice parameters of the material.
         properties : dict, optional
             Additional properties to include in the material entry.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
         schema : pyarrow.Schema, optional
             A new schema to be applied to the dataset.
         metadata : dict, optional
@@ -145,6 +148,7 @@ class MaterialNodes(NodeStore):
                     data=df,
                     schema=schema,
                     metadata=metadata,
+                    fields_metadata=fields_metadata,
                     treat_fields_as_ragged=treat_fields_as_ragged,
                     convert_to_fixed_shape=convert_to_fixed_shape,
                     normalize_dataset=normalize_dataset,
@@ -224,6 +228,7 @@ class MaterialNodes(NodeStore):
         materials: Union[List[dict], dict, pd.DataFrame, pa.Table, pa.RecordBatch],
         schema: pa.Schema = None,
         metadata: dict = None,
+        fields_metadata: dict = None,
         treat_fields_as_ragged: List[str] = [],
         convert_to_fixed_shape: bool = True,
         normalize_dataset: bool = False,
@@ -248,6 +253,8 @@ class MaterialNodes(NodeStore):
             A new schema to be applied to the dataset.
         metadata : dict, optional
             A dictionary containing the metadata to be set.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
         treat_fields_as_ragged : List[str], optional
             A list of fields to be treated as ragged.
         convert_to_fixed_shape : bool, optional
@@ -271,6 +278,7 @@ class MaterialNodes(NodeStore):
         add_kwargs = dict(
             schema=schema,
             metadata=metadata,
+            fields_metadata=fields_metadata,
             normalize_dataset=normalize_dataset,
             normalize_config=normalize_config,
             verbose=verbose,
@@ -295,7 +303,7 @@ class MaterialNodes(NodeStore):
         Adds a material entry to the database without saving it immediately.
 
         This method prepares the material data by disabling automatic database saving and then calls
-        the `add` method to process the material. It is typically used in batch processing scenarios.
+        the `add` method to process the material. It is typically used in batch processing scenarios. 
 
         Parameters:
         -----------
@@ -386,6 +394,8 @@ class MaterialNodes(NodeStore):
         data: Union[List[dict], dict, pd.DataFrame, pa.Table],
         schema=None,
         metadata=None,
+        fields_metadata: dict = None,
+        update_keys: List[str] = ["id"],
         treat_fields_as_ragged=None,
         convert_to_fixed_shape: bool = True,
         normalize_config=NormalizeConfig(),
@@ -406,6 +416,10 @@ class MaterialNodes(NodeStore):
             A new schema to be applied to the dataset.
         metadata : dict, optional
             A dictionary containing the metadata to be set.
+        fields_metadata : dict, optional
+            A dictionary containing the metadata to be set for the fields.
+        update_keys : List[str], optional
+            A list of keys to be updated.
         treat_fields_as_ragged : List[str], optional
             A list of fields to be treated as ragged.
         convert_to_fixed_shape : bool, optional
@@ -425,6 +439,8 @@ class MaterialNodes(NodeStore):
             data=data,
             schema=schema,
             metadata=metadata,
+            fields_metadata=fields_metadata,
+            update_keys=update_keys,
             normalize_config=normalize_config,
             treat_fields_as_ragged=treat_fields_as_ragged,
             convert_to_fixed_shape=convert_to_fixed_shape,
@@ -510,3 +526,104 @@ def check_all_params_provided(**kwargs):
             f"If any of {', '.join(param_names)} are provided, all must be provided. "
             f"Missing: {', '.join(missing)}. Provided: {', '.join(provided)}."
         )
+
+
+def material_lattices(material_store_path):
+    """
+    Creates Lattice nodes if no file exists, otherwise loads them from a file.
+    """
+    # Retrieve material nodes with lattice properties
+    try:
+        material_nodes = MaterialNodes(material_store_path)
+
+        table = material_nodes.read(
+            columns=[
+                "structure.lattice.a",
+                "structure.lattice.b",
+                "structure.lattice.c",
+                "structure.lattice.alpha",
+                "structure.lattice.beta",
+                "structure.lattice.gamma",
+                "structure.lattice.volume",
+                "structure.lattice.pbc",
+                "structure.lattice.matrix",
+                "id",
+                "core.material_id",
+            ]
+        )
+
+        for i, column in enumerate(table.columns):
+            field = table.schema.field(i)
+            field_name = field.name
+            if "." in field_name:
+                field_name = field_name.split(".")[-1]
+            if "id" == field_name:
+                field_name = "material_node_id"
+            new_field = field.with_name(field_name)
+            table = table.set_column(i, new_field, column)
+
+    except Exception as e:
+        logger.error(f"Error creating lattice nodes: {e}")
+        return None
+
+    return table
+
+
+def material_sites(material_store_path):
+    try:
+        material_nodes = MaterialNodes(material_store_path)
+
+        lattice_names = [
+            "structure.lattice.a",
+            "structure.lattice.b",
+            "structure.lattice.c",
+            "structure.lattice.alpha",
+            "structure.lattice.beta",
+            "structure.lattice.gamma",
+            "structure.lattice.volume",
+        ]
+        id_names = ["id", "core.material_id"]
+        tmp_dict = {field: [] for field in id_names}
+        tmp_dict.update({field: [] for field in lattice_names})
+        table = material_nodes.read(
+            columns=["structure.sites", *id_names, *lattice_names]
+        )
+        # table=material_nodes.read(columns=['structure.sites', *id_names])#, *lattice_names])
+        material_sites = table["structure.sites"].combine_chunks()
+
+        flatten_material_sites = pc.list_flatten(material_sites)
+        material_sites_length_list = pc.list_value_length(material_sites).to_numpy()
+
+        for i, legnth in enumerate(material_sites_length_list):
+            for field_name in tmp_dict.keys():
+                column = table[field_name].combine_chunks()
+                value = column[i]
+                tmp_dict[field_name].extend([value] * legnth)
+        table = None
+
+        arrays = flatten_material_sites.flatten()
+        names = flatten_material_sites.type.names
+
+        flatten_material_sites = None
+        material_sites_length_list = None
+
+        for name, column_values in tmp_dict.items():
+            arrays.append(pa.array(column_values))
+            names.append(name)
+
+        table = pa.Table.from_arrays(arrays, names=names)
+
+        for i, column in enumerate(table.columns):
+            field = table.schema.field(i)
+            field_name = field.name
+            if "." in field_name:
+                field_name = field_name.split(".")[-1]
+            if "id" == field_name:
+                field_name = "material_node_id"
+            new_field = field.with_name(field_name)
+            table = table.set_column(i, new_field, column)
+
+    except Exception as e:
+        logger.error(f"Error creating site nodes: {e}")
+        return None
+    return table

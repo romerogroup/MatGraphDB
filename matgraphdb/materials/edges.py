@@ -8,6 +8,7 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from parquetdb.utils import pyarrow_utils
 
+from matgraphdb.core.node_store import NodeStore
 from matgraphdb.materials.nodes import *
 from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 
@@ -18,8 +19,7 @@ def element_element_neighborsByGroupPeriod(element_store_path):
 
     try:
         connection_name = "neighborsByGroupPeriod"
-        element_store = ElementNodes(storage_path=element_store_path)
-        # element_store = self.node_store_1
+        element_store = NodeStore(storage_path=element_store_path)
         table = element_store.read_nodes(
             columns=["atomic_number", "extended_group", "period", "symbol"]
         )
@@ -35,8 +35,8 @@ def element_element_neighborsByGroupPeriod(element_store_path):
         df = df.dropna().astype(np.int64)
 
         # Add source and target type columns
-        df["source_type"] = "elements"
-        df["target_type"] = "elements"
+        df["source_type"] = element_store.node_type
+        df["target_type"] = element_store.node_type
         df["weight"] = 1.0
 
         table = ParquetDB.construct_table(df)
@@ -97,9 +97,8 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
     try:
         connection_name = "canOccur"
 
-        element_store = ElementNodes(storage_path=element_store_path)
-        oxiState_store = OxidationStatesNodes(storage_path=oxiState_store_path)
-
+        element_store = NodeStore(storage_path=element_store_path)
+        oxiState_store = NodeStore(storage_path=oxiState_store_path)
         element_table = element_store.read_nodes(
             columns=["id", "experimental_oxidation_states", "symbol"]
         )
@@ -109,12 +108,13 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
 
         # element_table=element_table.rename_columns({'id':'source_id'})
         element_table = element_table.append_column(
-            "source_type", pa.array(["element"] * element_table.num_rows)
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
         )
 
         # oxiState_table=oxiState_table.rename_columns({'id':'target_id'})
         oxiState_table = oxiState_table.append_column(
-            "target_type", pa.array(["oxiState"] * oxiState_table.num_rows)
+            "target_type",
+            pa.array([oxiState_store.node_type] * oxiState_table.num_rows),
         )
 
         element_df = element_table.to_pandas()
@@ -137,11 +137,11 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
         for i, element_row in element_df.iterrows():
             exp_oxidation_states = element_row["experimental_oxidation_states"]
             source_id = element_row["id"]
-            source_type = "element"
+            source_type = element_store.node_type
             symbol = element_row["symbol"]
             for exp_oxidation_state in exp_oxidation_states:
                 target_id = oxiState_id_map[exp_oxidation_state]
-                target_type = "oxiState"
+                target_type = oxiState_store.node_type
                 oxi_state_name = id_oxidationState_map[target_id]
 
                 table_dict["source_id"].append(source_id)
@@ -168,10 +168,10 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
 def material_chemenv_containsSite(material_store_path, chemenv_store_path):
     try:
         connection_name = "containsSite"
-
+        logger.debug(f"Material store path: {material_store_path}")
+        logger.debug(f"Chemenv store path: {chemenv_store_path}")
         material_store = MaterialNodes(storage_path=material_store_path)
-        chemenv_store = ChemEnvNodes(storage_path=chemenv_store_path)
-
+        chemenv_store = NodeStore(storage_path=chemenv_store_path)
         material_table = material_store.read_nodes(
             columns=[
                 "id",
@@ -185,14 +185,15 @@ def material_chemenv_containsSite(material_store_path, chemenv_store_path):
             {"id": "source_id", "core.material_id": "material_name"}
         )
         material_table = material_table.append_column(
-            "source_type", pa.array(["material"] * material_table.num_rows)
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
         )
 
         chemenv_table = chemenv_table.rename_columns(
             {"id": "target_id", "mp_symbol": "chemenv_name"}
         )
         chemenv_table = chemenv_table.append_column(
-            "target_type", pa.array(["chemenv"] * chemenv_table.num_rows)
+            "target_type", pa.array([chemenv_store.node_type] * chemenv_table.num_rows)
         )
 
         material_df = material_table.to_pandas()
@@ -226,9 +227,9 @@ def material_chemenv_containsSite(material_store_path, chemenv_store_path):
                     continue
 
                 table_dict["source_id"].append(source_id)
-                table_dict["source_type"].append("material")
+                table_dict["source_type"].append(material_store.node_type)
                 table_dict["target_id"].append(target_id)
-                table_dict["target_type"].append("chemenv")
+                table_dict["target_type"].append(chemenv_store.node_type)
 
                 name = f"{material_name}_{connection_name}_{chemenv_name}"
                 table_dict["name"].append(name)
@@ -253,9 +254,7 @@ def material_crystalSystem_has(material_store_path, crystal_system_store_path):
         connection_name = "has"
 
         material_store = MaterialNodes(storage_path=material_store_path)
-        crystal_system_store = CrystalSystemNodes(
-            storage_path=crystal_system_store_path
-        )
+        crystal_system_store = NodeStore(storage_path=crystal_system_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.crystal_system"]
@@ -268,12 +267,14 @@ def material_crystalSystem_has(material_store_path, crystal_system_store_path):
             {"id": "source_id", "symmetry.crystal_system": "crystal_system"}
         )
         material_table = material_table.append_column(
-            "source_type", pa.array(["material"] * material_table.num_rows)
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
         )
 
         crystal_system_table = crystal_system_table.rename_columns({"id": "target_id"})
         crystal_system_table = crystal_system_table.append_column(
-            "target_type", pa.array(["crystal_system"] * crystal_system_table.num_rows)
+            "target_type",
+            pa.array([crystal_system_store.node_type] * crystal_system_table.num_rows),
         )
 
         edge_table = pyarrow_utils.join_tables(
@@ -359,9 +360,9 @@ def material_element_has(material_store_path, element_store_path):
 
                 target_id = element_target_id_map[element]
                 table_dict["source_id"].append(source_id)
-                table_dict["source_type"].append("material")
+                table_dict["source_type"].append(material_store.node_type)
                 table_dict["target_id"].append(target_id)
-                table_dict["target_type"].append("element")
+                table_dict["target_type"].append(element_store.node_type)
 
                 name = f"{material_name}_{connection_name}_{element}"
                 table_dict["name"].append(name)
@@ -384,7 +385,7 @@ def material_lattice_has(material_store_path, lattice_store_path):
         connection_name = "has"
 
         material_store = MaterialNodes(storage_path=material_store_path)
-        lattice_store = MaterialLatticeNodes(storage_path=lattice_store_path)
+        lattice_store = NodeStore(storage_path=lattice_store_path)
 
         material_table = material_store.read_nodes(columns=["id", "core.material_id"])
         lattice_table = lattice_store.read_nodes(columns=["material_node_id"])
@@ -393,14 +394,15 @@ def material_lattice_has(material_store_path, lattice_store_path):
             {"id": "source_id", "core.material_id": "material_id"}
         )
         material_table = material_table.append_column(
-            "source_type", pa.array(["material"] * material_table.num_rows)
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
         )
 
         lattice_table = lattice_table.append_column(
             "target_id", lattice_table["material_node_id"].combine_chunks()
         )
         lattice_table = lattice_table.append_column(
-            "target_type", pa.array(["material_lattice"] * lattice_table.num_rows)
+            "target_type", pa.array([lattice_store.node_type] * lattice_table.num_rows)
         )
 
         edge_table = pyarrow_utils.join_tables(
@@ -430,7 +432,7 @@ def material_spg_has(material_store_path, spg_store_path):
         connection_name = "has"
 
         material_store = MaterialNodes(storage_path=material_store_path)
-        spg_store = SpaceGroupNodes(storage_path=spg_store_path)
+        spg_store = NodeStore(storage_path=spg_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.number"]
@@ -441,12 +443,13 @@ def material_spg_has(material_store_path, spg_store_path):
             {"id": "source_id", "symmetry.number": "spg"}
         )
         material_table = material_table.append_column(
-            "source_type", pa.array(["material"] * material_table.num_rows)
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
         )
 
         spg_table = spg_table.rename_columns({"id": "target_id"})
         spg_table = spg_table.append_column(
-            "target_type", pa.array(["spg"] * spg_table.num_rows)
+            "target_type", pa.array([spg_store.node_type] * spg_table.num_rows)
         )
 
         edge_table = pyarrow_utils.join_tables(
@@ -485,8 +488,8 @@ def element_chemenv_canOccur(
     try:
 
         element_store = ElementNodes(storage_path=element_store_path)
-        chemenv_store = ChemEnvNodes(storage_path=chemenv_store_path)
-        material_store = MaterialNodes(material_store_path)
+        chemenv_store = NodeStore(storage_path=chemenv_store_path)
+        material_store = MaterialNodes(storage_path=material_store_path)
 
         material_table = material_store.read_nodes(
             columns=[
@@ -502,12 +505,12 @@ def element_chemenv_canOccur(
 
         chemenv_table = chemenv_table.rename_columns({"mp_symbol": "name"})
         chemenv_table = chemenv_table.append_column(
-            "target_type", pa.array(["chemenv"] * chemenv_table.num_rows)
+            "target_type", pa.array([chemenv_store.node_type] * chemenv_table.num_rows)
         )
 
         element_table = element_table.rename_columns({"symbol": "name"})
         element_table = element_table.append_column(
-            "source_type", pa.array(["element"] * element_table.num_rows)
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
         )
 
         material_df = material_table.to_pandas()
@@ -548,9 +551,9 @@ def element_chemenv_canOccur(
                     continue
 
                 table_dict["source_id"].append(source_id)
-                table_dict["source_type"].append("element")
+                table_dict["source_type"].append(element_store.node_type)
                 table_dict["target_id"].append(target_id)
-                table_dict["target_type"].append("chemenv")
+                table_dict["target_type"].append(chemenv_store.node_type)
 
                 name = f"{element_name}_canOccur_{chemenv_name}"
                 table_dict["name"].append(name)

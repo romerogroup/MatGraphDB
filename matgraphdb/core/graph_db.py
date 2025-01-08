@@ -40,6 +40,7 @@ class GraphDB:
         self.nodes_path = os.path.join(self.storage_path, "nodes")
         self.edges_path = os.path.join(self.storage_path, "edges")
         self.edge_generators_path = os.path.join(self.storage_path, "edge_generators")
+        self.node_generators_path = os.path.join(self.storage_path, "node_generators")
         self.graph_path = os.path.join(self.storage_path, "graph")
 
         self.graph_name = os.path.basename(self.storage_path)
@@ -60,6 +61,9 @@ class GraphDB:
 
         self.edge_generator_store = GeneratorStore(
             storage_path=self.edge_generators_path
+        )
+        self.node_generator_store = GeneratorStore(
+            storage_path=self.node_generators_path
         )
 
     def _load_existing_node_stores(self, load_custom_stores: bool = True):
@@ -202,6 +206,10 @@ class GraphDB:
         store = self.add_node_type(node_type)
         store.normalize_nodes(**normalize_kwargs)
 
+    def normalize_all_nodes(self, normalize_kwargs):
+        for node_type in self.node_stores:
+            self.normalize_nodes(node_type, normalize_kwargs)
+
     def list_node_types(self):
         return list(self.node_stores.keys())
 
@@ -214,6 +222,72 @@ class GraphDB:
     def node_is_empty(self, node_type: str):
         store = self.get_node_store(node_type)
         return store.is_empty()
+
+    def add_node_generator(
+        self,
+        generator_name: str,
+        generator_func: Callable,
+        generator_args: Dict = None,
+        generator_kwargs: Dict = None,
+        create_kwargs: Dict = None,
+        run_immediately: bool = True,
+        run_generator_kwargs: Dict = None,
+    ) -> None:
+        self.node_generator_store.store_generator(
+            generator_func=generator_func,
+            generator_name=generator_name,
+            generator_args=generator_args,
+            generator_kwargs=generator_kwargs,
+            create_kwargs=create_kwargs,
+        )
+
+        if run_immediately:
+            if run_generator_kwargs is None:
+                run_generator_kwargs = dict(generator_name=generator_name)
+            else:
+                run_generator_kwargs["generator_name"] = generator_name
+
+            self.run_node_generator(**run_generator_kwargs)
+
+    def run_node_generator(
+        self,
+        generator_name: str,
+        generator_args: Dict = None,
+        generator_kwargs: Dict = None,
+        create_kwargs: Dict = None,
+    ) -> None:
+        """
+        Execute a previously registered custom node-generation function by name.
+        Parameters
+        ----------
+        generator_name : str
+            The unique name used when registering the function.
+        generator_args : Dict
+            Additional arguments passed to the generator function.
+        generator_kwargs : Dict
+            Additional keyword arguments passed to the generator function.
+
+        Raises
+        ------
+        ValueError
+            If there is no generator function with the given name.
+        """
+        if create_kwargs is None:
+            create_kwargs = {}
+
+        if generator_args is None:
+            generator_args = {}
+
+        if generator_kwargs is None:
+            generator_kwargs = {}
+
+        table = self.node_generator_store.run_generator(
+            generator_name,
+            generator_args=generator_args,
+            generator_kwargs=generator_kwargs,
+        )
+        self.add_nodes(node_type=generator_name, data=table, **create_kwargs)
+        return table
 
     # ------------------
     # Edge-level methods
@@ -284,6 +358,10 @@ class GraphDB:
         store = self.add_edge_type(edge_type)
         store.normalize_edges()
 
+    def normalize_all_edges(self, normalize_kwargs):
+        for edge_type in self.edge_stores:
+            self.normalize_edges(edge_type, normalize_kwargs)
+
     def get_edge_store(self, edge_type: str):
         edge_store = self.edge_stores.get(edge_type, None)
         if edge_store is None:
@@ -339,7 +417,7 @@ class GraphDB:
                 raise ValueError(f"No node store found for node_type='{node_type}'.")
 
             # Read all existing source IDs from store_1
-            source_table = store.read_nodes(columns=["id"])
+            node_table = store.read_nodes(columns=["id"])
 
             # Filter all source_ids and target_ids that are of the same type as store_1
             source_id_array = edge_table.filter(
@@ -350,12 +428,15 @@ class GraphDB:
             )["target_id"].combine_chunks()
 
             all_source_type_ids = pa.concat_arrays([source_id_array, target_id_array])
+
+            # Check if all source_ids and target_ids are in the node_store
             is_source_ids_in_source_store = pc.index_in(
-                source_table["id"], all_source_type_ids
+                all_source_type_ids, node_table["id"]
             )
             invalid_source_ids = is_source_ids_in_source_store.filter(
                 pc.is_null(is_source_ids_in_source_store)
             )
+
             if len(invalid_source_ids) > 0:
                 raise ValueError(
                     f"Source IDs not found in source_store of type {store.node_type}: {invalid_source_ids}"
@@ -371,11 +452,13 @@ class GraphDB:
 
     def add_edge_generator(
         self,
-        name: str,
+        generator_name: str,
         generator_func: Callable,
         generator_args: Dict = None,
         generator_kwargs: Dict = None,
         create_kwargs: Dict = None,
+        run_immediately: bool = True,
+        run_generator_kwargs: Dict = None,
     ) -> None:
         """
         Register a user-defined callable that can read from node stores,
@@ -396,44 +479,37 @@ class GraphDB:
         """
         self.edge_generator_store.store_generator(
             generator_func=generator_func,
-            generator_name=name,
+            generator_name=generator_name,
             generator_args=generator_args,
             generator_kwargs=generator_kwargs,
             create_kwargs=create_kwargs,
         )
-        logger.info(f"Added new edge generator: {name}")
+        logger.info(f"Added new edge generator: {generator_name}")
+
+        if run_immediately:
+            if run_generator_kwargs is None:
+                run_generator_kwargs = dict(generator_name=generator_name)
+            else:
+                run_generator_kwargs["generator_name"] = generator_name
+
+            self.run_edge_generator(**run_generator_kwargs)
 
     def run_edge_generator(
         self,
-        name: str,
+        generator_name: str,
         generator_args: Dict = None,
         generator_kwargs: Dict = None,
         create_kwargs: Dict = None,
     ) -> None:
-        """
-        Execute a previously registered custom edge-generation function by name.
-
-        Parameters
-        ----------
-        name : str
-            The unique name used when registering the function.
-        generator_args : Dict
-            Additional arguments passed to the generator function.
-        generator_kwargs : Dict
-            Additional keyword arguments passed to the generator function.
-
-        Raises
-        ------
-        ValueError
-            If there is no generator function with the given name.
-        """
         if create_kwargs is None:
             create_kwargs = {}
 
         table = self.edge_generator_store.run_generator(
-            name, generator_args=generator_args, generator_kwargs=generator_kwargs
+            generator_name,
+            generator_args=generator_args,
+            generator_kwargs=generator_kwargs,
         )
-        self.add_edges(edge_type=name, data=table, **create_kwargs)
+        self.add_edges(edge_type=generator_name, data=table, **create_kwargs)
         return table
 
 

@@ -1,10 +1,7 @@
-from matgraphdb.materials.nodes.chemenvs import ChemEnvNodes
-from matgraphdb.materials.nodes.crystal_systems import CrystalSystemNodes
 from matgraphdb.materials.nodes.elements import ElementNodes
-from matgraphdb.materials.nodes.magnetic_states import MagneticStatesNodes
-from matgraphdb.materials.nodes.material_lattices import MaterialLatticeNodes
-from matgraphdb.materials.nodes.material_sites import MaterialSiteNodes
-from matgraphdb.materials.nodes.materials import MaterialNodes
-from matgraphdb.materials.nodes.oxidation_states import OxidationStatesNodes
-from matgraphdb.materials.nodes.space_groups import SpaceGroupNodes
-from matgraphdb.materials.nodes.wyckoffs import WyckoffNodes
+from matgraphdb.materials.nodes.generators import *
+from matgraphdb.materials.nodes.materials import (
+    MaterialNodes,
+    material_lattices,
+    material_sites,
+)

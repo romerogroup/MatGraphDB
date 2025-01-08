@@ -1,15 +1,17 @@
-import os
-import logging
-import numpy as np
 import glob
 import json
+import logging
+import os
 
-from matgraphdb import config
-from matgraphdb.utils.file_utils import load_json, save_parquet, load_parquet
+import numpy as np
+
+from matgraphdb.utils.config import PKG_DIR, config
+from matgraphdb.utils.file_utils import load_json, load_parquet, save_parquet
 
 logger = logging.getLogger(__name__)
 
-def extract_coordination_encoding(data:dict):
+
+def extract_coordination_encoding(data: dict):
     """
     Extract coordination encoding and coordination number from the given data dictionary.
 
@@ -30,17 +32,17 @@ def extract_coordination_encoding(data:dict):
     >>> extract_coordination_encoding(data)
     {'coordination_encoding': array([0., 0., ..., 1., 0.]), 'coordination_number': 12}
     """
-    mp_symbol=data.get('mp_symbol',None)
+    mp_symbol = data.get("mp_symbol", None)
     if mp_symbol is None:
         logger.info(f"No 'mp_symbol' key found in data: {data}")
         return None
-    
-    coord_encoding=np.zeros(shape=14)
-    coord_num=int(mp_symbol.split(':')[-1])
-    if coord_num<=13:
-        coord_encoding[coord_num-1]=1
-    elif coord_num==20:
-        coord_encoding[-1]=1
+
+    coord_encoding = np.zeros(shape=14)
+    coord_num = int(mp_symbol.split(":")[-1])
+    if coord_num <= 13:
+        coord_encoding[coord_num - 1] = 1
+    elif coord_num == 20:
+        coord_encoding[-1] = 1
     return dict(coordination_encoding=coord_encoding, coordination_number=coord_num)
 
 
@@ -68,17 +70,20 @@ def convert_coord_geo_json_to_parquet(json_files, parquet_file, **kwargs):
     >>> convert_coord_geo_json_to_parquet(json_files, 'output.parquet')
     <pyarrow.Table>
     """
-    data_list=[]
+    data_list = []
     for file in json_files:
-        data=load_json(file)
+        data = load_json(file)
 
-        data.update( extract_coordination_encoding(data))
+        data.update(extract_coordination_encoding(data))
         data_list.append(data)
 
-    table=save_parquet(data_list, parquet_file, **kwargs)
+    table = save_parquet(data_list, parquet_file, **kwargs)
     return table
 
-def get_coordination_geometry(parquet_file=None, columns=None, output_format='pandas', **kwargs):
+
+def get_coordination_geometry(
+    parquet_file=None, columns=None, output_format="pandas", **kwargs
+):
     """
     Load coordination geometry information from a Parquet file.
 
@@ -101,17 +106,15 @@ def get_coordination_geometry(parquet_file=None, columns=None, output_format='pa
     dict
         A dictionary with atomic symbols as keys and lists of coordinates as values.
     """
-    resource_dir=os.path.join(config.pkg_dir,'utils','chem_utils','resources')
+    resource_dir = os.path.join(config.pkg_dir, "utils", "chem_utils", "resources")
     if parquet_file is None:
-        parquet_file=os.path.join(resource_dir,'coordination_geometries.parquet')
-    output_formats=['pandas','pyarrow']
+        parquet_file = os.path.join(resource_dir, "coordination_geometries.parquet")
+    output_formats = ["pandas", "pyarrow"]
     if output_format not in output_formats:
         raise ValueError(f"type must be one of {output_formats}")
-    table=load_parquet(parquet_file, columns=columns, **kwargs)
-    if output_format=='pandas':
+    table = load_parquet(parquet_file, columns=columns, **kwargs)
+    if output_format == "pandas":
         return table.to_pandas()
-    elif output_format=='pyarrow':
+    elif output_format == "pyarrow":
         return table
     return table
-
-

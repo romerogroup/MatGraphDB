@@ -1,9 +1,12 @@
-import pytest
-import pandas as pd
-import pyarrow as pa
 import os
 import shutil
-from matgraphdb.stores import NodeStore
+
+import pandas as pd
+import pyarrow as pa
+import pytest
+
+from matgraphdb.core import NodeStore
+
 
 @pytest.fixture
 def temp_storage(tmp_path):
