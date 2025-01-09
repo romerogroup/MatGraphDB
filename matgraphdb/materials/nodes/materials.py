@@ -303,7 +303,7 @@ class MaterialNodes(NodeStore):
         Adds a material entry to the database without saving it immediately.
 
         This method prepares the material data by disabling automatic database saving and then calls
-        the `add` method to process the material. It is typically used in batch processing scenarios. 
+        the `add` method to process the material. It is typically used in batch processing scenarios.
 
         Parameters:
         -----------
@@ -534,7 +534,7 @@ def material_lattices(material_store_path):
     """
     # Retrieve material nodes with lattice properties
     try:
-        material_nodes = MaterialNodes(material_store_path)
+        material_nodes = NodeStore(material_store_path)
 
         table = material_nodes.read(
             columns=[
@@ -571,7 +571,7 @@ def material_lattices(material_store_path):
 
 def material_sites(material_store_path):
     try:
-        material_nodes = MaterialNodes(material_store_path)
+        material_nodes = NodeStore(material_store_path)
 
         lattice_names = [
             "structure.lattice.a",

@@ -10,6 +10,7 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from parquetdb.core import types
 from parquetdb.core.parquetdb import NormalizeConfig
+from parquetdb.utils import data_utils
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class GeneratorStore(ParquetDB):
             ]
         )
         super().__init__(db_path=storage_path, initial_fields=initial_fields)
+
         self._initialize_metadata()
         logger.debug(f"Initialized GeneratorStore at {storage_path}")
 
@@ -109,6 +111,7 @@ class GeneratorStore(ParquetDB):
 
             for key, value in generator_kwargs.items():
                 extra_fields[f"generator_kwargs.{key}"] = value
+
             data = [
                 {
                     "generator_name": generator_name,
@@ -221,12 +224,14 @@ class GeneratorStore(ParquetDB):
 
                 # Do not overwrite user-provided args
                 if arg_name not in generator_args:
+
                     generator_args[arg_name] = value
             elif "generator_kwargs" in column_name and value is not None:
                 kwarg_name = column_name.split(".")[-1]
 
                 # Do not overwrite user-provided kwargs
                 if kwarg_name not in generator_kwargs:
+
                     generator_kwargs[kwarg_name] = value
 
         generator_func = df["generator_func"].iloc[0]

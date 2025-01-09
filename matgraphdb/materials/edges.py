@@ -19,7 +19,7 @@ def element_element_neighborsByGroupPeriod(element_store_path):
 
     try:
         connection_name = "neighborsByGroupPeriod"
-        element_store = NodeStore(storage_path=element_store_path)
+        element_store = NodeStore(element_store_path)
         table = element_store.read_nodes(
             columns=["atomic_number", "extended_group", "period", "symbol"]
         )
@@ -97,8 +97,9 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
     try:
         connection_name = "canOccur"
 
-        element_store = NodeStore(storage_path=element_store_path)
-        oxiState_store = NodeStore(storage_path=oxiState_store_path)
+        element_store = NodeStore(element_store_path)
+        oxiState_store = NodeStore(oxiState_store_path)
+
         element_table = element_store.read_nodes(
             columns=["id", "experimental_oxidation_states", "symbol"]
         )
@@ -168,10 +169,9 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
 def material_chemenv_containsSite(material_store_path, chemenv_store_path):
     try:
         connection_name = "containsSite"
-        logger.debug(f"Material store path: {material_store_path}")
-        logger.debug(f"Chemenv store path: {chemenv_store_path}")
-        material_store = MaterialNodes(storage_path=material_store_path)
-        chemenv_store = NodeStore(storage_path=chemenv_store_path)
+        material_store = NodeStore(material_store_path)
+        chemenv_store = NodeStore(chemenv_store_path)
+
         material_table = material_store.read_nodes(
             columns=[
                 "id",
@@ -253,8 +253,8 @@ def material_crystalSystem_has(material_store_path, crystal_system_store_path):
     try:
         connection_name = "has"
 
-        material_store = MaterialNodes(storage_path=material_store_path)
-        crystal_system_store = NodeStore(storage_path=crystal_system_store_path)
+        material_store = NodeStore(material_store_path)
+        crystal_system_store = NodeStore(crystal_system_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.crystal_system"]
@@ -313,8 +313,8 @@ def material_element_has(material_store_path, element_store_path):
     try:
         connection_name = "has"
 
-        material_store = MaterialNodes(storage_path=material_store_path)
-        element_store = ElementNodes(storage_path=element_store_path)
+        material_store = NodeStore(material_store_path)
+        element_store = NodeStore(element_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "core.elements"]
@@ -384,8 +384,8 @@ def material_lattice_has(material_store_path, lattice_store_path):
     try:
         connection_name = "has"
 
-        material_store = MaterialNodes(storage_path=material_store_path)
-        lattice_store = NodeStore(storage_path=lattice_store_path)
+        material_store = NodeStore(material_store_path)
+        lattice_store = NodeStore(lattice_store_path)
 
         material_table = material_store.read_nodes(columns=["id", "core.material_id"])
         lattice_table = lattice_store.read_nodes(columns=["material_node_id"])
@@ -431,8 +431,8 @@ def material_spg_has(material_store_path, spg_store_path):
     try:
         connection_name = "has"
 
-        material_store = MaterialNodes(storage_path=material_store_path)
-        spg_store = NodeStore(storage_path=spg_store_path)
+        material_store = NodeStore(material_store_path)
+        spg_store = NodeStore(spg_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.number"]
@@ -486,10 +486,9 @@ def element_chemenv_canOccur(
     element_store_path, chemenv_store_path, material_store_path
 ):
     try:
-
-        element_store = ElementNodes(storage_path=element_store_path)
-        chemenv_store = NodeStore(storage_path=chemenv_store_path)
-        material_store = MaterialNodes(storage_path=material_store_path)
+        element_store = NodeStore(element_store_path)
+        chemenv_store = NodeStore(chemenv_store_path)
+        material_store = NodeStore(material_store_path)
 
         material_table = material_store.read_nodes(
             columns=[
