@@ -7,7 +7,7 @@ import pytest
 
 from matgraphdb.core import EdgeStore, GraphDB, NodeStore
 from matgraphdb.materials.edges import element_element_neighborsByGroupPeriod
-from matgraphdb.materials.nodes import ElementNodes, wyckoffs
+from matgraphdb.materials.nodes import elements
 from matgraphdb.utils.config import PKG_DIR, config
 
 config.logging_config.loggers.matgraphdb.level = "DEBUG"
@@ -33,7 +33,9 @@ def graphdb(tmp_dir):
 @pytest.fixture
 def element_store(tmp_dir):
     """Fixture to create an ElementNodes instance."""
-    return ElementNodes(storage_path=os.path.join(tmp_dir, "elements"))
+    element_store = NodeStore(storage_path=os.path.join(tmp_dir, "elements"))
+    element_store.create_nodes(elements())
+    return element_store
 
 
 @pytest.fixture
@@ -412,10 +414,8 @@ def test_add_edge_generator(graphdb, element_store):
     graphdb.add_node_store(element_store)
     # Add the generator
     graphdb.add_edge_generator(
-        generator_name,
         element_element_neighborsByGroupPeriod,
-        generator_args={"element_store_path": element_store.storage_path},
-        generator_kwargs={},
+        generator_args={"element_store": element_store},
     )
 
     # Verify the generator was added
@@ -431,10 +431,8 @@ def test_run_edge_generator(graphdb, element_store):
 
     # Add and run the generator
     graphdb.add_edge_generator(
-        generator_name,
         element_element_neighborsByGroupPeriod,
-        generator_args={"element_store_path": element_store.storage_path},
-        generator_kwargs={},
+        generator_args={"element_store": element_store},
     )
 
     table = graphdb.run_edge_generator(generator_name)
@@ -480,10 +478,8 @@ def test_edge_generator_persistence(tmp_dir, element_store):
     graph = GraphDB(storage_path=tmp_dir)
     graph.add_node_store(element_store)
     graph.add_edge_generator(
-        generator_name,
         element_element_neighborsByGroupPeriod,
-        generator_args={"element_store_path": element_store.storage_path},
-        generator_kwargs={},
+        generator_args={"element_store": element_store},
     )
 
     # Create new graph instance (simulating program restart)
@@ -509,23 +505,21 @@ def test_invalid_generator_args(graphdb, element_store):
     # element_store = ElementNodes(storage_path=os.path.join(tmp_dir, 'elements'))
     generator_name = element_element_neighborsByGroupPeriod.__name__
     graphdb.add_node_store(element_store)
+
     # Test missing required argument
-    with pytest.raises(TypeError):
+    with pytest.raises(Exception):
         graphdb.add_edge_generator(
-            generator_name,
             element_element_neighborsByGroupPeriod,
             generator_args={},  # Missing element_store
-            generator_kwargs={},
+            run_immediately=False,
         )
         graphdb.run_edge_generator(generator_name)
 
     # Test invalid element_store argument
     with pytest.raises(Exception):
         graphdb.add_edge_generator(
-            generator_name,
             element_element_neighborsByGroupPeriod,
-            generator_args={"element_store_path": "invalid_store"},
-            generator_kwargs={},
+            generator_args={"element_store": "invalid_store"},
         )
 
 
@@ -534,7 +528,7 @@ def test_add_node_generator(graphdb, wyckoff_generator):
 
     generator_name = wyckoff_generator.__name__
     # Add the generator
-    graphdb.add_node_generator(generator_name, wyckoff_generator)
+    graphdb.add_node_generator(wyckoff_generator)
 
     # Verify the generator was added
     assert graphdb.node_generator_store.is_in(generator_name)
@@ -553,7 +547,6 @@ def test_run_node_generator(graphdb, wyckoff_generator):
 
     # Add and run the generator
     graphdb.add_node_generator(
-        generator_name,
         wyckoff_generator,
         generator_args=None,
         generator_kwargs=None,
@@ -580,14 +573,10 @@ def test_run_node_generator(graphdb, wyckoff_generator):
 def test_node_generator_persistence(tmp_dir, wyckoff_generator):
     """Test that node generators persist when reloading the GraphDB."""
     generator_name = wyckoff_generator.__name__
-
     # Create initial graph instance and add generator
     graph = GraphDB(storage_path=tmp_dir)
     graph.add_node_generator(
-        generator_name,
         wyckoff_generator,
-        generator_args=None,
-        generator_kwargs=None,
         run_immediately=False,
     )
 
@@ -618,11 +607,8 @@ def test_invalid_node_generator_args(graphdb):
     def bad_generator(nonexistent_arg):
         return pa.Table.from_pylist([{"test": 1}])
 
-    with pytest.raises(TypeError):
+    with pytest.raises(Exception):
         graphdb.add_node_generator(
-            "bad_generator",
             bad_generator,
-            generator_args={},  # Missing required argument
-            generator_kwargs={},
         )
         graphdb.run_node_generator("bad_generator")

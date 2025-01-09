@@ -8,18 +8,20 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from parquetdb.utils import pyarrow_utils
 
-from matgraphdb.core.node_store import NodeStore
-from matgraphdb.materials.nodes import *
+from matgraphdb.core.edges import EdgeStore, edge_generator
+from matgraphdb.core.nodes import NodeStore
+
+# from matgraphdb.materials.nodes import *
 from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 
 logger = logging.getLogger(__name__)
 
 
-def element_element_neighborsByGroupPeriod(element_store_path):
+@edge_generator
+def element_element_neighborsByGroupPeriod(element_store):
 
     try:
         connection_name = "neighborsByGroupPeriod"
-        element_store = NodeStore(element_store_path)
         table = element_store.read_nodes(
             columns=["atomic_number", "extended_group", "period", "symbol"]
         )
@@ -93,12 +95,10 @@ def element_element_neighborsByGroupPeriod(element_store_path):
     return table
 
 
-def element_oxiState_canOccur(element_store_path, oxiState_store_path):
+@edge_generator
+def element_oxiState_canOccur(element_store, oxiState_store):
     try:
         connection_name = "canOccur"
-
-        element_store = NodeStore(element_store_path)
-        oxiState_store = NodeStore(oxiState_store_path)
 
         element_table = element_store.read_nodes(
             columns=["id", "experimental_oxidation_states", "symbol"]
@@ -166,11 +166,10 @@ def element_oxiState_canOccur(element_store_path, oxiState_store_path):
     return edge_table
 
 
-def material_chemenv_containsSite(material_store_path, chemenv_store_path):
+@edge_generator
+def material_chemenv_containsSite(material_store, chemenv_store):
     try:
         connection_name = "containsSite"
-        material_store = NodeStore(material_store_path)
-        chemenv_store = NodeStore(chemenv_store_path)
 
         material_table = material_store.read_nodes(
             columns=[
@@ -249,12 +248,10 @@ def material_chemenv_containsSite(material_store_path, chemenv_store_path):
     return edge_table
 
 
-def material_crystalSystem_has(material_store_path, crystal_system_store_path):
+@edge_generator
+def material_crystalSystem_has(material_store, crystal_system_store):
     try:
         connection_name = "has"
-
-        material_store = NodeStore(material_store_path)
-        crystal_system_store = NodeStore(crystal_system_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.crystal_system"]
@@ -309,12 +306,10 @@ def material_crystalSystem_has(material_store_path, crystal_system_store_path):
     return edge_table
 
 
-def material_element_has(material_store_path, element_store_path):
+@edge_generator
+def material_element_has(material_store, element_store):
     try:
         connection_name = "has"
-
-        material_store = NodeStore(material_store_path)
-        element_store = NodeStore(element_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "core.elements"]
@@ -380,12 +375,10 @@ def material_element_has(material_store_path, element_store_path):
     return edge_table
 
 
-def material_lattice_has(material_store_path, lattice_store_path):
+@edge_generator
+def material_lattice_has(material_store, lattice_store):
     try:
         connection_name = "has"
-
-        material_store = NodeStore(material_store_path)
-        lattice_store = NodeStore(lattice_store_path)
 
         material_table = material_store.read_nodes(columns=["id", "core.material_id"])
         lattice_table = lattice_store.read_nodes(columns=["material_node_id"])
@@ -427,12 +420,10 @@ def material_lattice_has(material_store_path, lattice_store_path):
     return edge_table
 
 
-def material_spg_has(material_store_path, spg_store_path):
+@edge_generator
+def material_spg_has(material_store, spg_store):
     try:
         connection_name = "has"
-
-        material_store = NodeStore(material_store_path)
-        spg_store = NodeStore(spg_store_path)
 
         material_table = material_store.read_nodes(
             columns=["id", "core.material_id", "symmetry.number"]
@@ -482,13 +473,9 @@ def material_spg_has(material_store_path, spg_store_path):
     return edge_table
 
 
-def element_chemenv_canOccur(
-    element_store_path, chemenv_store_path, material_store_path
-):
+@edge_generator
+def element_chemenv_canOccur(element_store, chemenv_store, material_store):
     try:
-        element_store = NodeStore(element_store_path)
-        chemenv_store = NodeStore(chemenv_store_path)
-        material_store = NodeStore(material_store_path)
 
         material_table = material_store.read_nodes(
             columns=[

@@ -42,7 +42,7 @@ dependencies = [
     "autopep8",
     "pymatgen",
     "parquetdb",
-    "variconfig"
+    "variconfig",
 ]
 
 [project.optional-dependencies]

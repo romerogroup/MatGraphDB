@@ -10,6 +10,7 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from parquetdb.utils import pyarrow_utils
 
+from matgraphdb.core.nodes import node_generator
 from matgraphdb.materials.nodes import *
 from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 from matgraphdb.utils.config import PKG_DIR
@@ -26,6 +27,7 @@ BASE_ELEMENT_FILE = os.path.join(
 )
 
 
+@node_generator
 def elements(base_file=BASE_ELEMENT_FILE):
     """
     Creates Element nodes if no file exists, otherwise loads them from a file.
@@ -67,6 +69,7 @@ def elements(base_file=BASE_ELEMENT_FILE):
     return df
 
 
+@node_generator
 def chemenvs(base_file=BASE_CHEMENV_FILE):
     """
     Creates ChemEnv nodes if no file exists, otherwise loads them from a file.
@@ -93,6 +96,7 @@ def chemenvs(base_file=BASE_CHEMENV_FILE):
     return df
 
 
+@node_generator
 def crystal_systems():
     """
     Creates Crystal System nodes if no file exists, otherwise loads them from a file.
@@ -116,6 +120,7 @@ def crystal_systems():
     return df
 
 
+@node_generator
 def magnetic_states():
     """
     Creates Magnetic State nodes if no file exists, otherwise loads them from a file.
@@ -131,6 +136,7 @@ def magnetic_states():
     return df
 
 
+@node_generator
 def oxidation_states():
     """
     Creates Oxidation State nodes if no file exists, otherwise loads them from a file.
@@ -146,6 +152,7 @@ def oxidation_states():
     return df
 
 
+@node_generator
 def space_groups():
     """
     Creates Space Group nodes if no file exists, otherwise loads them from a file.
@@ -166,6 +173,7 @@ def space_groups():
     return df
 
 
+@node_generator
 def wyckoffs():
     """
     Creates Wyckoff Position nodes if no file exists, otherwise loads them from a file.

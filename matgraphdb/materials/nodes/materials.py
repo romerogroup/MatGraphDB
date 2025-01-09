@@ -17,7 +17,7 @@ from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
 from pymatgen.core import Composition, Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from matgraphdb.core.node_store import NodeStore
+from matgraphdb.core.nodes import NodeStore, node_generator
 from matgraphdb.utils.general_utils import set_verbosity
 from matgraphdb.utils.mp_utils import multiprocess_task
 
@@ -528,13 +528,15 @@ def check_all_params_provided(**kwargs):
         )
 
 
-def material_lattices(material_store_path):
+@node_generator
+def material_lattices(material_store: NodeStore):
     """
     Creates Lattice nodes if no file exists, otherwise loads them from a file.
     """
     # Retrieve material nodes with lattice properties
     try:
-        material_nodes = NodeStore(material_store_path)
+        # material_nodes = NodeStore(material_store_path)
+        material_nodes = material_store
 
         table = material_nodes.read(
             columns=[
@@ -569,10 +571,10 @@ def material_lattices(material_store_path):
     return table
 
 
-def material_sites(material_store_path):
+@node_generator
+def material_sites(material_store: NodeStore):
     try:
-        material_nodes = NodeStore(material_store_path)
-
+        material_nodes = material_store
         lattice_names = [
             "structure.lattice.a",
             "structure.lattice.b",

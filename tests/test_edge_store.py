@@ -6,7 +6,7 @@ import pyarrow as pa
 import pytest
 
 from matgraphdb.core import EdgeStore, NodeStore
-from matgraphdb.materials.nodes.elements import ElementNodes
+from matgraphdb.materials.nodes import elements
 
 
 @pytest.fixture
@@ -19,18 +19,27 @@ def temp_storage(tmp_path):
 
 
 @pytest.fixture
-def edge_store(temp_storage, element_store_path):
-    """Fixture to create an EdgeStore instance"""
-    return EdgeStore(temp_storage)
+def tmp_dir(tmp_path):
+    """Fixture for temporary directory."""
+    tmp_dir = str(tmp_path)
+    yield tmp_dir
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
 
 
 @pytest.fixture
-def element_store_path(tmp_path):
-    """Fixture to create and cleanup a temporary storage directory"""
-    storage_dir = tmp_path / "elements"
-    yield str(storage_dir)
-    if os.path.exists(storage_dir):
-        shutil.rmtree(storage_dir)
+def edge_store(tmp_dir):
+    """Fixture to create an EdgeStore instance."""
+    edge_store = EdgeStore(storage_path=os.path.join(tmp_dir, "edges"))
+    return edge_store
+
+
+@pytest.fixture
+def element_store(tmp_dir):
+    """Fixture to create an ElementNodes instance."""
+    element_store = NodeStore(storage_path=os.path.join(tmp_dir, "elements"))
+    element_store.create_nodes(elements())
+    return element_store
 
 
 @pytest.fixture
@@ -45,7 +54,7 @@ def sample_edge_data():
     }
 
 
-def test_edge_store_initialization(temp_storage, element_store_path):
+def test_edge_store_initialization(temp_storage):
     """Test that EdgeStore initializes correctly and creates the storage directory"""
     store = EdgeStore(temp_storage)
     assert os.path.exists(temp_storage)
@@ -53,7 +62,7 @@ def test_edge_store_initialization(temp_storage, element_store_path):
 
     metadata = store.get_metadata()
     assert metadata["class"] == "EdgeStore"
-    assert metadata["class_module"] == "matgraphdb.core.edge_store"
+    assert metadata["class_module"] == "matgraphdb.core.edges"
 
 
 def test_create_edges_from_dict(edge_store, sample_edge_data):

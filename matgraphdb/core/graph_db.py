@@ -12,9 +12,9 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB
 from pyarrow import parquet as pq
 
-from matgraphdb.core.edge_store import EdgeStore
+from matgraphdb.core.edges import EdgeStore
 from matgraphdb.core.generator_store import GeneratorStore
-from matgraphdb.core.node_store import NodeStore
+from matgraphdb.core.nodes import NodeStore
 
 logger = logging.getLogger(__name__)
 
@@ -71,70 +71,54 @@ class GraphDB:
         # This is here to make sure the node and edges paths
         # listed in the generator stores align where the GraphDB is,
         # this allows user to easily move the directory and the generators will still work
-        self.dir_consistency_check()
+        self.generator_dependency_graph = {"nodes": {}, "edges": {}}
+        self.generator_consistency_check()
 
-    def dir_consistency_check(self):
+    def generator_consistency_check(self):
         logger.info("Checking directory consistency")
+        self.generator_dependency_graph["nodes"] = self._generator_check(
+            self.node_generator_store
+        )
+        self.generator_dependency_graph["edges"] = self._generator_check(
+            self.edge_generator_store
+        )
 
-        df = self.node_generator_store.read().to_pandas()
+    def _generator_check(self, generator_store):
+        generator_graph = {}
+        df = generator_store.read().to_pandas()
         for i, row in df.iterrows():
+            generator_name = row["generator_name"]
+            if generator_name not in generator_graph:
+                generator_graph[generator_name] = set()
             for col_name in df.columns:
                 if col_name.startswith("generator_kwargs.") or col_name.startswith(
                     "generator_args."
                 ):
                     col_value = row[col_name]
-                    if isinstance(col_value, str):
-                        possible_dir = os.path.dirname(col_value)
-                        dirname = os.path.basename(possible_dir)
-                        if dirname == "nodes" and possible_dir != self.nodes_path:
-                            node_type = os.path.basename(possible_dir)
-                            logger.debug(
-                                f"Node store {node_type} has moved from {possible_dir} to {self.nodes_path}"
-                            )
+                    if isinstance(col_value, (EdgeStore, NodeStore)):
+                        store = col_value
 
-                            df.at[i, col_name] = os.path.join(
-                                self.nodes_path, node_type
-                            )
+                        if hasattr(store, "node_type"):
+                            current_path = self.get_node_store(
+                                store.node_type
+                            ).storage_path
+                            generator_graph[generator_name].add(store.node_type)
+                            generator_store_path = store.storage_path
+                            if current_path != generator_store_path:
+                                df.at[i, col_name] = current_path
 
-                        if dirname == "edges" and possible_dir != self.edges_path:
-                            edge_type = os.path.basename(possible_dir)
-                            logger.debug(
-                                f"Edge store {edge_type} has moved from {possible_dir} to {self.edges_path}"
-                            )
-                            df.at[i, col_name] = os.path.join(
-                                self.edges_path, edge_type
-                            )
+                        elif hasattr(store, "edge_type"):
+                            current_path = self.get_edge_store(
+                                store.edge_type
+                            ).storage_path
 
-        self.node_generator_store.update(data=df)
+                            generator_graph[generator_name].add(store.edge_type)
+                            generator_store_path = store.storage_path
+                            if current_path != generator_store_path:
+                                df.at[i, col_name] = current_path
 
-        df = self.edge_generator_store.read().to_pandas()
-        for i, row in df.iterrows():
-            for col_name in df.columns:
-                if col_name.startswith("generator_kwargs.") or col_name.startswith(
-                    "generator_args."
-                ):
-                    col_value = row[col_name]
-                    if isinstance(col_value, str):
-                        possible_dir = os.path.dirname(col_value)
-                        dirname = os.path.basename(possible_dir)
-                        if dirname == "nodes" and possible_dir != self.nodes_path:
-                            node_type = os.path.basename(possible_dir)
-                            logger.debug(
-                                f"Node store {node_type} has moved from {possible_dir} to {self.nodes_path}"
-                            )
-                            df.at[i, col_name] = os.path.join(
-                                self.nodes_path, node_type
-                            )
-
-                        if dirname == "edges" and possible_dir != self.edges_path:
-                            edge_type = os.path.basename(possible_dir)
-                            logger.debug(
-                                f"Edge store {edge_type} has moved from {possible_dir} to {self.edges_path}"
-                            )
-                            df.at[i, col_name] = os.path.join(
-                                self.edges_path, edge_type
-                            )
-        self.edge_generator_store.update(data=df)
+        generator_store.update(data=df)
+        return generator_graph
 
     def _load_existing_node_stores(self, load_custom_stores: bool = True):
         logger.info(f"Loading existing node stores")
@@ -295,7 +279,6 @@ class GraphDB:
 
     def add_node_generator(
         self,
-        generator_name: str,
         generator_func: Callable,
         generator_args: Dict = None,
         generator_kwargs: Dict = None,
@@ -303,6 +286,7 @@ class GraphDB:
         run_immediately: bool = True,
         run_generator_kwargs: Dict = None,
     ) -> None:
+        generator_name = generator_func.__name__
         self.node_generator_store.store_generator(
             generator_func=generator_func,
             generator_name=generator_name,
@@ -310,6 +294,7 @@ class GraphDB:
             generator_kwargs=generator_kwargs,
             create_kwargs=create_kwargs,
         )
+        self.generator_consistency_check()
 
         if run_immediately:
             if run_generator_kwargs is None:
@@ -522,7 +507,6 @@ class GraphDB:
 
     def add_edge_generator(
         self,
-        generator_name: str,
         generator_func: Callable,
         generator_args: Dict = None,
         generator_kwargs: Dict = None,
@@ -539,15 +523,8 @@ class GraphDB:
         name : str
             A unique identifier for this generator function.
         generator_func : Callable
-            A Python callable with the signature:
-               generator_func(graph_db: GraphDB, *args, **kwargs) -> None
-            The function is expected to do any of the following:
-            - read from node stores
-            - call `self.add_edges(...)`
-            - or call `self.update_edges(...)`
-            - etc.
         """
-
+        generator_name = generator_func.__name__
         self.edge_generator_store.store_generator(
             generator_func=generator_func,
             generator_name=generator_name,
@@ -556,6 +533,7 @@ class GraphDB:
             create_kwargs=create_kwargs,
         )
         logger.info(f"Added new edge generator: {generator_name}")
+        self.generator_consistency_check()
 
         if run_immediately:
             if run_generator_create_kwargs is None:

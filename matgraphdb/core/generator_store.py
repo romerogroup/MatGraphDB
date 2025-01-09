@@ -15,6 +15,19 @@ from parquetdb.utils import data_utils
 logger = logging.getLogger(__name__)
 
 
+def validate_generator_inputs(args):
+    from matgraphdb.core.edges import EdgeStore
+    from matgraphdb.core.nodes import NodeStore
+
+    ALLOWED_GENERATOR_INPUTS = (EdgeStore, NodeStore)
+
+    for arg in args:
+        if not isinstance(arg, ALLOWED_GENERATOR_INPUTS):
+            raise ValueError(
+                f"Generator input must be a {ALLOWED_GENERATOR_INPUTS}, {arg} is {type(arg)}"
+            )
+
+
 class GeneratorStore(ParquetDB):
     """
     A store for managing generator functions in a graph database.
@@ -95,7 +108,7 @@ class GeneratorStore(ParquetDB):
         if generator_args is None:
             generator_args = {}
         if generator_kwargs is None:
-            generator_kwargs = {}
+            generator_kwargs = get_function_kwargs(generator_func)
         try:
             df = self.read(columns=["generator_name"]).to_pandas()
 
@@ -131,10 +144,11 @@ class GeneratorStore(ParquetDB):
         filters = [pc.field("generator_name") == generator_name]
         table = self.read(filters=filters)
 
-        for col in table.column_names:
-            value = table[col].to_pylist()[0]
-            if value is None:
-                table = table.drop(col)
+        for column_name in table.column_names:
+            logger.debug(f"Loading generator data for column: {column_name}")
+            col_array = table[column_name].drop_null()
+            if len(col_array) == 0:
+                table = table.drop(column_name)
 
         if len(table) == 0:
             raise ValueError(f"No generator found with name '{generator_name}'")
@@ -240,5 +254,29 @@ class GeneratorStore(ParquetDB):
         logger.debug(f"Generator args: {generator_args}")
         logger.debug(f"Generator kwargs: {generator_kwargs}")
 
-        # return generator_func(*generator_args.values(), **generator_kwargs)
-        return generator_func(**generator_args, **generator_kwargs)
+        arg_names = get_function_arg_names(generator_func)
+        generator_args = [generator_args[k] for k in arg_names]
+
+        logger.debug(f"Running {generator_func.__name__} with args: {generator_args}")
+        logger.debug(
+            f"Running {generator_func.__name__} with kwargs: {generator_kwargs}"
+        )
+        return generator_func(*generator_args, **generator_kwargs)
+
+
+def get_function_arg_names(func):
+    sig = inspect.signature(func)
+    return [
+        name
+        for name, param in sig.parameters.items()
+        if param.default == inspect.Parameter.empty
+    ]
+
+
+def get_function_kwargs(func):
+    sig = inspect.signature(func)
+    return {
+        name: param.default
+        for name, param in sig.parameters.items()
+        if param.default != inspect.Parameter.empty
+    }
