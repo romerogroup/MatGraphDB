@@ -395,3 +395,99 @@ def test_moving_matgraphdb(tmp_dir, edge_generator_data):
     assert all(
         name in matgraphdb.edge_stores for name in edge_generators_names
     ), f"Edge generators not found in edge_stores: {edge_generators_names}"
+
+
+def test_dependency_updates(matgraphdb, node_generator_data):
+    matgraphdb, node_generators_list = node_generator_data
+
+    for generator in node_generators_list[:]:
+        generator_func = generator.get("generator_func")
+        generator_args = generator.get("generator_args", None)
+        matgraphdb.add_node_generator(
+            generator_func=generator_func,
+            generator_args=generator_args,
+            run_immediately=True,
+        )
+
+    edge_generators = [
+        {
+            "generator_func": material_crystalSystem_has,
+            "generator_args": {
+                "material_store": matgraphdb.node_stores["materials"],
+                "crystal_system_store": matgraphdb.node_stores["crystal_systems"],
+            },
+        },
+    ]
+
+    for generator in edge_generators[:]:
+        generator_func = generator.get("generator_func")
+        generator_args = generator.get("generator_args", None)
+        matgraphdb.add_edge_generator(
+            generator_func=generator_func,
+            generator_args=generator_args,
+            run_immediately=True,
+        )
+
+    data = pd.DataFrame(
+        {
+            "material_id": [1],
+            "core.material_id": ["mp-1111111111"],
+            "symmetry.crystal_system": ["Cubic"],
+        }
+    )
+
+    matgraphdb.add_generator_dependency(
+        generator_name="material_crystalSystem_has",
+    )
+    # Adding nodes
+    matgraphdb.add_nodes(node_type="materials", data=data)
+    df = matgraphdb.read_nodes(
+        "materials",
+        columns=["id", "symmetry.crystal_system"],
+        filters=[pc.field("id") == 1000],
+    ).to_pandas()
+    assert df.shape[0] == 1
+    assert df.iloc[0]["symmetry.crystal_system"] == "Cubic"
+
+    df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
+    assert df.shape == (1001, 9)
+    df = df[df["source_id"] == 1000]
+    assert df.iloc[0]["target_id"] == 6  # Cubic id
+
+    df = matgraphdb.read_nodes("materials", columns=["core.material_id"]).to_pandas()
+
+    # Updating nodes
+    data = pd.DataFrame(
+        {
+            "id": [1000],
+            "material_id": [1],
+            "core.material_id": ["mp-1111111111"],
+            "symmetry.crystal_system": ["Hexagonal"],
+        }
+    )
+    matgraphdb.update_nodes("materials", data)
+
+    df = matgraphdb.read_nodes(
+        "materials",
+        columns=["id", "symmetry.crystal_system"],
+        filters=[pc.field("id") == 1000],
+    ).to_pandas()
+    assert df.shape[0] == 1
+    assert df.iloc[0]["symmetry.crystal_system"] == "Hexagonal"
+
+    df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
+    assert df.shape == (1001, 9)
+    df = df[df["source_id"] == 1000]
+    assert df.iloc[0]["target_id"] == 5  # Hexagonal id
+
+    matgraphdb.delete_nodes("materials", ids=[1000])
+
+    df = matgraphdb.read_nodes(
+        "materials",
+        columns=["id", "symmetry.crystal_system"],
+        filters=[pc.field("id") == 1000],
+    ).to_pandas()
+    assert df.shape[0] == 0
+
+    df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
+    assert df.shape == (1000, 9)

@@ -103,6 +103,9 @@ def node_generator_data(wyckoff_generator):
     return generator_name, generator_func, generator_args, generator_kwargs
 
 
+
+
+
 def test_initialize_graphdb(graphdb):
     """Test if GraphDB initializes with the correct directories."""
     assert os.path.exists(graphdb.nodes_path), "Nodes directory not created."

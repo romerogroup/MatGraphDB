@@ -10,6 +10,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 from parquetdb import ParquetDB
+from parquetdb.utils import pyarrow_utils
 from pyarrow import parquet as pq
 
 from matgraphdb.core.edges import EdgeStore
@@ -76,20 +77,13 @@ class GraphDB:
 
     def generator_consistency_check(self):
         logger.info("Checking directory consistency")
-        self.generator_dependency_graph["nodes"] = self._generator_check(
-            self.node_generator_store
-        )
-        self.generator_dependency_graph["edges"] = self._generator_check(
-            self.edge_generator_store
-        )
+        self._generator_check(self.node_generator_store)
+        self._generator_check(self.edge_generator_store)
 
     def _generator_check(self, generator_store):
-        generator_graph = {}
         df = generator_store.read().to_pandas()
         for i, row in df.iterrows():
             generator_name = row["generator_name"]
-            if generator_name not in generator_graph:
-                generator_graph[generator_name] = set()
             for col_name in df.columns:
                 if col_name.startswith("generator_kwargs.") or col_name.startswith(
                     "generator_args."
@@ -102,7 +96,6 @@ class GraphDB:
                             current_path = self.get_node_store(
                                 store.node_type
                             ).storage_path
-                            generator_graph[generator_name].add(store.node_type)
                             generator_store_path = store.storage_path
                             if current_path != generator_store_path:
                                 df.at[i, col_name] = current_path
@@ -111,14 +104,11 @@ class GraphDB:
                             current_path = self.get_edge_store(
                                 store.edge_type
                             ).storage_path
-
-                            generator_graph[generator_name].add(store.edge_type)
                             generator_store_path = store.storage_path
                             if current_path != generator_store_path:
                                 df.at[i, col_name] = current_path
 
         generator_store.update(data=df)
-        return generator_graph
 
     def _load_existing_node_stores(self, load_custom_stores: bool = True):
         logger.info(f"Loading existing node stores")
@@ -171,6 +161,8 @@ class GraphDB:
         logger.info(f"Creating nodes of type '{node_type}'")
         store = self.add_node_type(node_type)
         store.create_nodes(data, **kwargs)
+
+        self._run_dependent_generators(node_type)
         logger.debug(f"Successfully created nodes of type '{node_type}'")
 
     def add_node_type(self, node_type: str) -> NodeStore:
@@ -219,6 +211,8 @@ class GraphDB:
             node_store.storage_path = new_path
         self.node_stores[node_store.node_type] = node_store
 
+        self._run_dependent_generators(node_store.node_type)
+
     def get_nodes(
         self, node_type: str, ids: List[int] = None, columns: List[str] = None, **kwargs
     ):
@@ -227,6 +221,12 @@ class GraphDB:
             logger.debug(f"Filtering by {len(ids)} node IDs")
         if columns:
             logger.debug(f"Selecting columns: {columns}")
+        store = self.get_node_store(node_type)
+        return store.read_nodes(ids=ids, columns=columns, **kwargs)
+
+    def read_nodes(
+        self, node_type: str, ids: List[int] = None, columns: List[str] = None, **kwargs
+    ):
         store = self.get_node_store(node_type)
         return store.read_nodes(ids=ids, columns=columns, **kwargs)
 
@@ -241,17 +241,23 @@ class GraphDB:
         store = self.get_node_store(node_type)
         store.update_nodes(data, **kwargs)
 
+        self._run_dependent_generators(node_type)
+
     def delete_nodes(
         self, node_type: str, ids: List[int] = None, columns: List[str] = None
     ):
         store = self.get_node_store(node_type)
         store.delete_nodes(ids=ids, columns=columns)
 
+        self._run_dependent_generators(node_type)
+
     def remove_node_store(self, node_type: str):
         logger.info(f"Removing node store of type {node_type}")
         store = self.get_node_store(node_type)
         shutil.rmtree(store.storage_path)
         self.node_stores.pop(node_type)
+
+        self._run_dependent_generators(node_type)
 
     def remove_node_type(self, node_type: str):
         self.remove_node_store(node_type)
@@ -285,6 +291,8 @@ class GraphDB:
         create_kwargs: Dict = None,
         run_immediately: bool = True,
         run_generator_kwargs: Dict = None,
+        depends_on: List[str] = None,
+        add_dependency: bool = True,
     ) -> None:
         generator_name = generator_func.__name__
         self.node_generator_store.store_generator(
@@ -303,6 +311,11 @@ class GraphDB:
                 run_generator_kwargs["generator_name"] = generator_name
 
             self.run_node_generator(**run_generator_kwargs)
+
+        if add_dependency and depends_on:
+            self.add_generator_dependency(generator_name, depends_on, node_type="nodes")
+        elif add_dependency and not depends_on:
+            self.add_generator_dependency(generator_name)
 
     def run_node_generator(
         self,
@@ -341,6 +354,12 @@ class GraphDB:
             generator_args=generator_args,
             generator_kwargs=generator_kwargs,
         )
+
+        storage_path = os.path.join(self.nodes_path, generator_name)
+        if os.path.exists(storage_path):
+            logger.info(f"Removing existing node store: {generator_name}")
+            self.remove_node_store(generator_name)
+
         self.add_nodes(node_type=generator_name, data=table, **create_kwargs)
         return table
 
@@ -366,6 +385,7 @@ class GraphDB:
         self._validate_edge_references(incoming_table)
         store = self.add_edge_type(edge_type)
         store.create_edges(incoming_table, **kwargs)
+        self._run_dependent_generators(edge_type)
         logger.debug(f"Successfully created edges of type '{edge_type}'")
 
     def add_edge_store(self, edge_store: EdgeStore):
@@ -384,6 +404,8 @@ class GraphDB:
             edge_store.storage_path = new_path
         self.edge_stores[edge_store.edge_type] = edge_store
 
+        self._run_dependent_generators(edge_store.edge_type)
+
     def read_edges(
         self, edge_type: str, ids: List[int] = None, columns: List[str] = None, **kwargs
     ):
@@ -394,17 +416,23 @@ class GraphDB:
         store = self.add_edge_type(edge_type)
         store.update_edges(data, **kwargs)
 
+        self._run_dependent_generators(edge_type)
+
     def delete_edges(
         self, edge_type: str, ids: List[int] = None, columns: List[str] = None
     ):
         store = self.add_edge_type(edge_type)
         store.delete_edges(ids=ids, columns=columns)
 
+        self._run_dependent_generators(edge_type)
+
     def remove_edge_store(self, edge_type: str):
         logger.info(f"Removing edge store of type {edge_type}")
         store = self.get_edge_store(edge_type)
         shutil.rmtree(store.storage_path)
         self.edge_stores.pop(edge_type)
+
+        self._run_dependent_generators(edge_type)
 
     def remove_edge_type(self, edge_type: str):
         self.remove_edge_store(edge_type)
@@ -513,6 +541,8 @@ class GraphDB:
         create_kwargs: Dict = None,
         run_immediately: bool = True,
         run_generator_create_kwargs: Dict = None,
+        depends_on: List[str] = None,
+        add_dependency: bool = True,
     ) -> None:
         """
         Register a user-defined callable that can read from node stores,
@@ -533,7 +563,6 @@ class GraphDB:
             create_kwargs=create_kwargs,
         )
         logger.info(f"Added new edge generator: {generator_name}")
-        self.generator_consistency_check()
 
         if run_immediately:
             if run_generator_create_kwargs is None:
@@ -541,6 +570,11 @@ class GraphDB:
             self.run_edge_generator(
                 generator_name=generator_name, create_kwargs=run_generator_create_kwargs
             )
+
+        if add_dependency and depends_on:
+            self.add_generator_dependency(generator_name, depends_on, node_type="edges")
+        elif add_dependency and not depends_on:
+            self.add_generator_dependency(generator_name)
 
     def run_edge_generator(
         self,
@@ -557,8 +591,147 @@ class GraphDB:
             generator_args=generator_args,
             generator_kwargs=generator_kwargs,
         )
+
+        storage_path = os.path.join(self.edges_path, generator_name)
+        if os.path.exists(storage_path):
+            logger.info(f"Removing existing edge store: {generator_name}")
+            self.remove_edge_store(generator_name)
+
         self.add_edges(edge_type=generator_name, data=table, **create_kwargs)
         return table
+
+    def get_generator_type(self, generator_name: str):
+        if self.edge_generator_store.is_in(generator_name):
+            return "edges"
+        elif self.node_generator_store.is_in(generator_name):
+            return "nodes"
+        else:
+            raise ValueError(f"Generator {generator_name} not in node or edge store")
+
+    def get_generator_dependency_graph(self, generator_name: str):
+
+        generator_type = self.get_generator_type(generator_name)
+        generator_store = (
+            self.edge_generator_store
+            if generator_type == "edges"
+            else self.node_generator_store
+        )
+        dependency_graph = {generator_type: {}}
+        df = generator_store.load_generator_data(generator_name=generator_name)
+        logger.debug(f"Generator data: {df.columns}")
+
+        for i, row in df.iterrows():
+            if generator_name not in dependency_graph[generator_type]:
+                dependency_graph[generator_type][generator_name] = set()
+
+            for col_name in df.columns:
+                if col_name.startswith("generator_kwargs.") or col_name.startswith(
+                    "generator_args."
+                ):
+                    col_value = row[col_name]
+                    if isinstance(col_value, (EdgeStore, NodeStore)):
+                        store = col_value
+
+                        if hasattr(store, "node_type"):
+                            current_path = self.get_node_store(
+                                store.node_type
+                            ).storage_path
+                            dependency_graph[generator_type][generator_name].add(
+                                store.node_type
+                            )
+
+                        elif hasattr(store, "edge_type"):
+                            current_path = self.get_edge_store(
+                                store.edge_type
+                            ).storage_path
+
+                            dependency_graph[generator_type][generator_name].add(
+                                store.edge_type
+                            )
+        return dependency_graph
+
+    def add_generator_dependency(
+        self,
+        generator_name: str,
+        depends_on: List[str] = None,
+        store_type: str = None,
+    ):
+        """
+        Add dependencies for a generator. When any of the dependencies are updated,
+        the generator will automatically run.
+
+        Parameters
+        ----------
+        generator_name : str
+            Name of the generator that has dependencies
+        depends_on : List[str]
+            List of store names that this generator depends on
+        store_type : str
+            Either 'nodes' or 'edges', indicating the type of store the generator creates
+        """
+        dependencies = None
+        if depends_on:
+            logger.info(f"Adding dependencies for {generator_name}: {depends_on}")
+            if store_type not in ["nodes", "edges"]:
+                raise ValueError("store_type must be either 'nodes' or 'edges'")
+            if generator_name not in self.generator_dependency_graph[store_type]:
+                self.generator_dependency_graph[store_type][generator_name] = set()
+            dependencies = depends_on
+            self.generator_dependency_graph[store_type][generator_name].update(
+                dependencies
+            )
+        else:
+            logger.info(f"Adding all dependencies for {generator_name}")
+            dependencies = self.get_generator_dependency_graph(generator_name)
+            self.generator_dependency_graph.update(dependencies)
+
+        if dependencies:
+            logger.info(f"Added dependencies for {generator_name}: {dependencies}")
+
+    def _run_dependent_generators(self, store_name: str):
+        """
+        Run all generators that depend on a specific store.
+
+        Parameters
+        ----------
+        store_type : str
+            Either 'nodes' or 'edges'
+        store_name : str
+            Name of the store that was updated
+        """
+        logger.info(f"Running dependent generators: {store_name}")
+
+        # Find all generators that depend on this store
+        dependent_generators = set()
+        for generator_name, dependencies in self.generator_dependency_graph[
+            "nodes"
+        ].items():
+            if store_name in dependencies:
+                dependent_generators.add(("nodes", generator_name))
+
+        for generator_name, dependencies in self.generator_dependency_graph[
+            "edges"
+        ].items():
+            if store_name in dependencies:
+                dependent_generators.add(("edges", generator_name))
+
+        logger.debug(f"Dependent generators: {dependent_generators}")
+        # Run each dependent generator
+        for dep_store_type, generator_name in dependent_generators:
+            logger.info(f"Running dependent generator: {generator_name}")
+            try:
+                if dep_store_type == "nodes":
+                    self.run_node_generator(generator_name)
+                    # Recursively run generators that depend on this result
+                    self._run_dependent_generators(generator_name)
+                else:
+                    self.run_edge_generator(generator_name=generator_name)
+                    # Recursively run generators that depend on this result
+                    self._run_dependent_generators(generator_name)
+            except Exception as e:
+                logger.error(
+                    f"Failed to run dependent generator {generator_name}: {str(e)}"
+                )
 
 
 def load_store(store_path: str, default_store_class=None):
