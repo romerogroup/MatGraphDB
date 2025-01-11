@@ -3,6 +3,10 @@ import os
 from functools import partial
 from multiprocessing import Pool
 
+from dask.distributed import Client
+
+from matgraphdb.utils.config import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -169,12 +173,25 @@ def multiprocess_task(func, list, n_cores=None, **kwargs):
     list
         A list of results obtained by applying `func` to each item in the input list.
     """
-    n_cores = get_num_cores(n_cores)
-    logger.info(f"Processing tasks in parallel using {n_cores} cores.")
+    # n_cores = get_num_cores(n_cores)
+    # logger.info(f"Processing tasks in parallel using {n_cores} cores.")
     logger.info(f"Passing the following arguments to the worker method", extra=kwargs)
     try:
-        with Pool(n_cores) as p:
+        with Pool() as p:
             results = p.map(partial(func, **kwargs), list)
         return results
     except:
         logging.exception("Error processing tasks in parallel.")
+
+
+def parallel_apply(func, data, processes=False):
+    if len(data) > 2000 and config.use_multiprocessing:
+        with Client(
+            silence_logs=logging.ERROR,
+            processes=processes,
+        ) as client:
+            serialized_futures = client.map(func, data)
+            results = client.gather(serialized_futures)
+    else:
+        results = [func(item) for item in data]
+    return results

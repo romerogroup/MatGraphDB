@@ -5,6 +5,7 @@ log_dir: "{{ root_dir }}/logs"
 db_name: 'MatGraphDB'
 
 n_cores: 
+use_multiprocessing: True
 
 numpy_config:
   np_printoptions:

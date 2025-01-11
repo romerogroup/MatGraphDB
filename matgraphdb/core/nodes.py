@@ -112,6 +112,18 @@ class NodeStore(ParquetDB):
     def name_column(self, value):
         self.set_metadata({"name_column": value})
 
+    @property
+    def n_nodes(self):
+        return self.read_nodes(columns=["id"]).num_rows
+
+    @property
+    def n_features(self):
+        return len(self.get_schema().names)
+
+    @property
+    def columns(self):
+        return self.get_schema().names
+
     def create_nodes(
         self,
         data: Union[List[dict], dict, pd.DataFrame, pa.Table],

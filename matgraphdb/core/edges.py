@@ -88,6 +88,18 @@ class EdgeStore(ParquetDB):
         self._db_path = value
         self.edge_type = os.path.basename(value)
 
+    @property
+    def n_edges(self):
+        return self.read_edges(columns=["id"]).num_rows
+
+    @property
+    def n_features(self):
+        return len(self.get_schema().names)
+
+    @property
+    def columns(self):
+        return self.get_schema().names
+
     def _setup(self, **kwargs):
         data = self.setup(**kwargs)
         if data is not None:

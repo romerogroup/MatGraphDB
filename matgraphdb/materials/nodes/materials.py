@@ -233,7 +233,6 @@ class MaterialNodes(NodeStore):
         convert_to_fixed_shape: bool = True,
         normalize_dataset: bool = False,
         normalize_config: NormalizeConfig = NormalizeConfig(),
-        n_cores: int = 2,
         verbose: int = 3,
         **kwargs,
     ):
@@ -286,9 +285,7 @@ class MaterialNodes(NodeStore):
             convert_to_fixed_shape=convert_to_fixed_shape,
         )
 
-        results = multiprocess_task(
-            self._create_material, materials, n_cores=n_cores, **add_kwargs
-        )
+        results = multiprocess_task(self._create_material, materials, **add_kwargs)
         entry_data = [result for result in results if result]
 
         df = pd.DataFrame(entry_data)

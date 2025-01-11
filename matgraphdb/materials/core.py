@@ -53,6 +53,10 @@ class MatGraphDB(GraphDB):
                 self.add_node_store(materials_store)
         self.material_nodes = self.node_stores["materials"]
 
+    def create_material(self, **kwargs):
+        logger.info("Creating material.")
+        self.material_nodes.create_material(**kwargs)
+
     def create_materials(self, data, **kwargs):
         logger.info("Creating materials.")
         self.material_nodes.create_materials(data, **kwargs)

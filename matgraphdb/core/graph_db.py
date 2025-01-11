@@ -19,8 +19,6 @@ from matgraphdb.core.nodes import NodeStore
 
 logger = logging.getLogger(__name__)
 
-pd.set_option("display.max_columns", None)
-
 
 class GraphDB:
     """
@@ -153,6 +151,106 @@ class GraphDB:
                 )
 
         return store_dict
+
+    def summary(self, show_column_names: bool = False):
+        # Header section
+        tmp_str = f"{'=' * 60}\n"
+        tmp_str += f"GRAPH DATABASE SUMMARY\n"
+        tmp_str += f"{'=' * 60}\n"
+        tmp_str += f"Name: {self.graph_name}\n"
+        tmp_str += f"Storage path: {self.storage_path}\n"
+        tmp_str += f"Nodes path: {self.nodes_path}\n"
+        tmp_str += f"Edges path: {self.edges_path}\n"
+        tmp_str += f"Edge generators path: {self.edge_generators_path}\n"
+        tmp_str += f"Node generators path: {self.node_generators_path}\n"
+        tmp_str += f"Graph path: {self.graph_path}\n\n"
+
+        # Node section header
+        tmp_str += f"{'#' * 60}\n"
+        tmp_str += f"NODE DETAILS\n"
+        tmp_str += f"{'#' * 60}\n"
+        tmp_str += f"Total node types: {len(self.node_stores)}\n"
+        tmp_str += f"{'-' * 60}\n"
+
+        # Node details
+        for node_type, node_store in self.node_stores.items():
+            tmp_str += f"• Node type: {node_type}\n"
+            tmp_str += f"  - Number of nodes: {node_store.n_nodes}\n"
+            tmp_str += f"  - Number of features: {node_store.n_features}\n"
+            if show_column_names:
+                tmp_str += f"  - Columns:\n"
+                for col in node_store.columns:
+                    tmp_str += f"       - {col}\n"
+            tmp_str += f"  - db_path: {node_store.storage_path}\n"
+            tmp_str += f"{'-' * 60}\n"
+
+        # Edge section header
+        tmp_str += f"\n{'#' * 60}\n"
+        tmp_str += f"EDGE DETAILS\n"
+        tmp_str += f"{'#' * 60}\n"
+        tmp_str += f"Total edge types: {len(self.edge_stores)}\n"
+        tmp_str += f"{'-' * 60}\n"
+
+        # Edge details
+        for edge_type, edge_store in self.edge_stores.items():
+            tmp_str += f"• Edge type: {edge_type}\n"
+            tmp_str += f"  - Number of edges: {edge_store.n_edges}\n"
+            tmp_str += f"  - Number of features: {edge_store.n_features}\n"
+            if show_column_names:
+                tmp_str += f"  - Columns:\n"
+                for col in edge_store.columns:
+                    tmp_str += f"       - {col}\n"
+            tmp_str += f"  - db_path: {edge_store.storage_path}\n"
+            tmp_str += f"{'-' * 60}\n"
+
+        # Node generator header
+        tmp_str += f"\n{'#' * 60}\n"
+        tmp_str += f"NODE GENERATOR DETAILS\n"
+        tmp_str += f"{'#' * 60}\n"
+        tmp_str += f"Total node generators: {self.node_generator_store.n_generators}\n"
+        tmp_str += f"{'-' * 60}\n"
+
+        # Node generator details
+        for generator_name in self.node_generator_store.generator_names:
+            df = self.node_generator_store.load_generator_data(generator_name)
+            tmp_str += f"• Generator: {generator_name}\n"
+            tmp_str += f"Generator Args:\n"
+            for col in df.columns:
+                col_name = col.replace("generator_args.", "")
+                if col.startswith("generator_args."):
+                    tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
+            tmp_str += f"Generator Kwargs:\n"
+            for col in df.columns:
+                col_name = col.replace("generator_kwargs.", "")
+                if col.startswith("generator_kwargs."):
+                    tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
+            tmp_str += f"{'-' * 60}\n"
+
+        # Edge generator header
+        tmp_str += f"\n{'#' * 60}\n"
+        tmp_str += f"EDGE GENERATOR DETAILS\n"
+        tmp_str += f"{'#' * 60}\n"
+        tmp_str += f"Total edge generators: {self.edge_generator_store.n_generators}\n"
+        tmp_str += f"{'-' * 60}\n"
+
+        # Edge generator details
+        for generator_name in self.edge_generator_store.generator_names:
+            df = self.edge_generator_store.load_generator_data(generator_name)
+            tmp_str += f"• Generator: {generator_name}\n"
+            tmp_str += f"Generator Args:\n"
+            for col in df.columns:
+                col_name = col.replace("generator_args.", "")
+                if col.startswith("generator_args."):
+                    tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
+            print(df)
+            tmp_str += f"Generator Kwargs:\n"
+            for col in df.columns:
+                col_name = col.replace("generator_kwargs.", "")
+                if col.startswith("generator_kwargs."):
+                    tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
+            tmp_str += f"{'-' * 60}\n"
+
+        return tmp_str
 
     # ------------------
     # Node-level methods

@@ -79,6 +79,16 @@ class GeneratorStore(ParquetDB):
                 }
             )
 
+    @property
+    def n_generators(self):
+        return self.read(columns=["generator_name"]).num_rows
+
+    @property
+    def generator_names(self):
+        return (
+            self.read(columns=["generator_name"]).to_pandas()["generator_name"].tolist()
+        )
+
     def store_generator(
         self,
         generator_func: Callable,
