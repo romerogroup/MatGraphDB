@@ -87,6 +87,9 @@ class NodeStore(ParquetDB):
 
         logger.debug(f"Initialized NodeStore at {storage_path}")
 
+    def __repr__(self):
+        return self.summary(show_column_names=True)
+
     @property
     def storage_path(self):
         return self._db_path
@@ -123,6 +126,41 @@ class NodeStore(ParquetDB):
     @property
     def columns(self):
         return self.get_schema().names
+
+    def summary(self, show_column_names: bool = False):
+        fields_metadata = self.get_field_metadata()
+        metadata = self.get_metadata()
+        # Header section
+        tmp_str = f"{'=' * 60}\n"
+        tmp_str += f"NODE STORE SUMMARY\n"
+        tmp_str += f"{'=' * 60}\n"
+        tmp_str += f"Node type: {self.node_type}\n"
+        tmp_str += f"• Number of nodes: {self.n_nodes}\n"
+        tmp_str += f"• Number of features: {self.n_features}\n"
+        tmp_str += f"Storage path: {os.path.relpath(self.storage_path)}\n\n"
+
+        # Metadata section
+        tmp_str += f"\n{'#' * 60}\n"
+        tmp_str += f"METADATA\n"
+        tmp_str += f"{'#' * 60}\n"
+        for key, value in metadata.items():
+            tmp_str += f"• {key}: {value}\n"
+
+        # Node details
+        tmp_str += f"\n{'#' * 60}\n"
+        tmp_str += f"NODE DETAILS\n"
+        tmp_str += f"{'#' * 60}\n"
+        if show_column_names:
+            tmp_str += f"• Columns:\n"
+            for col in self.columns:
+                tmp_str += f"    - {col}\n"
+
+                if fields_metadata[col]:
+                    tmp_str += f"       - Field metadata\n"
+                    for key, value in fields_metadata[col].items():
+                        tmp_str += f"           - {key}: {value}\n"
+
+        return tmp_str
 
     def create_nodes(
         self,

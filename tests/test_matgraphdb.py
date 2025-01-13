@@ -40,13 +40,13 @@ def empty_matgraphdb(tmp_dir):
 @pytest.fixture
 def empty_material_store(tmp_dir):
     materials_path = os.path.join(tmp_dir, "materials")
-    return MaterialNodes(storage_path=materials_path)
+    return MaterialStore(storage_path=materials_path)
 
 
 @pytest.fixture
 def material_store():
     materials_path = os.path.join(TEST_DATA_DIR, "materials")
-    return MaterialNodes(storage_path=materials_path)
+    return MaterialStore(storage_path=materials_path)
 
 
 @pytest.fixture
@@ -176,8 +176,8 @@ def test_initialize_matgraphdb(empty_matgraphdb):
         "materials" in matgraphdb.node_stores
     ), f"Materials node store not found in node_stores: {matgraphdb.node_stores}"
     assert isinstance(
-        matgraphdb.material_nodes, MaterialNodes
-    ), f"MaterialNodes instance not found in matgraphdb: {matgraphdb.material_nodes}"
+        matgraphdb.material_store, MaterialStore
+    ), f"MaterialStore instance not found in matgraphdb: {matgraphdb.material_store}"
 
     # Check if materials directory was created
     materials_path = os.path.join(matgraphdb.nodes_path, "materials")
@@ -295,7 +295,7 @@ def test_add_node_generators(node_generator_data):
     """Test adding a node generator."""
     matgraphdb, node_generators_list = node_generator_data
 
-    material_store = matgraphdb.material_nodes
+    material_store = matgraphdb.material_store
     for generator in node_generators_list[:]:
         generator_func = generator.get("generator_func")
         generator_args = generator.get("generator_args", None)

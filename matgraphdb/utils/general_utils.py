@@ -107,9 +107,24 @@ def set_verbosity(verbose: int):
     config.apply()
 
 
-# if __name__ == '__main__':
-#     # Example usage
+def download_test_data(save_path: str):
+    import requests
 
-#     skip_dirs = ['__pycache__']
-#     print_directory_tree('Z:\Research Projects\crystal_generation_project\MatGraphDB\matgraphdb',skip_dirs=skip_dirs)
-#     print_directory_tree('Z:\Research Projects\crystal_generation_project\MatGraphDB\matgraphdb',skip_dirs=skip_dirs)
+    """Download example data from MatGraphDB GitHub repository."""
+    base_url = "https://raw.githubusercontent.com/romerogroup/MatGraphDB/main/tests/test_data/materials/"
+    filename = "materials_0.parquet"
+    url = base_url + filename
+    save_path = os.path.join(save_path, filename)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    try:
+        # Sending a GET request to the raw URL
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        with open(save_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"Successfully downloaded {save_path}")
+        return save_path
+    except Exception as e:
+        print(f"Failed to download {save_path}. Error: {e}")

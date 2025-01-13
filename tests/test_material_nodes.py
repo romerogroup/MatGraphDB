@@ -5,14 +5,14 @@ import tempfile
 import numpy as np
 import pytest
 
-from matgraphdb.materials.nodes.materials import MaterialNodes
+from matgraphdb.materials.nodes.materials import MaterialStore
 
 
 @pytest.fixture
 def material_store():
-    """Fixture that creates a temporary MaterialNodes instance."""
+    """Fixture that creates a temporary MaterialStore instance."""
     temp_dir = tempfile.mkdtemp()
-    store = MaterialNodes(storage_path=temp_dir)
+    store = MaterialStore(storage_path=temp_dir)
     yield store
     # Cleanup after test
     if os.path.exists(temp_dir):

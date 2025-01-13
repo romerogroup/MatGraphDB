@@ -1,4 +1,5 @@
 import importlib
+import json
 import logging
 import os
 import shutil
@@ -43,6 +44,9 @@ class GraphDB:
         self.edge_generators_path = os.path.join(self.storage_path, "edge_generators")
         self.node_generators_path = os.path.join(self.storage_path, "node_generators")
         self.graph_path = os.path.join(self.storage_path, "graph")
+        self.generator_dependency_json = os.path.join(
+            self.storage_path, "generator_dependency.json"
+        )
 
         self.graph_name = os.path.basename(self.storage_path)
 
@@ -70,7 +74,7 @@ class GraphDB:
         # This is here to make sure the node and edges paths
         # listed in the generator stores align where the GraphDB is,
         # this allows user to easily move the directory and the generators will still work
-        self.generator_dependency_graph = {"nodes": {}, "edges": {}}
+        self._load_generator_dependency_graph()
         self.generator_consistency_check()
 
     def generator_consistency_check(self):
@@ -152,18 +156,36 @@ class GraphDB:
 
         return store_dict
 
+    def _load_generator_dependency_graph(self):
+        if os.path.exists(self.generator_dependency_json):
+            with open(self.generator_dependency_json, "r") as f:
+                self.generator_dependency_graph = json.load(f)
+                for key, value in self.generator_dependency_graph["nodes"].items():
+                    self.generator_dependency_graph["nodes"][key] = set(value)
+                for key, value in self.generator_dependency_graph["edges"].items():
+                    self.generator_dependency_graph["edges"][key] = set(value)
+        else:
+            self.generator_dependency_graph = {"nodes": {}, "edges": {}}
+
     def summary(self, show_column_names: bool = False):
         # Header section
         tmp_str = f"{'=' * 60}\n"
         tmp_str += f"GRAPH DATABASE SUMMARY\n"
         tmp_str += f"{'=' * 60}\n"
         tmp_str += f"Name: {self.graph_name}\n"
-        tmp_str += f"Storage path: {self.storage_path}\n"
-        tmp_str += f"Nodes path: {self.nodes_path}\n"
-        tmp_str += f"Edges path: {self.edges_path}\n"
-        tmp_str += f"Edge generators path: {self.edge_generators_path}\n"
-        tmp_str += f"Node generators path: {self.node_generators_path}\n"
-        tmp_str += f"Graph path: {self.graph_path}\n\n"
+        tmp_str += f"Storage path: {os.path.relpath(self.storage_path)}\n"
+        tmp_str += "└── Repository structure:\n"
+        tmp_str += (
+            f"    ├── nodes/                 ({os.path.relpath(self.nodes_path)})\n"
+        )
+        tmp_str += (
+            f"    ├── edges/                 ({os.path.relpath(self.edges_path)})\n"
+        )
+        tmp_str += f"    ├── edge_generators/       ({os.path.relpath(self.edge_generators_path)})\n"
+        tmp_str += f"    ├── node_generators/       ({os.path.relpath(self.node_generators_path)})\n"
+        tmp_str += (
+            f"    └── graph/                 ({os.path.relpath(self.graph_path)})\n\n"
+        )
 
         # Node section header
         tmp_str += f"{'#' * 60}\n"
@@ -181,7 +203,7 @@ class GraphDB:
                 tmp_str += f"  - Columns:\n"
                 for col in node_store.columns:
                     tmp_str += f"       - {col}\n"
-            tmp_str += f"  - db_path: {node_store.storage_path}\n"
+            tmp_str += f"  - db_path: {os.path.relpath(node_store.storage_path)}\n"
             tmp_str += f"{'-' * 60}\n"
 
         # Edge section header
@@ -200,7 +222,7 @@ class GraphDB:
                 tmp_str += f"  - Columns:\n"
                 for col in edge_store.columns:
                     tmp_str += f"       - {col}\n"
-            tmp_str += f"  - db_path: {edge_store.storage_path}\n"
+            tmp_str += f"  - db_path: {os.path.relpath(edge_store.storage_path)}\n"
             tmp_str += f"{'-' * 60}\n"
 
         # Node generator header
@@ -782,6 +804,13 @@ class GraphDB:
             logger.info(f"Adding all dependencies for {generator_name}")
             dependencies = self.get_generator_dependency_graph(generator_name)
             self.generator_dependency_graph.update(dependencies)
+
+        with open(self.generator_dependency_json, "w") as f:
+            for key, value in self.generator_dependency_graph["nodes"].items():
+                self.generator_dependency_graph["nodes"][key] = list(value)
+            for key, value in self.generator_dependency_graph["edges"].items():
+                self.generator_dependency_graph["edges"][key] = list(value)
+            json.dump(self.generator_dependency_graph, f)
 
         if dependencies:
             logger.info(f"Added dependencies for {generator_name}: {dependencies}")

@@ -12,7 +12,6 @@ from parquetdb.utils import pyarrow_utils
 
 from matgraphdb.core.nodes import node_generator
 from matgraphdb.materials.nodes import *
-from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 from matgraphdb.utils.config import PKG_DIR
 
 logger = logging.getLogger(__name__)

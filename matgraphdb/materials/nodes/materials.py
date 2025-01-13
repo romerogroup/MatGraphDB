@@ -24,7 +24,10 @@ from matgraphdb.utils.mp_utils import multiprocess_task
 logger = logging.getLogger(__name__)
 
 
-class MaterialNodes(NodeStore):
+class MaterialStore(NodeStore):
+    """
+    A class that inherits from NodeStore.
+    """
 
     def create_material(
         self,
