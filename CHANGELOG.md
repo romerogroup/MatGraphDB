@@ -1,6 +1,22 @@
 
 ___
 
+# 0.2.0 (01-13-2025)
+
+##### Bugs
+- None identified
+##### New features
+- None identified
+##### Documentation updates
+- None identified
+##### Maintenance
+- Improved logging and error handling across various modules for better traceability during operations
+- Updated _version.py and CHANGELOG.md due to new release
+
+___
+
+___
+
 # 0.1.0 (01-11-2025)
 
 ##### Bugs
