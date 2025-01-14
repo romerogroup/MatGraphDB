@@ -610,6 +610,7 @@ class GraphDB:
         assert "target_type" in names, "target_type column not found in table"
         assert "source_id" in names, "source_id column not found in table"
         assert "target_id" in names, "target_id column not found in table"
+        assert "edge_type" in names, "edge_type column not found in table"
 
         node_types = pc.unique(table["source_type"]).to_pylist()
 

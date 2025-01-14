@@ -39,6 +39,7 @@ def element_element_neighborsByGroupPeriod(element_store):
         # Add source and target type columns
         df["source_type"] = element_store.node_type
         df["target_type"] = element_store.node_type
+        df["edge_type"] = connection_name
         df["weight"] = 1.0
 
         table = ParquetDB.construct_table(df)
@@ -125,6 +126,7 @@ def element_oxiState_canOccur(element_store, oxiState_store):
             "source_type": [],
             "target_id": [],
             "target_type": [],
+            "edge_type": [],
             "name": [],
             "weight": [],
         }
@@ -149,6 +151,7 @@ def element_oxiState_canOccur(element_store, oxiState_store):
                 table_dict["source_type"].append(source_type)
                 table_dict["target_id"].append(target_id)
                 table_dict["target_type"].append(target_type)
+                table_dict["edge_type"].append(connection_name)
                 table_dict["weight"].append(1.0)
                 table_dict["name"].append(
                     f"{symbol}_{connection_name}_{oxi_state_name}"
@@ -206,6 +209,7 @@ def material_chemenv_containsSite(material_store, chemenv_store):
             "source_type": [],
             "target_id": [],
             "target_type": [],
+            "edge_type": [],
             "name": [],
             "weight": [],
         }
@@ -229,6 +233,7 @@ def material_chemenv_containsSite(material_store, chemenv_store):
                 table_dict["source_type"].append(material_store.node_type)
                 table_dict["target_id"].append(target_id)
                 table_dict["target_type"].append(chemenv_store.node_type)
+                table_dict["edge_type"].append(connection_name)
 
                 name = f"{material_name}_{connection_name}_{chemenv_name}"
                 table_dict["name"].append(name)
@@ -281,7 +286,9 @@ def material_crystalSystem_has(material_store, crystal_system_store):
             right_keys=["crystal_system"],
             join_type="left outer",
         )
-
+        edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
         edge_table = edge_table.append_column(
             "weight", pa.array([1.0] * edge_table.num_rows)
         )
@@ -339,6 +346,7 @@ def material_element_has(material_store, element_store):
             "source_type": [],
             "target_id": [],
             "target_type": [],
+            "edge_type": [],
             "name": [],
             "weight": [],
         }
@@ -358,6 +366,7 @@ def material_element_has(material_store, element_store):
                 table_dict["source_type"].append(material_store.node_type)
                 table_dict["target_id"].append(target_id)
                 table_dict["target_type"].append(element_store.node_type)
+                table_dict["edge_type"].append(connection_name)
 
                 name = f"{material_name}_{connection_name}_{element}"
                 table_dict["name"].append(name)
@@ -405,7 +414,9 @@ def material_lattice_has(material_store, lattice_store):
             right_keys=["material_node_id"],
             join_type="left outer",
         )
-
+        edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
         edge_table = edge_table.append_column(
             "weight", pa.array([1.0] * edge_table.num_rows)
         )
@@ -452,6 +463,10 @@ def material_spg_has(material_store, spg_store):
         )
 
         edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
+
+        edge_table = edge_table.append_column(
             "weight", pa.array([1.0] * edge_table.num_rows)
         )
 
@@ -476,7 +491,7 @@ def material_spg_has(material_store, spg_store):
 @edge_generator
 def element_chemenv_canOccur(element_store, chemenv_store, material_store):
     try:
-
+        connection_name = "canOccur"
         material_table = material_store.read_nodes(
             columns=[
                 "id",
@@ -515,6 +530,7 @@ def element_chemenv_canOccur(element_store, chemenv_store, material_store):
             "source_type": [],
             "target_id": [],
             "target_type": [],
+            "edge_type": [],
             "name": [],
         }
 
@@ -540,8 +556,9 @@ def element_chemenv_canOccur(element_store, chemenv_store, material_store):
                 table_dict["source_type"].append(element_store.node_type)
                 table_dict["target_id"].append(target_id)
                 table_dict["target_type"].append(chemenv_store.node_type)
+                table_dict["edge_type"].append(connection_name)
 
-                name = f"{element_name}_canOccur_{chemenv_name}"
+                name = f"{element_name}_{connection_name}_{chemenv_name}"
                 table_dict["name"].append(name)
 
         edge_table = ParquetDB.construct_table(table_dict)

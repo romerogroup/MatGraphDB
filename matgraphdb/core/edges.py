@@ -14,7 +14,7 @@ from matgraphdb.core.utils import get_dataframe_column_names
 logger = logging.getLogger(__name__)
 
 REQUIRED_EDGE_COLUMNS_FIELDS = set(
-    ["source_id", "source_type", "target_id", "target_type"]
+    ["source_id", "source_type", "target_id", "target_type", "edge_type"]
 )
 
 
@@ -67,6 +67,7 @@ class EdgeStore(ParquetDB):
                 pa.field("source_type", pa.string()),
                 pa.field("target_id", pa.int64()),
                 pa.field("target_type", pa.string()),
+                pa.field("edge_type", pa.string()),
             ],
         )
 

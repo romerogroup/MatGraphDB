@@ -450,7 +450,7 @@ def test_dependency_updates(matgraphdb, node_generator_data):
     assert df.iloc[0]["symmetry.crystal_system"] == "Cubic"
 
     df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
-    assert df.shape == (1001, 9)
+    assert df.shape == (1001, 10)
     df = df[df["source_id"] == 1000]
     assert df.iloc[0]["target_id"] == 6  # Cubic id
 
@@ -476,7 +476,7 @@ def test_dependency_updates(matgraphdb, node_generator_data):
     assert df.iloc[0]["symmetry.crystal_system"] == "Hexagonal"
 
     df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
-    assert df.shape == (1001, 9)
+    assert df.shape == (1001, 10)
     df = df[df["source_id"] == 1000]
     assert df.iloc[0]["target_id"] == 5  # Hexagonal id
 
@@ -490,4 +490,4 @@ def test_dependency_updates(matgraphdb, node_generator_data):
     assert df.shape[0] == 0
 
     df = matgraphdb.read_edges("material_crystalSystem_has").to_pandas()
-    assert df.shape == (1000, 9)
+    assert df.shape == (1000, 10)

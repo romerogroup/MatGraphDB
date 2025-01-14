@@ -50,6 +50,7 @@ def sample_edge_data():
         "target_id": [3, 4],
         "source_type": ["node_a", "node_a"],
         "target_type": ["node_b", "node_b"],
+        "edge_type": ["has", "has"],
         "weight": [0.5, 0.7],
     }
 
@@ -129,6 +130,7 @@ def test_update_edges(edge_store, sample_edge_data):
         "target_id": [3],
         "source_type": ["node_a"],
         "target_type": ["node_b"],
+        "edge_type": ["has"],
         "weight": [0.9],
     }
 
