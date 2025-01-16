@@ -150,7 +150,7 @@ _build/
 .pytest_cache/
 
 
-/data/external
+/data/
 
 /models/
 
