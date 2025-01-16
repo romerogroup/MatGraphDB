@@ -1,4 +1,8 @@
 import os
+import shutil
+import zipfile
+
+import gdown
 
 from matgraphdb.materials import MatGraphDB
 from matgraphdb.materials.edges import *
@@ -6,8 +10,11 @@ from matgraphdb.materials.nodes import *
 from matgraphdb.utils.config import config
 
 MP_MATERIALS_PATH = os.path.join(config.data_dir, "raw", "MPNearHull", "materials")
-
 MPNEARHULL_PATH = os.path.join(config.data_dir, "datasets", "MPNearHull")
+DATASET_URL = "https://drive.google.com/uc?id=1zSmEQbV8pNvjWdhFuCwOeoOzvfoS5XKP"
+RAW_DATASET_URL = "https://drive.google.com/uc?id=14guJqEK242XgRGEZA-zIrWyg4b-gX5zk"
+RAW_DATASET_ZIP = os.path.join(config.data_dir, "raw", "MPNearHull_v0.0.1_raw.zip")
+DATASET_ZIP = os.path.join(config.data_dir, "datasets", "MPNearHull_v0.0.1.zip")
 
 
 class MPNearHull(MatGraphDB):
@@ -15,14 +22,59 @@ class MPNearHull(MatGraphDB):
     energy_above_hull_max = 0.2
     nsites_max = 100
 
-    def __init__(self, storage_path: str = MPNEARHULL_PATH):
-        # Initialize with your custom store
-        materials_store = MaterialStore(storage_path=MP_MATERIALS_PATH)
+    def __init__(
+        self,
+        storage_path: str = MPNEARHULL_PATH,
+        download: bool = True,
+        from_raw_files=False,
+    ):
+        # Download dataset if it doesn't exist and download is True
+        if download and not os.path.exists(storage_path) and not from_raw_files:
+            print("Downloading dataset...")
+            self.download_dataset()
+            materials_store = None
+        if from_raw_files and not download:
+            print("Downloading raw materials data...")
+            # Download raw data if it doesn't exist
+            if not os.path.exists(MP_MATERIALS_PATH):
+                print("Downloading raw materials data...")
+                gdown.download(DATASET_URL, output=RAW_DATASET_ZIP, quiet=False)
 
-        super().__init__(storage_path=storage_path, materials_store=materials_store)
+                # Extract the raw dataset
+                print("Extracting raw materials data...")
+                with zipfile.ZipFile(RAW_DATASET_ZIP, "r") as zip_ref:
+                    zip_ref.extractall(os.path.dirname(MP_MATERIALS_PATH))
 
-        self.initialize_nodes()
-        self.initialize_edges()
+                # Clean up the zip file
+                os.remove(RAW_DATASET_ZIP)
+                print("Raw materials data ready!")
+
+            materials_store = MaterialStore(storage_path=MP_MATERIALS_PATH)
+            super().__init__(storage_path=storage_path, materials_store=materials_store)
+
+            self.initialize_nodes()
+            self.initialize_edges()
+
+        if not from_raw_files:
+            super().__init__(storage_path=storage_path)
+
+    @staticmethod
+    def download_dataset():
+        """Download and extract the MPNearHull dataset."""
+        os.makedirs(os.path.dirname(DATASET_ZIP), exist_ok=True)
+
+        # Download the dataset
+        print("Downloading MPNearHull dataset...")
+        gdown.download(DATASET_URL, output=DATASET_ZIP, quiet=False)
+
+        # Extract the dataset
+        print("Extracting dataset...")
+        with zipfile.ZipFile(DATASET_ZIP, "r") as zip_ref:
+            zip_ref.extractall(os.path.dirname(MPNEARHULL_PATH))
+
+        # Clean up the zip file
+        os.remove(DATASET_ZIP)
+        print("Dataset ready!")
 
     def initialize_nodes(self):
 
@@ -119,9 +171,3 @@ class MPNearHull(MatGraphDB):
                 generator_args=generator_args,
                 run_immediately=True,
             )
-
-
-if __name__ == "__main__":
-    if os.path.exists(MPNEARHULL_PATH):
-        shutil.rmtree(MPNEARHULL_PATH)
-    mdb = MPNearHull(storage_path=MPNEARHULL_PATH)

@@ -43,6 +43,7 @@ dependencies = [
     "pymatgen",
     "parquetdb",
     "variconfig",
+    "gdown",
 ]
 
 [project.optional-dependencies]
