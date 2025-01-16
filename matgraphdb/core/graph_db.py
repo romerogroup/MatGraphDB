@@ -77,6 +77,9 @@ class GraphDB:
         self._load_generator_dependency_graph()
         self.generator_consistency_check()
 
+    def __repr__(self):
+        return self.summary(show_column_names=True)
+
     def generator_consistency_check(self):
         logger.info("Checking directory consistency")
         self._generator_check(self.node_generator_store)
@@ -239,7 +242,9 @@ class GraphDB:
             tmp_str += f"Generator Args:\n"
             for col in df.columns:
                 col_name = col.replace("generator_args.", "")
-                if col.startswith("generator_args."):
+                if isinstance(df[col].iloc[0], (NodeStore, EdgeStore)):
+                    tmp_str += f"  - {col_name}: {os.path.relpath(df[col].iloc[0].storage_path)}\n"
+                else:
                     tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
             tmp_str += f"Generator Kwargs:\n"
             for col in df.columns:
@@ -263,8 +268,10 @@ class GraphDB:
             for col in df.columns:
                 col_name = col.replace("generator_args.", "")
                 if col.startswith("generator_args."):
-                    tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
-            print(df)
+                    if isinstance(df[col].iloc[0], (NodeStore, EdgeStore)):
+                        tmp_str += f"  - {col_name}: {os.path.relpath(df[col].iloc[0].storage_path)}\n"
+                    else:
+                        tmp_str += f"  - {col_name}: {df[col].tolist()}\n"
             tmp_str += f"Generator Kwargs:\n"
             for col in df.columns:
                 col_name = col.replace("generator_kwargs.", "")

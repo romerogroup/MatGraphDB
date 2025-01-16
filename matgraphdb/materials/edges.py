@@ -25,7 +25,7 @@ def element_element_neighborsByGroupPeriod(element_store):
         table = element_store.read_nodes(
             columns=["atomic_number", "extended_group", "period", "symbol"]
         )
-        element_df = table.to_pandas()
+        element_df = table.to_pandas(split_blocks=True, self_destruct=True)
 
         # Getting group-period edge index
         edge_index = get_group_period_edge_index(element_df)
@@ -97,6 +97,83 @@ def element_element_neighborsByGroupPeriod(element_store):
 
 
 @edge_generator
+def element_element_bonds(element_store, material_store):
+    try:
+        connection_name = "canBondTo"
+        material_table = material_store.read_nodes(
+            columns=[
+                "id",
+                "core.material_id",
+                "core.elements",
+                "chemenv.coordination_environments_multi_weight",
+            ]
+        )
+
+        element_table = element_store.read_nodes(columns=["id", "symbol"])
+
+        element_table = element_table.rename_columns({"symbol": "name"})
+        element_table = element_table.append_column(
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
+        )
+
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
+
+        element_target_id_map = {
+            row["name"]: row["id"] for _, row in element_df.iterrows()
+        }
+
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+        }
+
+        for _, row in material_df.iterrows():
+            bond_connections = row["bonding.geometric_consistent.bond_connections"]
+
+            if bond_connections is None:
+                continue
+
+            elements = row["core.elements"]
+
+            for i, site_connections in enumerate(bond_connections):
+                site_element_name = elements[i]
+                for i_neighbor_element in site_connections:
+                    i_neighbor_element = int(i_neighbor_element)
+                    neighbor_element_name = elements[i_neighbor_element]
+
+                    source_id = element_target_id_map[site_element_name]
+                    target_id = element_target_id_map[neighbor_element_name]
+
+                    table_dict["source_id"].append(source_id)
+                    table_dict["source_type"].append(element_store.node_type)
+                    table_dict["target_id"].append(target_id)
+                    table_dict["target_type"].append(element_store.node_type)
+                    table_dict["edge_type"].append(connection_name)
+
+                    name = (
+                        f"{site_element_name}_{connection_name}_{neighbor_element_name}"
+                    )
+                    table_dict["name"].append(name)
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created element-chemenv-canOccur relationships. Shape: {edge_table.shape}"
+        )
+
+    except Exception as e:
+        logger.exception(f"Error creating element-chemenv-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
 def element_oxiState_canOccur(element_store, oxiState_store):
     try:
         connection_name = "canOccur"
@@ -119,8 +196,8 @@ def element_oxiState_canOccur(element_store, oxiState_store):
             pa.array([oxiState_store.node_type] * oxiState_table.num_rows),
         )
 
-        element_df = element_table.to_pandas()
-        oxiState_df = oxiState_table.to_pandas()
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
+        oxiState_df = oxiState_table.to_pandas(split_blocks=True, self_destruct=True)
         table_dict = {
             "source_id": [],
             "source_type": [],
@@ -198,8 +275,8 @@ def material_chemenv_containsSite(material_store, chemenv_store):
             "target_type", pa.array([chemenv_store.node_type] * chemenv_table.num_rows)
         )
 
-        material_df = material_table.to_pandas()
-        chemenv_df = chemenv_table.to_pandas()
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        chemenv_df = chemenv_table.to_pandas(split_blocks=True, self_destruct=True)
         chemenv_target_id_map = {
             row["chemenv_name"]: row["target_id"] for _, row in chemenv_df.iterrows()
         }
@@ -335,8 +412,8 @@ def material_element_has(material_store, element_store):
             "target_type", pa.array(["elements"] * element_table.num_rows)
         )
 
-        material_df = material_table.to_pandas()
-        element_df = element_table.to_pandas()
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
         element_target_id_map = {
             row["symbol"]: row["target_id"] for _, row in element_df.iterrows()
         }
@@ -514,9 +591,9 @@ def element_chemenv_canOccur(element_store, chemenv_store, material_store):
             "source_type", pa.array([element_store.node_type] * element_table.num_rows)
         )
 
-        material_df = material_table.to_pandas()
-        chemenv_df = chemenv_table.to_pandas()
-        element_df = element_table.to_pandas()
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        chemenv_df = chemenv_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
 
         chemenv_target_id_map = {
             row["name"]: row["id"] for _, row in chemenv_df.iterrows()

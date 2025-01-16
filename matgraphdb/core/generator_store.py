@@ -169,7 +169,8 @@ class GeneratorStore(ParquetDB):
             df = self.read(columns=["generator_name"]).to_pandas()
 
             if generator_name in df["generator_name"].values:
-                raise ValueError(f"Generator '{generator_name}' already exists")
+                logger.warning(f"Generator '{generator_name}' already exists")
+                return None
 
             # Serialize the function using dill
 
