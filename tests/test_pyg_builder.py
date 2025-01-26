@@ -8,7 +8,7 @@ import torch
 from torch_geometric.data import HeteroData
 
 from matgraphdb.core.graph_db import GraphDB
-from matgraphdb.pyg.builder import GraphBuilder
+from matgraphdb.pyg.data.hetero_graph import GraphBuilder
 
 
 @pytest.fixture

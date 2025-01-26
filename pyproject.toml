@@ -44,6 +44,7 @@ dependencies = [
     "parquetdb",
     "variconfig",
     "gdown",
+    "mlflow"
 ]
 
 [project.optional-dependencies]

@@ -12,7 +12,7 @@ from matgraphdb.core.graph_db import GraphDB
 logger = logging.getLogger(__name__)
 
 
-class GraphBuilder:
+class HeteroGraphBuilder:
     """
     A class to build PyTorch Geometric graphs from MatGraphDB data.
 
@@ -66,7 +66,7 @@ class GraphBuilder:
             if column_name in encoders:
                 x = encoders[column](column_values)
             else:
-                x = torch.tensor(column_values)
+                x = torch.tensor(column_values, dtype=torch.float32)
 
             arrays.append(x)
 
@@ -102,7 +102,7 @@ class GraphBuilder:
 
         logger.info(f"ids: {ids.shape}")
 
-        self.hetero_data[node_type].node_id = torch.tensor(ids)
+        self.hetero_data[node_type].node_id = torch.tensor(ids, dtype=torch.int64)
 
         if torch_tensor is not None:
             logger.info(f"torch_tensor: {torch_tensor.shape}")
@@ -133,8 +133,10 @@ class GraphBuilder:
         logger.info(f"torch_tensor: {torch_tensor.shape}")
         # logger.info(f"feature_names: {feature_names}")
 
-        target_feature_ids = torch.tensor(ids)
-        all_feature_ids = torch.tensor(self.hetero_data[node_type].node_id)
+        target_feature_ids = torch.tensor(ids, dtype=torch.int64)
+        all_feature_ids = torch.tensor(
+            self.hetero_data[node_type].node_id, dtype=torch.int64
+        )
         target_feature_mask = torch.isin(
             target_feature_ids, all_feature_ids, assume_unique=True
         )
