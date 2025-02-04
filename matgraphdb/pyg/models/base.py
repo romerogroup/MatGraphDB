@@ -24,10 +24,12 @@ class FeedFoward(nn.Module):
                 nn.ReLU(),
                 nn.Linear(4 * n_embd, n_embd),
             )
-        self.ln = nn.LayerNorm(n_embd)
+        # self.ln = nn.LayerNorm(n_embd)
+        self.ln = nn.BatchNorm1d(n_embd)
 
     def forward(self, x):
-        return self.net(self.ln(x))
+        # x=self.ln(x)
+        return self.net(x)
 
 
 class InputLayer(nn.Module):
@@ -42,17 +44,19 @@ class InputLayer(nn.Module):
 
 
 class MultiLayerPercetronLayer(nn.Module):
-    def __init__(self, input_dim, num_layers):
+    def __init__(self, input_dim, num_layers, dropout=0.0):
         super().__init__()
-        self.layers = nn.ModuleList([FeedFoward(input_dim) for _ in range(num_layers)])
+        self.layers = nn.ModuleList([FeedFoward(input_dim, dropout=dropout) for _ in range(num_layers)])
 
-        self.ln_f = nn.LayerNorm(input_dim)
+        # self.ln_f = nn.LayerNorm(input_dim)
+        self.ln_f = nn.BatchNorm1d(input_dim)
 
     def forward(self, x):
         out = x
         for layer in self.layers:
             out = out + layer(out)
-        out = self.ln_f(out)
+            # out = layer(out)
+        # out = self.ln_f(out)
         return out
 
 
