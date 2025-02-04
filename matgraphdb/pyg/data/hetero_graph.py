@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List, Optional, Union
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import torch
@@ -64,7 +65,7 @@ class HeteroGraphBuilder:
                 raise NotImplementedError(f"Unsupported column type: {column_type}")
 
             if column_name in encoders:
-                x = encoders[column](column_values)
+                x = encoders[column_name](column_values)
             else:
                 x = torch.tensor(column_values, dtype=torch.float32)
 
@@ -77,6 +78,9 @@ class HeteroGraphBuilder:
         node_type: str,
         columns: Optional[List[str]] = None,
         filters: Optional[Dict] = None,
+        embedding_vectors:bool=False,
+        label_column: Optional[str] = None,
+        drop_null: bool = True,
         encoders: Optional[Dict] = None,
         read_kwargs: Optional[Dict] = None,
     ):
@@ -96,14 +100,18 @@ class HeteroGraphBuilder:
         """
         logger.info(f"Adding {node_type} nodes to graph")
 
-        ids, torch_tensor, feature_names = self._process_node_type(
-            node_type, columns, filters, encoders, read_kwargs
+        ids, torch_tensor, feature_names, labels = self._process_node_type(
+            node_type=node_type, columns=columns, filters=filters, 
+            encoders=encoders, label_column=label_column, 
+            read_kwargs=read_kwargs, drop_null=drop_null
         )
 
         logger.info(f"ids: {ids.shape}")
 
         self.hetero_data[node_type].node_id = torch.tensor(ids, dtype=torch.int64)
-
+        if labels is not None:
+            self.hetero_data[node_type].labels = labels
+            
         if torch_tensor is not None:
             logger.info(f"torch_tensor: {torch_tensor.shape}")
             logger.info(f"feature_names: {feature_names}")
@@ -111,6 +119,10 @@ class HeteroGraphBuilder:
             self.hetero_data[node_type].x = torch_tensor
             logger.info(f"x: {self.hetero_data[node_type].x.shape}")
             self.hetero_data[node_type].feature_names = feature_names
+            
+        if embedding_vectors:
+            num_nodes = len(self.hetero_data[node_type].node_id)
+            self.hetero_data[node_type].x = torch.eye(num_nodes)
 
         self.hetero_data[node_type].num_nodes = len(torch.tensor(ids))
 
@@ -119,14 +131,22 @@ class HeteroGraphBuilder:
         node_type: str,
         columns: Optional[List[str]] = None,
         filters: Optional[Dict] = None,
+        label_column: Optional[str] = None,
         encoders: Optional[Dict] = None,
         read_kwargs: Optional[Dict] = None,
+        drop_null: bool = True,
     ):
         if node_type not in self.hetero_data.node_types:
             raise ValueError(f"Node type {node_type} has not been added to the graph")
 
-        ids, torch_tensor, feature_names = self._process_node_type(
-            node_type, columns, filters, encoders, read_kwargs
+        ids, torch_tensor, feature_names, labels = self._process_node_type(
+            node_type=node_type, 
+            columns=columns, 
+            filters=filters, 
+            encoders=encoders,
+            label_column=label_column,
+            read_kwargs=read_kwargs, 
+            drop_null=drop_null,
         )
 
         logger.info(f"ids: {ids.shape}")
@@ -134,9 +154,11 @@ class HeteroGraphBuilder:
         # logger.info(f"feature_names: {feature_names}")
 
         target_feature_ids = torch.tensor(ids, dtype=torch.int64)
-        all_feature_ids = torch.tensor(
-            self.hetero_data[node_type].node_id, dtype=torch.int64
-        )
+        
+        all_feature_ids = self.hetero_data[node_type].node_id.clone().detach()
+        # all_feature_ids = torch.tensor(
+        #     self.hetero_data[node_type].node_id, dtype=torch.int64
+        # )
         target_feature_mask = torch.isin(
             target_feature_ids, all_feature_ids, assume_unique=True
         )
@@ -146,7 +168,9 @@ class HeteroGraphBuilder:
         logger.info(f"target_feature_mask: {target_feature_mask.shape}")
 
         self.hetero_data[node_type].target_feature_mask = target_feature_mask
-
+        if labels is not None:
+            self.hetero_data[node_type].labels = labels
+        self.hetero_data[node_type].y_index = target_feature_ids
         self.hetero_data[node_type].y = torch_tensor[target_feature_mask]
         logger.info(f"y: {self.hetero_data[node_type].y.shape}")
 
@@ -163,6 +187,8 @@ class HeteroGraphBuilder:
         node_type: str,
         columns: Optional[List[str]] = None,
         filters: Optional[Dict] = None,
+        drop_null: bool = True,
+        label_column: Optional[str] = None,
         encoders: Optional[Dict] = None,
         read_kwargs: Optional[Dict] = None,
     ):
@@ -178,18 +204,28 @@ class HeteroGraphBuilder:
         if "id" not in all_columns:
             all_columns.append("id")
 
+        if label_column is not None:
+            all_columns.append(label_column)
+
         # Read nodes from database
         table = self.graph_db.read_nodes(
             node_type=node_type,
             columns=all_columns,
             filters=filters,
             **read_kwargs,
-        ).drop_null()
+        )
+        if drop_null:
+            table = table.drop_null()
 
         # Add node features
         identification_table = table.select(["id"])
         ids = identification_table["id"].combine_chunks().to_numpy()
 
+        if label_column is not None:
+            labels = table[label_column].combine_chunks().to_pylist()
+        else:
+            labels = None
+        
         torch_tensor = None
         feature_names = None
         if columns:
@@ -197,7 +233,7 @@ class HeteroGraphBuilder:
             torch_tensor = self._process_columns(feature_table, encoders)
             feature_names = columns
 
-        return ids, torch_tensor, feature_names
+        return ids, torch_tensor, feature_names, labels
 
     def add_edge_type(
         self,
@@ -206,6 +242,7 @@ class HeteroGraphBuilder:
         filters: Optional[Dict] = None,
         encoders: Optional[Dict] = None,
         read_kwargs: Optional[Dict] = None,
+        drop_null: bool = True,
     ):
         """
         Add edges between nodes with optional features and targets.
@@ -248,7 +285,9 @@ class HeteroGraphBuilder:
             columns=all_columns,
             filters=filters,
             **read_kwargs,
-        ).drop_null()
+        )
+        if drop_null:
+            table = table.drop_null()
 
         # identification_table = table.select(["source_id", source "target_id"])
 
@@ -279,7 +318,7 @@ class HeteroGraphBuilder:
                 target_ids = edge_table["target_id"].combine_chunks().to_numpy()
                 edge_name = edge_table["edge_type"].combine_chunks()[0].as_py()
 
-                edge_index = torch.tensor([source_ids, target_ids])
+                edge_index = torch.from_numpy(np.array([source_ids, target_ids]))
                 logger.info(f"edge_index: {edge_index.shape}")
 
                 self.hetero_data[
@@ -307,6 +346,7 @@ class HeteroGraphBuilder:
         edge_type: str,
         columns: Optional[List[str]] = None,
         filters: Optional[Dict] = None,
+        drop_null: bool = True,
         encoders: Optional[Dict] = None,
         read_kwargs: Optional[Dict] = None,
     ):
@@ -351,7 +391,9 @@ class HeteroGraphBuilder:
             columns=all_columns,
             filters=filters,
             **read_kwargs,
-        ).drop_null()
+        )
+        if drop_null:
+            table = table.drop_null()
 
         source_node_types = pc.unique(table["source_type"]).to_pylist()
         target_node_types = pc.unique(table["target_type"]).to_pylist()
@@ -391,7 +433,7 @@ class HeteroGraphBuilder:
                         f"Relation type {relation_type} has not been added to the graph"
                     )
 
-                target_edge_index = torch.tensor([source_ids, target_ids])
+                target_edge_index = torch.tensor(np.array([source_ids, target_ids]))
                 logger.info(f"target_edge_index: {target_edge_index.shape}")
 
                 all_feature_index = self.hetero_data[

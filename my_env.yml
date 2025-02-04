@@ -5,21 +5,19 @@ channels:
 - defaults
 - conda-forge
 dependencies:
-- python==3.9.*
-- pytorch==2.1.2
-- torchvision==0.16.2
-- torchaudio==2.1.2
-- pytorch-cuda=11.8
+- python==3.10.*
 - graph-tool
+
 - pip
 - pip:
+  - numpy==1.26.3
 
-  - pytest
-  - setuptools_scm
+  - torch==2.1.2
+  - torchvision==0.16.2
+  - torchaudio==2.1.2
+  - --index-url https://download.pytorch.org/whl/cu121
+  - parquetdb
   - python-dotenv
-  - sphinx
-  - sphinx_rtd_theme
-  - numpy
   - pandas
   - scipy
   - pyyaml
@@ -28,30 +26,17 @@ dependencies:
   - autopep8
   - jupyterlab
 
-  - nglview
-  - ipywidgets
-  - pylint
-
   - ase
   - pymatgen
   - mendeleev
   - matminer
   - coxeter
   - crystals
-
-  - neo4j
-  - parquetdb
-  - openai
-  - tiktoken
   - tqdm
   - p-tqdm
-  - pyg_lib ; platform_system == "Linux"
-  - torch_geometric
-  - torch_scatter 
-  - torch_sparse
-  - torch_cluster
-  - torch_spline_conv
-  - -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
-  - -e . --config-settings editable_mode=compat
-  - -e .[llm] --config-settings editable_mode=compat
-  - -e .[dev] --config-settings editable_mode=compat
+  - pyg_lib==0.3.1+pt21cu121
+  - torch_cluster==1.6.3+pt21cu121
+  - torch_scatter==2.1.2+pt21cu121
+  - torch_sparse==0.6.18+pt21cu121
+  - torch_spline_conv==1.2.2+pt21cu121
+  - -f https://data.pyg.org/whl/torch-2.1.2+cu121.html
