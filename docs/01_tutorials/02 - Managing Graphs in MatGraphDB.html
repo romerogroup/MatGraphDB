@@ -1,0 +1,1296 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="03 - Graph Generators in MatGraphDB" href="03%20-%20Graph%20Generators%20in%20MatgraphDB.html" /><link rel="prev" title="01 - Introduction to MatGraphDB" href="01%20-%20Getting%20Started.html" />
+
+    <!-- Generated with Sphinx 7.4.7 and Furo 2024.08.06 -->
+        <title>02 - Managing Graphs in MatGraphDB - MatGraphDB Docs: v0.25.1</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">MatGraphDB Docs: v0.25.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="../_static/MatGraphDB_logo.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">MatGraphDB Docs: v0.25.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Tutorials</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Tutorials</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="01%20-%20Getting%20Started.html">01 - Introduction to MatGraphDB</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">02 - Managing Graphs in MatGraphDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03%20-%20Graph%20Generators%20in%20MatgraphDB.html">03 - Graph Generators in MatGraphDB</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../02_internal/index.html">Internals of MatGraphDB</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Internals of MatGraphDB</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../02_internal/01%20-%20matgraphdb_internals.html">MatGraphDB Internals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../02_internal/02%20-%20parquet_file_format.html">Parquet File Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../02_internal/02%20-%20parquet_file_format.html#parquet-file-layout">Parquet File Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../02_internal/02%20-%20parquet_file_format.html#how-parquet-files-are-written">How Parquet Files are Written</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../examples/index.html">Examples for the MatGraphDB package</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Examples for the MatGraphDB package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../examples/notebooks/01%20-%20Creating%20MatGraphDB%20Instance.html">Building a MatGraphDB Example with MPNearHull Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../03_api/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../03_api/core/index.html">Core API</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Core API</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/node_store.html">NodeStore</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of NodeStore</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.nodes.NodeStore.html">matgraphdb.core.nodes.NodeStore</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/node_generator.html">NodeGenerator</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of NodeGenerator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.nodes.node_generator.html">matgraphdb.core.nodes.node_generator</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/edge_store.html">Edge Store</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of Edge Store</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.edges.EdgeStore.html">matgraphdb.core.edges.EdgeStore</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/edge_generator.html">EdgeGenerator</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of EdgeGenerator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.edges.edge_generator.html">matgraphdb.core.edges.edge_generator</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/generator_store.html">GeneratorStore</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of GeneratorStore</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.generator_store.GeneratorStore.html">matgraphdb.core.generator_store.GeneratorStore</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/core/graphdb.html">GraphDB</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of GraphDB</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/core/_autosummary/matgraphdb.core.graph_db.GraphDB.html">matgraphdb.core.graph_db.GraphDB</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../03_api/materials/index.html">Materials API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../03_api/materials/index.html#node-generators">Node Generators</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../03_api/materials/index.html#edge-generators">Edge Generators</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of Edge Generators</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/materials/core.html">MatGraphDB</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of MatGraphDB</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.core.MatGraphDB.html">matgraphdb.materials.core.MatGraphDB</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/materials/edge_generators.html">Edge Generators</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of Edge Generators</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.element_element_neighborsByGroupPeriod.html">matgraphdb.materials.edges.element_element_neighborsByGroupPeriod</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.element_element_bonds.html">matgraphdb.materials.edges.element_element_bonds</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.element_oxiState_canOccur.html">matgraphdb.materials.edges.element_oxiState_canOccur</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.material_chemenv_containsSite.html">matgraphdb.materials.edges.material_chemenv_containsSite</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.material_crystalSystem_has.html">matgraphdb.materials.edges.material_crystalSystem_has</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.material_element_has.html">matgraphdb.materials.edges.material_element_has</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.material_lattice_has.html">matgraphdb.materials.edges.material_lattice_has</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.material_spg_has.html">matgraphdb.materials.edges.material_spg_has</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.element_chemenv_canOccur.html">matgraphdb.materials.edges.element_chemenv_canOccur</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.edges.spg_crystalSystem_isApart.html">matgraphdb.materials.edges.spg_crystalSystem_isApart</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/materials/node_generators.html">Node Generators</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of Node Generators</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.element.html">matgraphdb.materials.nodes.generators.element</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.chemenv.html">matgraphdb.materials.nodes.generators.chemenv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.crystal_system.html">matgraphdb.materials.nodes.generators.crystal_system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.magnetic_state.html">matgraphdb.materials.nodes.generators.magnetic_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.oxidation_state.html">matgraphdb.materials.nodes.generators.oxidation_state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.space_group.html">matgraphdb.materials.nodes.generators.space_group</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.generators.wyckoff.html">matgraphdb.materials.nodes.generators.wyckoff</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../03_api/materials/material_store.html">MaterialStore</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of MaterialStore</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../03_api/materials/_autosummary/matgraphdb.materials.nodes.materials.MaterialStore.html">matgraphdb.materials.nodes.materials.MaterialStore</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributing</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/01_tutorials/02 - Managing Graphs in MatGraphDB.ipynb.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>matgraphdb
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>ipykernel
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Requirement already satisfied: matgraphdb in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (0.0.3)
+Requirement already satisfied: pytest in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (8.3.4)
+Requirement already satisfied: setuptools in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (75.1.0)
+Requirement already satisfied: setuptools_scm in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (8.1.0)
+Requirement already satisfied: python-dotenv in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (1.0.1)
+Requirement already satisfied: numpy in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (1.26.4)
+Requirement already satisfied: pandas in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (2.2.3)
+Requirement already satisfied: scipy in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (1.13.1)
+Requirement already satisfied: matplotlib in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (3.9.4)
+Requirement already satisfied: seaborn in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (0.13.2)
+Requirement already satisfied: pyyaml in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (6.0.2)
+Requirement already satisfied: jupyterlab in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (4.3.3)
+Requirement already satisfied: nglview in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (3.1.4)
+Requirement already satisfied: ipywidgets in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (8.1.5)
+Requirement already satisfied: pylint in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (3.3.2)
+Requirement already satisfied: autopep8 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (2.3.1)
+Requirement already satisfied: pymatgen in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (2024.8.9)
+Requirement already satisfied: parquetdb in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (0.23.4)
+Requirement already satisfied: variconfig in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matgraphdb) (0.0.3)
+Requirement already satisfied: pycodestyle&gt;=2.12.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from autopep8-&gt;matgraphdb) (2.12.1)
+Requirement already satisfied: tomli in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from autopep8-&gt;matgraphdb) (2.2.1)
+Requirement already satisfied: comm&gt;=0.1.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipywidgets-&gt;matgraphdb) (0.2.2)
+Requirement already satisfied: ipython&gt;=6.1.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipywidgets-&gt;matgraphdb) (8.18.1)
+Requirement already satisfied: traitlets&gt;=4.3.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipywidgets-&gt;matgraphdb) (5.14.3)
+Requirement already satisfied: widgetsnbextension~=4.0.12 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipywidgets-&gt;matgraphdb) (4.0.13)
+Requirement already satisfied: jupyterlab-widgets~=3.0.12 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipywidgets-&gt;matgraphdb) (3.0.13)
+Requirement already satisfied: async-lru&gt;=1.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (2.0.4)
+Requirement already satisfied: httpx&gt;=0.25.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (0.28.1)
+Requirement already satisfied: importlib-metadata&gt;=4.8.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (8.5.0)
+Requirement already satisfied: ipykernel&gt;=6.5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (6.29.5)
+Requirement already satisfied: jinja2&gt;=3.0.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (3.1.4)
+Requirement already satisfied: jupyter-core in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (5.7.2)
+Requirement already satisfied: jupyter-lsp&gt;=2.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (2.2.5)
+Requirement already satisfied: jupyter-server&lt;3,&gt;=2.4.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (2.14.2)
+Requirement already satisfied: jupyterlab-server&lt;3,&gt;=2.27.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (2.27.3)
+Requirement already satisfied: notebook-shim&gt;=0.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (0.2.4)
+Requirement already satisfied: packaging in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (24.2)
+Requirement already satisfied: tornado&gt;=6.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-&gt;matgraphdb) (6.4.2)
+Requirement already satisfied: contourpy&gt;=1.0.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (1.3.0)
+Requirement already satisfied: cycler&gt;=0.10 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (0.12.1)
+Requirement already satisfied: fonttools&gt;=4.22.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (4.55.3)
+Requirement already satisfied: kiwisolver&gt;=1.3.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (1.4.7)
+Requirement already satisfied: pillow&gt;=8 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (11.0.0)
+Requirement already satisfied: pyparsing&gt;=2.3.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (3.2.0)
+Requirement already satisfied: python-dateutil&gt;=2.7 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (2.9.0.post0)
+Requirement already satisfied: importlib-resources&gt;=3.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from matplotlib-&gt;matgraphdb) (6.4.5)
+Requirement already satisfied: notebook&gt;=7 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nglview-&gt;matgraphdb) (7.3.1)
+Requirement already satisfied: pytz&gt;=2020.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pandas-&gt;matgraphdb) (2024.2)
+Requirement already satisfied: tzdata&gt;=2022.7 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pandas-&gt;matgraphdb) (2024.2)
+Requirement already satisfied: pyarrow in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (18.1.0)
+Requirement already satisfied: beautifulsoup4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (4.12.3)
+Requirement already satisfied: requests in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (2.32.3)
+Requirement already satisfied: dill in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (0.3.9)
+Requirement already satisfied: pathos in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (0.3.3)
+Requirement already satisfied: dask in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (2024.8.0)
+Requirement already satisfied: distributed in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from parquetdb-&gt;matgraphdb) (2024.8.0)
+Requirement already satisfied: platformdirs&gt;=2.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (4.3.6)
+Requirement already satisfied: astroid&lt;=3.4.0-dev0,&gt;=3.3.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (3.3.6)
+Requirement already satisfied: isort!=5.13.0,&lt;6,&gt;=4.2.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (5.13.2)
+Requirement already satisfied: mccabe&lt;0.8,&gt;=0.6 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (0.7.0)
+Requirement already satisfied: tomlkit&gt;=0.10.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (0.13.2)
+Requirement already satisfied: colorama&gt;=0.4.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (0.4.6)
+Requirement already satisfied: typing-extensions&gt;=3.10.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pylint-&gt;matgraphdb) (4.12.2)
+Requirement already satisfied: joblib&gt;=1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (1.4.2)
+Requirement already satisfied: monty&gt;=2024.7.29 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (2024.10.21)
+Requirement already satisfied: networkx&gt;=2.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (3.2.1)
+Requirement already satisfied: palettable&gt;=3.3.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (3.3.3)
+Requirement already satisfied: plotly&gt;=4.5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (5.24.1)
+Requirement already satisfied: pybtex&gt;=0.24.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (0.24.0)
+Requirement already satisfied: ruamel.yaml&gt;=0.17.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (0.18.6)
+Requirement already satisfied: spglib&gt;=2.5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (2.5.0)
+Requirement already satisfied: sympy&gt;=1.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (1.13.2)
+Requirement already satisfied: tabulate&gt;=0.9 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (0.9.0)
+Requirement already satisfied: tqdm&gt;=4.60 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (4.67.1)
+Requirement already satisfied: uncertainties&gt;=3.1.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pymatgen-&gt;matgraphdb) (3.2.2)
+Requirement already satisfied: exceptiongroup&gt;=1.0.0rc8 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pytest-&gt;matgraphdb) (1.2.2)
+Requirement already satisfied: iniconfig in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pytest-&gt;matgraphdb) (2.0.0)
+Requirement already satisfied: pluggy&lt;2,&gt;=1.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pytest-&gt;matgraphdb) (1.5.0)
+Requirement already satisfied: toml in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from variconfig-&gt;matgraphdb) (0.10.2)
+Requirement already satisfied: anyio in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (4.7.0)
+Requirement already satisfied: certifi in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (2024.8.30)
+Requirement already satisfied: httpcore==1.* in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (1.0.7)
+Requirement already satisfied: idna in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (3.7)
+Requirement already satisfied: h11&lt;0.15,&gt;=0.13 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from httpcore==1.*-&gt;httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (0.14.0)
+Requirement already satisfied: zipp&gt;=3.20 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from importlib-metadata&gt;=4.8.3-&gt;jupyterlab-&gt;matgraphdb) (3.21.0)
+Requirement already satisfied: debugpy&gt;=1.6.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (1.8.11)
+Requirement already satisfied: jupyter-client&gt;=6.1.12 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (8.6.3)
+Requirement already satisfied: matplotlib-inline&gt;=0.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (0.1.7)
+Requirement already satisfied: nest-asyncio in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (1.6.0)
+Requirement already satisfied: psutil in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (6.1.0)
+Requirement already satisfied: pyzmq&gt;=24 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel&gt;=6.5.0-&gt;jupyterlab-&gt;matgraphdb) (26.2.0)
+Requirement already satisfied: decorator in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (5.1.1)
+Requirement already satisfied: jedi&gt;=0.16 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (0.19.2)
+Requirement already satisfied: prompt-toolkit&lt;3.1.0,&gt;=3.0.41 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (3.0.48)
+Requirement already satisfied: pygments&gt;=2.4.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (2.18.0)
+Requirement already satisfied: stack-data in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (0.6.3)
+Requirement already satisfied: MarkupSafe&gt;=2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jinja2&gt;=3.0.3-&gt;jupyterlab-&gt;matgraphdb) (2.1.3)
+Requirement already satisfied: pywin32&gt;=300 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-core-&gt;jupyterlab-&gt;matgraphdb) (308)
+Requirement already satisfied: argon2-cffi&gt;=21.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (23.1.0)
+Requirement already satisfied: jupyter-events&gt;=0.9.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.10.0)
+Requirement already satisfied: jupyter-server-terminals&gt;=0.4.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.5.3)
+Requirement already satisfied: nbconvert&gt;=6.4.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (7.16.4)
+Requirement already satisfied: nbformat&gt;=5.3.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (5.10.4)
+Requirement already satisfied: overrides&gt;=5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (7.7.0)
+Requirement already satisfied: prometheus-client&gt;=0.9 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.21.1)
+Requirement already satisfied: pywinpty&gt;=2.0.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (2.0.14)
+Requirement already satisfied: send2trash&gt;=1.8.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.8.3)
+Requirement already satisfied: terminado&gt;=0.8.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.18.1)
+Requirement already satisfied: websocket-client&gt;=1.7 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.8.0)
+Requirement already satisfied: babel&gt;=2.10 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (2.16.0)
+Requirement already satisfied: json5&gt;=0.9.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (0.10.0)
+Requirement already satisfied: jsonschema&gt;=4.18.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (4.23.0)
+Requirement already satisfied: tenacity&gt;=6.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from plotly&gt;=4.5.0-&gt;pymatgen-&gt;matgraphdb) (9.0.0)
+Requirement already satisfied: latexcodec&gt;=1.0.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pybtex&gt;=0.24.0-&gt;pymatgen-&gt;matgraphdb) (3.0.0)
+Requirement already satisfied: six in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pybtex&gt;=0.24.0-&gt;pymatgen-&gt;matgraphdb) (1.17.0)
+Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from requests-&gt;parquetdb-&gt;matgraphdb) (3.3.2)
+Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from requests-&gt;parquetdb-&gt;matgraphdb) (1.26.20)
+Requirement already satisfied: ruamel.yaml.clib&gt;=0.2.7 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ruamel.yaml&gt;=0.17.0-&gt;pymatgen-&gt;matgraphdb) (0.2.12)
+Requirement already satisfied: mpmath&lt;1.4,&gt;=1.1.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from sympy&gt;=1.2-&gt;pymatgen-&gt;matgraphdb) (1.3.0)
+Requirement already satisfied: soupsieve&gt;1.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from beautifulsoup4-&gt;parquetdb-&gt;matgraphdb) (2.6)
+Requirement already satisfied: click&gt;=8.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from dask-&gt;parquetdb-&gt;matgraphdb) (8.1.8)
+Requirement already satisfied: cloudpickle&gt;=1.5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from dask-&gt;parquetdb-&gt;matgraphdb) (3.1.0)
+Requirement already satisfied: fsspec&gt;=2021.09.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from dask-&gt;parquetdb-&gt;matgraphdb) (2024.12.0)
+Requirement already satisfied: partd&gt;=1.4.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from dask-&gt;parquetdb-&gt;matgraphdb) (1.4.2)
+Requirement already satisfied: toolz&gt;=0.10.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from dask-&gt;parquetdb-&gt;matgraphdb) (1.0.0)
+Requirement already satisfied: locket&gt;=1.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from distributed-&gt;parquetdb-&gt;matgraphdb) (1.0.0)
+Requirement already satisfied: msgpack&gt;=1.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from distributed-&gt;parquetdb-&gt;matgraphdb) (1.1.0)
+Requirement already satisfied: sortedcontainers&gt;=2.0.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from distributed-&gt;parquetdb-&gt;matgraphdb) (2.4.0)
+Requirement already satisfied: tblib&gt;=1.6.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from distributed-&gt;parquetdb-&gt;matgraphdb) (3.0.0)
+Requirement already satisfied: zict&gt;=3.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from distributed-&gt;parquetdb-&gt;matgraphdb) (3.0.0)
+Requirement already satisfied: ppft&gt;=1.7.6.9 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pathos-&gt;parquetdb-&gt;matgraphdb) (1.7.6.9)
+Requirement already satisfied: pox&gt;=0.3.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pathos-&gt;parquetdb-&gt;matgraphdb) (0.3.5)
+Requirement already satisfied: multiprocess&gt;=0.70.17 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from pathos-&gt;parquetdb-&gt;matgraphdb) (0.70.17)
+Requirement already satisfied: sniffio&gt;=1.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from anyio-&gt;httpx&gt;=0.25.0-&gt;jupyterlab-&gt;matgraphdb) (1.3.1)
+Requirement already satisfied: argon2-cffi-bindings in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from argon2-cffi&gt;=21.1-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (21.2.0)
+Requirement already satisfied: parso&lt;0.9.0,&gt;=0.8.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jedi&gt;=0.16-&gt;ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (0.8.4)
+Requirement already satisfied: attrs&gt;=22.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema&gt;=4.18.0-&gt;jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (24.2.0)
+Requirement already satisfied: jsonschema-specifications&gt;=2023.03.6 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema&gt;=4.18.0-&gt;jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (2024.10.1)
+Requirement already satisfied: referencing&gt;=0.28.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema&gt;=4.18.0-&gt;jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (0.35.1)
+Requirement already satisfied: rpds-py&gt;=0.7.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema&gt;=4.18.0-&gt;jupyterlab-server&lt;3,&gt;=2.27.1-&gt;jupyterlab-&gt;matgraphdb) (0.22.3)
+Requirement already satisfied: python-json-logger&gt;=2.0.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (3.2.0)
+Requirement already satisfied: rfc3339-validator in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.1.4)
+Requirement already satisfied: rfc3986-validator&gt;=0.1.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.1.1)
+Requirement already satisfied: bleach!=5.0.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (6.2.0)
+Requirement already satisfied: defusedxml in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.7.1)
+Requirement already satisfied: jupyterlab-pygments in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.3.0)
+Requirement already satisfied: mistune&lt;4,&gt;=2.0.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (3.0.2)
+Requirement already satisfied: nbclient&gt;=0.5.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.10.1)
+Requirement already satisfied: pandocfilters&gt;=1.4.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.5.1)
+Requirement already satisfied: tinycss2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.4.0)
+Requirement already satisfied: fastjsonschema&gt;=2.15 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from nbformat&gt;=5.3.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (2.21.1)
+Requirement already satisfied: wcwidth in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from prompt-toolkit&lt;3.1.0,&gt;=3.0.41-&gt;ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (0.2.13)
+Requirement already satisfied: executing&gt;=1.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (2.1.0)
+Requirement already satisfied: asttokens&gt;=2.1.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (3.0.0)
+Requirement already satisfied: pure-eval in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=6.1.0-&gt;ipywidgets-&gt;matgraphdb) (0.2.3)
+Requirement already satisfied: webencodings in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from bleach!=5.0.0-&gt;nbconvert&gt;=6.4.4-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (0.5.1)
+Requirement already satisfied: fqdn in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.5.1)
+Requirement already satisfied: isoduration in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (20.11.0)
+Requirement already satisfied: jsonpointer&gt;1.13 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (3.0.0)
+Requirement already satisfied: uri-template in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.3.0)
+Requirement already satisfied: webcolors&gt;=24.6.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (24.11.1)
+Requirement already satisfied: cffi&gt;=1.0.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from argon2-cffi-bindings-&gt;argon2-cffi&gt;=21.1-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.17.1)
+Requirement already satisfied: pycparser in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from cffi&gt;=1.0.1-&gt;argon2-cffi-bindings-&gt;argon2-cffi&gt;=21.1-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (2.22)
+Requirement already satisfied: arrow&gt;=0.15.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from isoduration-&gt;jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (1.3.0)
+Requirement already satisfied: types-python-dateutil&gt;=2.8.10 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from arrow&gt;=0.15.0-&gt;isoduration-&gt;jsonschema[format-nongpl]&gt;=4.18.0-&gt;jupyter-events&gt;=0.9.0-&gt;jupyter-server&lt;3,&gt;=2.4.0-&gt;jupyterlab-&gt;matgraphdb) (2.9.0.20241206)
+Requirement already satisfied: ipykernel in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (6.29.5)
+Requirement already satisfied: comm&gt;=0.1.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (0.2.2)
+Requirement already satisfied: debugpy&gt;=1.6.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (1.8.11)
+Requirement already satisfied: ipython&gt;=7.23.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (8.18.1)
+Requirement already satisfied: jupyter-client&gt;=6.1.12 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (8.6.3)
+Requirement already satisfied: jupyter-core!=5.0.*,&gt;=4.12 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (5.7.2)
+Requirement already satisfied: matplotlib-inline&gt;=0.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (0.1.7)
+Requirement already satisfied: nest-asyncio in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (1.6.0)
+Requirement already satisfied: packaging in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (24.2)
+Requirement already satisfied: psutil in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (6.1.0)
+Requirement already satisfied: pyzmq&gt;=24 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (26.2.0)
+Requirement already satisfied: tornado&gt;=6.1 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (6.4.2)
+Requirement already satisfied: traitlets&gt;=5.4.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipykernel) (5.14.3)
+Requirement already satisfied: decorator in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (5.1.1)
+Requirement already satisfied: jedi&gt;=0.16 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (0.19.2)
+Requirement already satisfied: prompt-toolkit&lt;3.1.0,&gt;=3.0.41 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (3.0.48)
+Requirement already satisfied: pygments&gt;=2.4.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (2.18.0)
+Requirement already satisfied: stack-data in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (0.6.3)
+Requirement already satisfied: typing-extensions in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (4.12.2)
+Requirement already satisfied: exceptiongroup in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (1.2.2)
+Requirement already satisfied: colorama in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from ipython&gt;=7.23.1-&gt;ipykernel) (0.4.6)
+Requirement already satisfied: importlib-metadata&gt;=4.8.3 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-client&gt;=6.1.12-&gt;ipykernel) (8.5.0)
+Requirement already satisfied: python-dateutil&gt;=2.8.2 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-client&gt;=6.1.12-&gt;ipykernel) (2.9.0.post0)
+Requirement already satisfied: platformdirs&gt;=2.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-core!=5.0.*,&gt;=4.12-&gt;ipykernel) (4.3.6)
+Requirement already satisfied: pywin32&gt;=300 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jupyter-core!=5.0.*,&gt;=4.12-&gt;ipykernel) (308)
+Requirement already satisfied: zipp&gt;=3.20 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from importlib-metadata&gt;=4.8.3-&gt;jupyter-client&gt;=6.1.12-&gt;ipykernel) (3.21.0)
+Requirement already satisfied: parso&lt;0.9.0,&gt;=0.8.4 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from jedi&gt;=0.16-&gt;ipython&gt;=7.23.1-&gt;ipykernel) (0.8.4)
+Requirement already satisfied: wcwidth in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from prompt-toolkit&lt;3.1.0,&gt;=3.0.41-&gt;ipython&gt;=7.23.1-&gt;ipykernel) (0.2.13)
+Requirement already satisfied: six&gt;=1.5 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from python-dateutil&gt;=2.8.2-&gt;jupyter-client&gt;=6.1.12-&gt;ipykernel) (1.17.0)
+Requirement already satisfied: executing&gt;=1.2.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=7.23.1-&gt;ipykernel) (2.1.0)
+Requirement already satisfied: asttokens&gt;=2.1.0 in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=7.23.1-&gt;ipykernel) (3.0.0)
+Requirement already satisfied: pure-eval in c:\users\lllang\miniconda3\envs\matgraphdb_dev\lib\site-packages (from stack-data-&gt;ipython&gt;=7.23.1-&gt;ipykernel) (0.2.3)
+</pre></div></div>
+</div>
+<section id="02---Managing-Graphs-in-MatGraphDB">
+<h1>02 - Managing Graphs in MatGraphDB<a class="headerlink" href="#02---Managing-Graphs-in-MatGraphDB" title="Link to this heading">¶</a></h1>
+<p>In this notebook, we’ll learn how to:</p>
+<ol class="arabic simple">
+<li><p>Add new nodes and node types.</p></li>
+<li><p>Add new edges and edge types.</p></li>
+<li><p>Create node generators that automatically produce nodes based on a predefined function.</p></li>
+<li><p>Create edge generators that automatically produce edges based on a predefined function.</p></li>
+</ol>
+<p>We’ll use the <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> class from <code class="docutils literal notranslate"><span class="pre">matgraphdb</span></code> to demonstrate these features. If you haven’t already installed <code class="docutils literal notranslate"><span class="pre">matgraphdb</span></code>, run the previous cell.</p>
+<p>Next, we can load the materials data into <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> on initialization. We do this by providing a <code class="docutils literal notranslate"><span class="pre">MaterialStore</span></code> instance to the <code class="docutils literal notranslate"><span class="pre">materials_store</span></code> argument.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="kn">from</span> <span class="nn">matgraphdb</span> <span class="kn">import</span> <span class="n">MatGraphDB</span>
+
+<span class="n">storage_path</span> <span class="o">=</span> <span class="s2">&quot;MatGraphDB&quot;</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">storage_path</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">storage_path</span><span class="p">)</span>
+
+<span class="n">mdb</span> <span class="o">=</span> <span class="n">MatGraphDB</span><span class="p">(</span><span class="n">storage_path</span><span class="o">=</span><span class="n">storage_path</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">mdb</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+GRAPH DATABASE SUMMARY
+============================================================
+Name: MatGraphDB
+Storage path: MatGraphDB
+└── Repository structure:
+    ├── nodes/                 (MatGraphDB\nodes)
+    ├── edges/                 (MatGraphDB\edges)
+    ├── edge_generators/       (MatGraphDB\edge_generators)
+    ├── node_generators/       (MatGraphDB\node_generators)
+    └── graph/                 (MatGraphDB\graph)
+
+############################################################
+NODE DETAILS
+############################################################
+Total node types: 1
+------------------------------------------------------------
+• Node type: materials
+  - Number of nodes: 0
+  - Number of features: 1
+  - db_path: MatGraphDB\nodes\materials
+------------------------------------------------------------
+
+############################################################
+EDGE DETAILS
+############################################################
+Total edge types: 0
+------------------------------------------------------------
+
+############################################################
+NODE GENERATOR DETAILS
+############################################################
+Total node generators: 0
+------------------------------------------------------------
+
+############################################################
+EDGE GENERATOR DETAILS
+############################################################
+Total edge generators: 0
+------------------------------------------------------------
+
+</pre></div></div>
+</div>
+<p>As you can see, the <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> instance has been initialized with a <code class="docutils literal notranslate"><span class="pre">MaterialStore</span></code> instance.</p>
+<p>Currently, there are 1000 ‘materials’ nodes in the <code class="docutils literal notranslate"><span class="pre">MaterialStore</span></code> instance, where the materials nodes have 136 columns.</p>
+<blockquote>
+<div><p>Note: For some of these materials, the column values may be null.</p>
+</div></blockquote>
+<section id="1.-New-Nodes">
+<h2>1. New Nodes<a class="headerlink" href="#1.-New-Nodes" title="Link to this heading">¶</a></h2>
+<p>By default, no custom node types (besides any internal ones MatGraphDB might create) exist in a fresh <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code>. You can add your own node types via <code class="docutils literal notranslate"><span class="pre">add_node_type(...)</span></code>. This creates an empty <code class="docutils literal notranslate"><span class="pre">NodeStore</span></code> for that type.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add a node type called &#39;user&#39; and &#39;item&#39;</span>
+<span class="n">custom_node_type</span> <span class="o">=</span> <span class="s2">&quot;custom_node_1&quot;</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">add_node_type</span><span class="p">(</span><span class="n">custom_node_type</span><span class="p">)</span>
+
+<span class="c1"># These nodes will be stored in MatGraphDB/nodes/custom_node_1/custom_node_1.parquet</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Current node_stores:&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">mdb</span><span class="o">.</span><span class="n">node_stores</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mdb</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Current node_stores: [&#39;materials&#39;, &#39;custom_node_1&#39;]
+============================================================
+GRAPH DATABASE SUMMARY
+============================================================
+Name: MatGraphDB
+Storage path: MatGraphDB
+└── Repository structure:
+    ├── nodes/                 (MatGraphDB\nodes)
+    ├── edges/                 (MatGraphDB\edges)
+    ├── edge_generators/       (MatGraphDB\edge_generators)
+    ├── node_generators/       (MatGraphDB\node_generators)
+    └── graph/                 (MatGraphDB\graph)
+
+############################################################
+NODE DETAILS
+############################################################
+Total node types: 2
+------------------------------------------------------------
+• Node type: materials
+  - Number of nodes: 0
+  - Number of features: 1
+  - db_path: MatGraphDB\nodes\materials
+------------------------------------------------------------
+• Node type: custom_node_1
+  - Number of nodes: 0
+  - Number of features: 1
+  - db_path: MatGraphDB\nodes\custom_node_1
+------------------------------------------------------------
+
+############################################################
+EDGE DETAILS
+############################################################
+Total edge types: 0
+------------------------------------------------------------
+
+############################################################
+NODE GENERATOR DETAILS
+############################################################
+Total node generators: 0
+------------------------------------------------------------
+
+############################################################
+EDGE GENERATOR DETAILS
+############################################################
+Total edge generators: 0
+------------------------------------------------------------
+
+</pre></div></div>
+</div>
+<section id="Adding-Nodes">
+<h3>Adding Nodes<a class="headerlink" href="#Adding-Nodes" title="Link to this heading">¶</a></h3>
+<p>Once a node type is registered, you can add nodes to it using the <code class="docutils literal notranslate"><span class="pre">add_nodes(node_type,</span> <span class="pre">data)</span></code> method. The <code class="docutils literal notranslate"><span class="pre">data</span></code> argument is a list of dictionaries, where each dictionary represents a node.</p>
+<blockquote>
+<div><p>Note: you can also automatically register a new node type by calling the <code class="docutils literal notranslate"><span class="pre">add_nodes</span></code> as well</p>
+</div></blockquote>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add some user nodes</span>
+<span class="n">users</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jimmy&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;John&quot;</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">computers</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;specs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="s2">&quot;AMD Ryzen 9&quot;</span><span class="p">,</span> <span class="s2">&quot;ram&quot;</span><span class="p">:</span> <span class="s2">&quot;32GB&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="s2">&quot;1TB&quot;</span><span class="p">},</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;specs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="s2">&quot;Intel i7&quot;</span><span class="p">,</span> <span class="s2">&quot;ram&quot;</span><span class="p">:</span> <span class="s2">&quot;16GB&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="s2">&quot;512GB&quot;</span><span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">users_node_type</span> <span class="o">=</span> <span class="s2">&quot;users&quot;</span>
+<span class="n">computers_node_type</span> <span class="o">=</span> <span class="s2">&quot;computers&quot;</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">add_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">users_node_type</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">users</span><span class="p">)</span>
+<span class="n">mdb</span><span class="o">.</span><span class="n">add_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">computers_node_type</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">computers</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Managing-the-node-store">
+<h3>Managing the node store<a class="headerlink" href="#Managing-the-node-store" title="Link to this heading">¶</a></h3>
+<p>Once the data is registered, you can access it through the corresponding node store. You can get the node store either through the <code class="docutils literal notranslate"><span class="pre">node_stores</span></code> attribute or the <code class="docutils literal notranslate"><span class="pre">get_node_store(node_type)</span></code> method.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">computers_node_store</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">get_node_store</span><span class="p">(</span><span class="n">computers_node_type</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">computers_node_store</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">computers_node_store</span><span class="p">)</span>
+
+
+<span class="n">users_node_store</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">node_stores</span><span class="p">[</span><span class="n">users_node_type</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">users_node_store</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">users_node_store</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;class &#39;matgraphdb.core.nodes.NodeStore&#39;&gt;
+============================================================
+NODE STORE SUMMARY
+============================================================
+Node type: computers
+• Number of nodes: 2
+• Number of features: 5
+Storage path: MatGraphDB\nodes\computers
+
+
+############################################################
+METADATA
+############################################################
+• class: NodeStore
+• class_module: matgraphdb.core.nodes
+• node_type: computers
+• name_column: id
+
+############################################################
+NODE DETAILS
+############################################################
+• Columns:
+    - id
+    - name
+    - specs.cpu
+    - specs.ram
+    - specs.storage
+
+&lt;class &#39;matgraphdb.core.nodes.NodeStore&#39;&gt;
+============================================================
+NODE STORE SUMMARY
+============================================================
+Node type: users
+• Number of nodes: 2
+• Number of features: 2
+Storage path: MatGraphDB\nodes\users
+
+
+############################################################
+METADATA
+############################################################
+• class: NodeStore
+• class_module: matgraphdb.core.nodes
+• node_type: users
+• name_column: id
+
+############################################################
+NODE DETAILS
+############################################################
+• Columns:
+    - id
+    - name
+
+</pre></div></div>
+</div>
+</section>
+<section id="Reading-from-the-node-store">
+<h3>Reading from the node store<a class="headerlink" href="#Reading-from-the-node-store" title="Link to this heading">¶</a></h3>
+<p>There are multiple ways to read from the node store. You can use the <code class="docutils literal notranslate"><span class="pre">read_nodes</span></code> method from the <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> instance, you can use the <code class="docutils literal notranslate"><span class="pre">read_nodes</span></code> method from the <code class="docutils literal notranslate"><span class="pre">NodeStore</span></code> instance, or you can use the <code class="docutils literal notranslate"><span class="pre">read</span></code> method from the <code class="docutils literal notranslate"><span class="pre">NodeStore</span></code> instance. These reads methods behave very similarly as the read features introduced in the previous notebook, such as you can read columns using filters or columns</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyarrow.compute</span> <span class="k">as</span> <span class="nn">pc</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">read_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">users_node_type</span><span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Notice if you rebuild the nestes struct, the way you access the nested data is different</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">computers_node_store</span><span class="o">.</span><span class="n">read_nodes</span><span class="p">(</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;specs&quot;</span><span class="p">],</span>
+    <span class="n">filters</span><span class="o">=</span><span class="p">[</span><span class="n">pc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;specs&quot;</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;AMD Ryzen 9&quot;</span><span class="p">],</span>
+    <span class="n">rebuild_nested_struct</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">computers_node_store</span><span class="o">.</span><span class="n">read</span><span class="p">(</span>
+    <span class="n">filters</span><span class="o">=</span><span class="p">[</span><span class="n">pc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;specs.cpu&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Intel i7&quot;</span><span class="p">]</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+   id   name
+0   0  Jimmy
+1   1   John
+        name  id                                              specs
+0  Computer1   0  {&#39;cpu&#39;: &#39;AMD Ryzen 9&#39;, &#39;ram&#39;: &#39;32GB&#39;, &#39;storage...
+   id       name specs.cpu specs.ram specs.storage
+0   1  Computer2  Intel i7      16GB         512GB
+</pre></div></div>
+</div>
+</section>
+<section id="Updating-the-node-store">
+<h3>Updating the node store<a class="headerlink" href="#Updating-the-node-store" title="Link to this heading">¶</a></h3>
+<p>You can update the node store by using the <code class="docutils literal notranslate"><span class="pre">update_nodes</span></code> method from the <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> instance, or the <code class="docutils literal notranslate"><span class="pre">update_nodes</span></code> method from the <code class="docutils literal notranslate"><span class="pre">NodeStore</span></code> instance.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">computer_update_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer1&quot;</span><span class="p">,</span> <span class="s2">&quot;specs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ram&quot;</span><span class="p">:</span> <span class="s2">&quot;128GB&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="s2">&quot;1TB&quot;</span><span class="p">}},</span>
+    <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer2&quot;</span><span class="p">,</span> <span class="s2">&quot;specs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ram&quot;</span><span class="p">:</span> <span class="s2">&quot;256GB&quot;</span><span class="p">,</span> <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="s2">&quot;2TB&quot;</span><span class="p">}},</span>
+<span class="p">]</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">update_nodes</span><span class="p">(</span>
+    <span class="n">node_type</span><span class="o">=</span><span class="n">computers_node_type</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">computer_update_data</span><span class="p">,</span> <span class="n">update_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">read_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="o">=</span><span class="n">computers_node_type</span><span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+   id       name    specs.cpu specs.ram specs.storage
+0   0  Computer1  AMD Ryzen 9     128GB           1TB
+1   1  Computer2     Intel i7     256GB           2TB
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="2.-Adding-New-Edges">
+<h2>2. Adding New Edges<a class="headerlink" href="#2.-Adding-New-Edges" title="Link to this heading">¶</a></h2>
+<p>Edges are managed in the same way as nodes, but they are stored in the <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> instance. EdgeStores differ from NodeStores as they have to store the source and target node ids, as well as the edge type. These must be specified to add an edge.</p>
+<p>You can create a new edge type using <code class="docutils literal notranslate"><span class="pre">add_edge_type(edge_type)</span></code>. Then, you can add edges by calling <code class="docutils literal notranslate"><span class="pre">add_edges(edge_type,</span> <span class="pre">data)</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">source_id</span></code> and <code class="docutils literal notranslate"><span class="pre">source_type</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_id</span></code> and <code class="docutils literal notranslate"><span class="pre">target_type</span></code></p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">ids</span></code> and <code class="docutils literal notranslate"><span class="pre">types</span></code> must match the node types and ids nodes in <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add edge type</span>
+<span class="n">edge_type_test</span> <span class="o">=</span> <span class="s2">&quot;user_access&quot;</span>
+
+<span class="c1"># We&#39;ll connect the &#39;user&#39; nodes to the &#39;item&#39; nodes</span>
+<span class="n">edge_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># This is the id of the user node</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">users_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># This is the id of the computer node</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jimmy has access to Computer1&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># This is the id of the user node</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">users_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># This is the id of the computer node</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jimmy has access to Computer2&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">users_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;John has access to Computer2&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer1 has access to Computer2&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer2 has access to Computer1&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;edge_type&quot;</span><span class="p">:</span> <span class="n">edge_type_test</span><span class="p">,</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Computer1 has access to Computer1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;extra_detail&quot;</span><span class="p">:</span> <span class="s2">&quot;This is the main computer&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">add_edges</span><span class="p">(</span><span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">edge_data</span><span class="p">)</span>
+
+<span class="n">edges</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">read_edges</span><span class="p">(</span><span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of edges of type &#39;test_edge&#39;:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">))</span>
+<span class="n">df_edges</span> <span class="o">=</span> <span class="n">edges</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">df_edges</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Number of edges of type &#39;test_edge&#39;: 6
+     edge_type               extra_detail  id  \
+0  user_access                       None   0
+1  user_access                       None   1
+2  user_access                       None   2
+3  user_access                       None   3
+4  user_access                       None   4
+5  user_access  This is the main computer   5
+
+                                name  source_id source_type  target_id  \
+0      Jimmy has access to Computer1          0       users          0
+1      Jimmy has access to Computer2          0       users          1
+2       John has access to Computer2          1       users          1
+3  Computer1 has access to Computer2          0   computers          1
+4  Computer2 has access to Computer1          1   computers          0
+5  Computer1 has access to Computer1          0   computers          0
+
+  target_type
+0   computers
+1   computers
+2   computers
+3   computers
+4   computers
+5   computers
+</pre></div></div>
+</div>
+<p>In this example we have defined the computer access edges between users and computers. Note that we can specify self-edges and directionality of the edges by choosing which node is the source and which is the target.</p>
+<p>Also we are free to add additional columns/features to the edges, such as <code class="docutils literal notranslate"><span class="pre">extra_detail</span></code> in this case.</p>
+<section id="Updating-the-edges">
+<h3>Updating the edges<a class="headerlink" href="#Updating-the-edges" title="Link to this heading">¶</a></h3>
+<p>You can update the edges by using the <code class="docutils literal notranslate"><span class="pre">update_edges</span></code> method from the <code class="docutils literal notranslate"><span class="pre">MatGraphDB</span></code> instance, or the <code class="docutils literal notranslate"><span class="pre">update_edges</span></code> method from the <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> instance.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">update_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">update_edges</span><span class="p">(</span><span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">update_data</span><span class="p">)</span>
+
+<span class="n">edges</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">read_edges</span><span class="p">(</span>
+    <span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;source_id&quot;</span><span class="p">,</span> <span class="s2">&quot;target_id&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">]</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of edges of type &#39;test_edge&#39;:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Number of edges of type &#39;test_edge&#39;: 6
+   id  source_id  target_id  weight                               name
+0   0          0          0     1.0      Jimmy has access to Computer1
+1   1          0          1     1.0      Jimmy has access to Computer2
+2   2          1          1     NaN       John has access to Computer2
+3   3          0          1     NaN  Computer1 has access to Computer2
+4   4          1          0     NaN  Computer2 has access to Computer1
+5   5          0          0     NaN  Computer1 has access to Computer1
+</pre></div></div>
+</div>
+<p>We can also update by specifying the source and target ids and types. To do this we need to specify <code class="docutils literal notranslate"><span class="pre">source_id</span></code>, <code class="docutils literal notranslate"><span class="pre">target_id</span></code>, <code class="docutils literal notranslate"><span class="pre">source_type</span></code>, and <code class="docutils literal notranslate"><span class="pre">target_type</span></code> in the <code class="docutils literal notranslate"><span class="pre">update_keys</span></code> argument.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">update_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;source_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;source_type&quot;</span><span class="p">:</span> <span class="n">users_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;target_id&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;target_type&quot;</span><span class="p">:</span> <span class="n">computers_node_type</span><span class="p">,</span>
+        <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">mdb</span><span class="o">.</span><span class="n">update_edges</span><span class="p">(</span>
+    <span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">update_data</span><span class="p">,</span>
+    <span class="n">update_keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;source_id&quot;</span><span class="p">,</span> <span class="s2">&quot;target_id&quot;</span><span class="p">,</span> <span class="s2">&quot;source_type&quot;</span><span class="p">,</span> <span class="s2">&quot;target_type&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+
+<span class="n">edges</span> <span class="o">=</span> <span class="n">mdb</span><span class="o">.</span><span class="n">read_edges</span><span class="p">(</span>
+    <span class="n">edge_type</span><span class="o">=</span><span class="n">edge_type_test</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;source_id&quot;</span><span class="p">,</span> <span class="s2">&quot;target_id&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">]</span>
+<span class="p">)</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of edges of type &#39;test_edge&#39;:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">edges</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Number of edges of type &#39;test_edge&#39;: 6
+   id  source_id  target_id  weight                               name
+0   0          0          0     0.5      Jimmy has access to Computer1
+1   1          0          1     1.0      Jimmy has access to Computer2
+2   2          1          1     NaN       John has access to Computer2
+3   3          0          1     NaN  Computer1 has access to Computer2
+4   4          1          0     NaN  Computer2 has access to Computer1
+5   5          0          0     NaN  Computer1 has access to Computer1
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">mdb</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+============================================================
+GRAPH DATABASE SUMMARY
+============================================================
+Name: MatGraphDB
+Storage path: MatGraphDB
+└── Repository structure:
+    ├── nodes/                 (MatGraphDB\nodes)
+    ├── edges/                 (MatGraphDB\edges)
+    ├── edge_generators/       (MatGraphDB\edge_generators)
+    ├── node_generators/       (MatGraphDB\node_generators)
+    └── graph/                 (MatGraphDB\graph)
+
+############################################################
+NODE DETAILS
+############################################################
+Total node types: 4
+------------------------------------------------------------
+• Node type: materials
+  - Number of nodes: 0
+  - Number of features: 1
+  - Columns:
+       - id
+  - db_path: MatGraphDB\nodes\materials
+------------------------------------------------------------
+• Node type: custom_node_1
+  - Number of nodes: 0
+  - Number of features: 1
+  - Columns:
+       - id
+  - db_path: MatGraphDB\nodes\custom_node_1
+------------------------------------------------------------
+• Node type: users
+  - Number of nodes: 2
+  - Number of features: 2
+  - Columns:
+       - id
+       - name
+  - db_path: MatGraphDB\nodes\users
+------------------------------------------------------------
+• Node type: computers
+  - Number of nodes: 2
+  - Number of features: 5
+  - Columns:
+       - id
+       - name
+       - specs.cpu
+       - specs.ram
+       - specs.storage
+  - db_path: MatGraphDB\nodes\computers
+------------------------------------------------------------
+
+############################################################
+EDGE DETAILS
+############################################################
+Total edge types: 1
+------------------------------------------------------------
+• Edge type: user_access
+  - Number of edges: 6
+  - Number of features: 9
+  - Columns:
+       - edge_type
+       - extra_detail
+       - id
+       - name
+       - source_id
+       - source_type
+       - target_id
+       - target_type
+       - weight
+  - db_path: MatGraphDB\edges\user_access
+------------------------------------------------------------
+
+############################################################
+NODE GENERATOR DETAILS
+############################################################
+Total node generators: 0
+------------------------------------------------------------
+
+############################################################
+EDGE GENERATOR DETAILS
+############################################################
+Total edge generators: 0
+------------------------------------------------------------
+
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Conclusion">
+<h2>Conclusion<a class="headerlink" href="#Conclusion" title="Link to this heading">¶</a></h2>
+<p>In this notebook, we explored the process of managing graphs using MatGraphDB. Specifically, we:</p>
+<ul class="simple">
+<li><p>Added new node types and registered nodes within those types.</p></li>
+<li><p>Learned how to create and manage edge types, including adding and updating edges.</p></li>
+<li><p>Explored the functionality of reading and updating data from both node and edge stores.</p></li>
+</ul>
+<p>These capabilities form the foundation for representing and manipulating complex graph-based data efficiently.</p>
+<section id="What's-Next?">
+<h3>What’s Next?<a class="headerlink" href="#What's-Next?" title="Link to this heading">¶</a></h3>
+<p>In the next notebook, we will go into adding node and edge generators. Generators allow the creation of nodes and edges dynamically based on predefined functions. This allows MatGraphDB to propagate updates to dependent nodes and edges if there are any changes to the parent nodes or edges.</p>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="03%20-%20Graph%20Generators%20in%20MatgraphDB.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">03 - Graph Generators in MatGraphDB</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="01%20-%20Getting%20Started.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">01 - Introduction to MatGraphDB</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Logan Lang
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">02 - Managing Graphs in MatGraphDB</a><ul>
+<li><a class="reference internal" href="#1.-New-Nodes">1. New Nodes</a><ul>
+<li><a class="reference internal" href="#Adding-Nodes">Adding Nodes</a></li>
+<li><a class="reference internal" href="#Managing-the-node-store">Managing the node store</a></li>
+<li><a class="reference internal" href="#Reading-from-the-node-store">Reading from the node store</a></li>
+<li><a class="reference internal" href="#Updating-the-node-store">Updating the node store</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#2.-Adding-New-Edges">2. Adding New Edges</a><ul>
+<li><a class="reference internal" href="#Updating-the-edges">Updating the edges</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Conclusion">Conclusion</a><ul>
+<li><a class="reference internal" href="#What's-Next?">What’s Next?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=7ca58008"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    </body>
+</html>
