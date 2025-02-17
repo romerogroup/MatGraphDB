@@ -88,7 +88,7 @@ class NodeStore(ParquetDB):
         logger.debug(f"Initialized NodeStore at {storage_path}")
 
     def __repr__(self):
-        return self.summary(show_column_names=True)
+        return self.summary(show_column_names=False)
 
     @property
     def storage_path(self):
@@ -194,8 +194,8 @@ class NodeStore(ParquetDB):
             If True, the ragged arrays will be converted to fixed shape arrays.
         normalize_config : NormalizeConfig, optional
             Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-        Example
-        -------
+        Examples
+        --------
         >>> db.create_nodes(data=my_data, schema=my_schema, metadata={'source': 'api'}, normalize_dataset=True)
         """
         create_kwargs = dict(
@@ -262,8 +262,8 @@ class NodeStore(ParquetDB):
         pa.Table, generator, or dataset
             The data read from the database. The output can be in table format or as a batch generator.
 
-        Example
-        -------
+        Examples
+        --------
         >>> data = db.read_nodes(ids=[1, 2, 3], columns=['name', 'age'], filters=[pc.field('age') > 18])
         """
         id_msg = f"for IDs {ids[:5]}..." if ids else "for all nodes"
@@ -326,8 +326,8 @@ class NodeStore(ParquetDB):
         normalize_config : NormalizeConfig, optional
             Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
 
-        Example
-        -------
+        Examples
+        --------
         >>> db.update_nodes(data=[{'id': 1, 'name': 'John', 'age': 30}, {'id': 2, 'name': 'Jane', 'age': 25}])
         """
 
@@ -373,8 +373,8 @@ class NodeStore(ParquetDB):
         -------
         None
 
-        Example
-        -------
+        Examples
+        --------
         >>> db.delete(ids=[1, 2, 3])
         """
         if ids:

@@ -104,8 +104,9 @@ def element_element_bonds(element_store, material_store):
             columns=[
                 "id",
                 "core.material_id",
-                "core.elements",
+                "core.species",
                 "chemenv.coordination_environments_multi_weight",
+                "bonding.geometric_consistent.bond_connections",
             ]
         )
 
@@ -138,7 +139,7 @@ def element_element_bonds(element_store, material_store):
             if bond_connections is None:
                 continue
 
-            elements = row["core.elements"]
+            elements = row["core.species"]
 
             for i, site_connections in enumerate(bond_connections):
                 site_element_name = elements[i]
@@ -655,56 +656,56 @@ def element_chemenv_canOccur(element_store, chemenv_store, material_store):
 def spg_crystalSystem_isApart(spg_store, crystal_system_store):
     try:
         connection_name = "isApart"
-        
+
     except Exception as e:
         logger.exception(f"Error creating spg-crystalSystem-isApart relationships: {e}")
         raise e
-    
-    spg_table = spg_store.read_nodes(columns=["id", "spg"])
-    crystal_system_table = crystal_system_store.read_nodes(columns=["id", "crystal_system"])
-    
-    
-    spg_df = spg_table.to_pandas(split_blocks=True, self_destruct=True)
-    crystal_system_df = crystal_system_table.to_pandas(split_blocks=True, self_destruct=True)
 
-    spg_target_id_map = {
-        row["spg"]: row["id"] for _, row in spg_df.iterrows()
-    }
+    spg_table = spg_store.read_nodes(columns=["id", "spg"])
+    crystal_system_table = crystal_system_store.read_nodes(
+        columns=["id", "crystal_system"]
+    )
+
+    spg_df = spg_table.to_pandas(split_blocks=True, self_destruct=True)
+    crystal_system_df = crystal_system_table.to_pandas(
+        split_blocks=True, self_destruct=True
+    )
+
+    spg_target_id_map = {row["spg"]: row["id"] for _, row in spg_df.iterrows()}
     crystal_system_target_id_map = {
         row["crystal_system"]: row["id"] for _, row in crystal_system_df.iterrows()
     }
-    
-    
+
     crys_spg_map = {
-        'triclinic': np.arange(1,3),
-        'monoclinic': np.arange(3,16),
-        'orthorhombic': np.arange(16,75),
-        'tetragonal': np.arange(75,143),
-        'trigonal': np.arange(143,168),
-        'hexagonal': np.arange(168,195),
-        'cubic': np.arange(195,230),
+        "Triclinic": np.arange(1, 3),
+        "Monoclinic": np.arange(3, 16),
+        "Orthorhombic": np.arange(16, 75),
+        "Tetragonal": np.arange(75, 143),
+        "Trigonal": np.arange(143, 168),
+        "Hexagonal": np.arange(168, 195),
+        "Cubic": np.arange(195, 231),
     }
     table_dict = {
-            "source_id": [],
-            "source_type": [],
-            "target_id": [],
-            "target_type": [],
-            "edge_type": [],
-            "name": [],
-        }
+        "source_id": [],
+        "source_type": [],
+        "target_id": [],
+        "target_type": [],
+        "edge_type": [],
+        "name": [],
+    }
     try:
         for crystal_system, spg_range in crys_spg_map.items():
             for spg in spg_range:
                 source_id = spg_target_id_map[spg]
                 target_id = crystal_system_target_id_map[crystal_system]
-                
+
                 table_dict["source_id"].append(source_id)
                 table_dict["source_type"].append(spg_store.node_type)
                 table_dict["target_id"].append(target_id)
                 table_dict["target_type"].append(crystal_system_store.node_type)
                 table_dict["edge_type"].append(connection_name)
                 table_dict["name"].append(f"{crystal_system}_{connection_name}_{spg}")
-                
+
         edge_table = ParquetDB.construct_table(table_dict)
 
         logger.debug(
@@ -716,5 +717,3 @@ def spg_crystalSystem_isApart(spg_store, crystal_system_store):
         raise e
 
     return edge_table
-            
-            

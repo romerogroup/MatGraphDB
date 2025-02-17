@@ -79,20 +79,20 @@ class MPNearHull(MatGraphDB):
     def initialize_nodes(self):
 
         node_generators = [
-            {"generator_func": elements},
-            {"generator_func": chemenvs},
-            {"generator_func": crystal_systems},
-            {"generator_func": magnetic_states},
-            {"generator_func": oxidation_states},
-            {"generator_func": space_groups},
-            {"generator_func": wyckoffs},
+            {"generator_func": element},
+            {"generator_func": chemenv},
+            {"generator_func": crystal_system},
+            {"generator_func": magnetic_state},
+            {"generator_func": oxidation_state},
+            {"generator_func": space_group},
+            {"generator_func": wyckoff},
             {
-                "generator_func": material_sites,
-                "generator_args": {"material_store": self.node_stores["materials"]},
+                "generator_func": material_site,
+                "generator_args": {"material_store": self.node_stores["material"]},
             },
             {
-                "generator_func": material_lattices,
-                "generator_args": {"material_store": self.node_stores["materials"]},
+                "generator_func": material_lattice,
+                "generator_args": {"material_store": self.node_stores["material"]},
             },
         ]
 
@@ -109,56 +109,56 @@ class MPNearHull(MatGraphDB):
         edge_generators = [
             {
                 "generator_func": element_element_neighborsByGroupPeriod,
-                "generator_args": {"element_store": self.node_stores["elements"]},
+                "generator_args": {"element_store": self.node_stores["element"]},
             },
             {
                 "generator_func": element_oxiState_canOccur,
                 "generator_args": {
-                    "element_store": self.node_stores["elements"],
-                    "oxiState_store": self.node_stores["oxidation_states"],
+                    "element_store": self.node_stores["element"],
+                    "oxiState_store": self.node_stores["oxidation_state"],
                 },
             },
             {
                 "generator_func": material_chemenv_containsSite,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "chemenv_store": self.node_stores["chemenvs"],
+                    "material_store": self.node_stores["material"],
+                    "chemenv_store": self.node_stores["chemenv"],
                 },
             },
             {
                 "generator_func": material_crystalSystem_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "crystal_system_store": self.node_stores["crystal_systems"],
+                    "material_store": self.node_stores["material"],
+                    "crystal_system_store": self.node_stores["crystal_system"],
                 },
             },
             {
                 "generator_func": material_element_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "element_store": self.node_stores["elements"],
+                    "material_store": self.node_stores["material"],
+                    "element_store": self.node_stores["element"],
                 },
             },
             {
                 "generator_func": material_lattice_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "lattice_store": self.node_stores["material_lattices"],
+                    "material_store": self.node_stores["material"],
+                    "lattice_store": self.node_stores["material_lattice"],
                 },
             },
             {
                 "generator_func": material_spg_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "spg_store": self.node_stores["space_groups"],
+                    "material_store": self.node_stores["material"],
+                    "spg_store": self.node_stores["space_group"],
                 },
             },
             {
                 "generator_func": element_chemenv_canOccur,
                 "generator_args": {
-                    "element_store": self.node_stores["elements"],
-                    "chemenv_store": self.node_stores["chemenvs"],
-                    "material_store": self.node_stores["materials"],
+                    "element_store": self.node_stores["element"],
+                    "chemenv_store": self.node_stores["chemenv"],
+                    "material_store": self.node_stores["material"],
                 },
             },
         ]

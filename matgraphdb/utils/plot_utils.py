@@ -7,10 +7,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import seaborn as sns
+from parquetdb.utils.matplotlib_utils import DEFAULT_COLOR_MAP, DEFAULT_COLORS
 
 from matgraphdb.utils.file_utils import load_json
 
 logger = logging.getLogger(__name__)
+
 
 def plot_graph(session):
     """
@@ -32,27 +34,39 @@ def plot_graph(session):
 
     logger.info("Fetching data from session.")
     # Fetch data
-    data = session.run("""
+    data = session.run(
+        """
     MATCH (a)-[r:KNOWS]->(b)
     RETURN a.name, b.name, r.weight
-    """).data()
+    """
+    ).data()
 
     logger.info("Creating NetworkX graph.")
     # Create a NetworkX graph
     G = nx.Graph()
     for row in data:
-        G.add_edge(row['a.name'], row['b.name'], weight=row['r.weight'])
+        G.add_edge(row["a.name"], row["b.name"], weight=row["r.weight"])
 
     logger.info("Drawing graph.")
     # Draw graph
-    edge_colors = [d['weight'] for _, _, d in G.edges(data=True)]
+    edge_colors = [d["weight"] for _, _, d in G.edges(data=True)]
     nx.draw(G, with_labels=True, edge_color=edge_colors, edge_cmap=plt.cm.Blues)
     plt.show()
 
 
-def plot_node_and_connections(session, center_name, center_class, edge_name, edge_type, 
-                              use_weights_for_thickness=True, filename=None, 
-                              figsize=(12, 12), node_size=800, node_spacing=3, font_size=12):
+def plot_node_and_connections(
+    session,
+    center_name,
+    center_class,
+    edge_name,
+    edge_type,
+    use_weights_for_thickness=True,
+    filename=None,
+    figsize=(12, 12),
+    node_size=800,
+    node_spacing=3,
+    font_size=12,
+):
     """
     Plot a graph with nodes and connections based on the provided parameters.
 
@@ -91,7 +105,9 @@ def plot_node_and_connections(session, center_name, center_class, edge_name, edg
     """
 
     logger.info("Building Cypher query.")
-    execute_statement = 'MATCH (center:' + f'{center_class} ' + "{name: " + f"'{center_name}'" + "})"
+    execute_statement = (
+        "MATCH (center:" + f"{center_class} " + "{name: " + f"'{center_name}'" + "})"
+    )
     execute_statement += f"-[r:{edge_name} {{type:'{edge_type}'}}]-(surrounding)\n"
     execute_statement += "WHERE NOT center = surrounding\n"
     execute_statement += "RETURN center.name, surrounding.name, r.weight"
@@ -102,26 +118,37 @@ def plot_node_and_connections(session, center_name, center_class, edge_name, edg
     logger.info("Creating NetworkX graph.")
     G = nx.Graph()
     for row in data:
-        G.add_edge(row['center.name'], row['surrounding.name'], weight=row['r.weight'])
+        G.add_edge(row["center.name"], row["surrounding.name"], weight=row["r.weight"])
 
     logger.info("Drawing graph.")
-    edge_colors = [d['weight'] for _, _, d in G.edges(data=True)]
-    
+    edge_colors = [d["weight"] for _, _, d in G.edges(data=True)]
+
     if use_weights_for_thickness:
-        edge_widths = [d['weight'] for _, _, d in G.edges(data=True)]
+        edge_widths = [d["weight"] for _, _, d in G.edges(data=True)]
     else:
         edge_widths = None
 
     min_width = min(edge_widths)
     max_width = max(edge_widths)
 
-    normalized_edge_widths = [1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths]
+    normalized_edge_widths = [
+        1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths
+    ]
 
     plt.figure(figsize=figsize)
     pos = nx.spring_layout(G, k=node_spacing)
 
-    nx.draw(G, pos=pos, with_labels=True, edge_color=edge_colors, edge_cmap=plt.cm.Blues, 
-            width=normalized_edge_widths, node_size=node_size, font_size=font_size, style='dashed')
+    nx.draw(
+        G,
+        pos=pos,
+        with_labels=True,
+        edge_color=edge_colors,
+        edge_cmap=plt.cm.Blues,
+        width=normalized_edge_widths,
+        node_size=node_size,
+        font_size=font_size,
+        style="dashed",
+    )
 
     if filename:
         logger.info(f"Saving plot to file {filename}.")
@@ -131,8 +158,15 @@ def plot_node_and_connections(session, center_name, center_class, edge_name, edg
         plt.show()
 
 
-def plot_node_and_connections_test(session, center_name, center_class, edge_name, edge_type, 
-                                   use_weights_for_thickness=True, filename=None):
+def plot_node_and_connections_test(
+    session,
+    center_name,
+    center_class,
+    edge_name,
+    edge_type,
+    use_weights_for_thickness=True,
+    filename=None,
+):
     """
     Plot a graph of nodes and connections based on the specified parameters.
 
@@ -165,8 +199,8 @@ def plot_node_and_connections_test(session, center_name, center_class, edge_name
     logger.info("Building Cypher query.")
     execute_statement = f'MATCH (center:{center_class} {{name: "{center_name}"}})'
     execute_statement += f'-[r:{edge_name} {{type:"{edge_type}"}}]-(surrounding)\n'
-    execute_statement += 'WHERE NOT center = surrounding\n'
-    execute_statement += 'RETURN center.name, surrounding.name, r.weight'
+    execute_statement += "WHERE NOT center = surrounding\n"
+    execute_statement += "RETURN center.name, surrounding.name, r.weight"
 
     logger.info("Fetching data from session.")
     data = session.run(execute_statement).data()
@@ -174,25 +208,35 @@ def plot_node_and_connections_test(session, center_name, center_class, edge_name
     logger.info("Creating NetworkX graph.")
     G = nx.Graph()
     for row in data:
-        G.add_edge(row['center.name'], row['surrounding.name'], weight=row['r.weight'])
+        G.add_edge(row["center.name"], row["surrounding.name"], weight=row["r.weight"])
 
     logger.info("Drawing graph.")
-    edge_colors = [d['weight'] for _, _, d in G.edges(data=True)]
-    
+    edge_colors = [d["weight"] for _, _, d in G.edges(data=True)]
+
     if use_weights_for_thickness:
-        edge_widths = [d['weight'] for _, _, d in G.edges(data=True)]
+        edge_widths = [d["weight"] for _, _, d in G.edges(data=True)]
     else:
         edge_widths = None
 
     min_width = min(edge_widths)
     max_width = max(edge_widths)
-    normalized_edge_widths = [1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths]
+    normalized_edge_widths = [
+        1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths
+    ]
 
     plt.figure(figsize=(12, 12))
     pos = nx.spring_layout(G, k=0.5)
 
-    nx.draw(G, pos, with_labels=True, edge_color=edge_colors, edge_cmap=plt.cm.Blues, 
-            width=normalized_edge_widths, node_size=800, font_size=12)
+    nx.draw(
+        G,
+        pos,
+        with_labels=True,
+        edge_color=edge_colors,
+        edge_cmap=plt.cm.Blues,
+        width=normalized_edge_widths,
+        node_size=800,
+        font_size=12,
+    )
 
     if filename:
         logger.info(f"Saving plot to file {filename}.")
@@ -200,8 +244,6 @@ def plot_node_and_connections_test(session, center_name, center_class, edge_name
     else:
         logger.info("Displaying plot.")
         plt.show()
-
-
 
 
 def plot_graph_from_neo4j_session(session):
@@ -216,23 +258,37 @@ def plot_graph_from_neo4j_session(session):
     """
 
     # Fetch data
-    data = session.run("""
+    data = session.run(
+        """
     MATCH (a)-[r:KNOWS]->(b)
     RETURN a.name, b.name, r.weight
-    """).data()
+    """
+    ).data()
 
     # Create a NetworkX graph
     G = nx.Graph()
     for row in data:
-        G.add_edge(row['a.name'], row['b.name'], weight=row['r.weight'])
+        G.add_edge(row["a.name"], row["b.name"], weight=row["r.weight"])
 
     # Draw graph
-    edge_colors = [d['weight'] for _, _, d in G.edges(data=True)]
+    edge_colors = [d["weight"] for _, _, d in G.edges(data=True)]
     nx.draw(G, with_labels=True, edge_color=edge_colors, edge_cmap=plt.cm.Blues)
     plt.show()
 
-def plot_node_and_connections_from_neo4j_session(session, center_name, center_class, edge_name, edge_type, use_weights_for_thickness=True,
-                              filename=None, figsize=(12, 12), node_size=800, node_spacing=3, font_size=12):
+
+def plot_node_and_connections_from_neo4j_session(
+    session,
+    center_name,
+    center_class,
+    edge_name,
+    edge_type,
+    use_weights_for_thickness=True,
+    filename=None,
+    figsize=(12, 12),
+    node_size=800,
+    node_spacing=3,
+    font_size=12,
+):
     """
     Plot a graph with nodes and connections based on the provided parameters from a neoj4j session.
 
@@ -250,7 +306,9 @@ def plot_node_and_connections_from_neo4j_session(session, center_name, center_cl
         font_size: The font size of the node labels. Default is 12.
     """
 
-    execute_statement = 'MATCH (center:' + f'{center_class} ' + "{name: " + f"'{center_name}'" + "})"
+    execute_statement = (
+        "MATCH (center:" + f"{center_class} " + "{name: " + f"'{center_name}'" + "})"
+    )
     execute_statement += f"-[r:{edge_name} {{type:'{edge_type}'}}]-(surrounding)\n"
     execute_statement += "WHERE NOT center = surrounding\n"  # Exclude self-connections
     execute_statement += "RETURN center.name, surrounding.name, r.weight"
@@ -259,31 +317,44 @@ def plot_node_and_connections_from_neo4j_session(session, center_name, center_cl
     # Create a NetworkX graph
     G = nx.Graph()
     for row in data:
-        G.add_edge(row['center.name'], row['surrounding.name'], weight=row['r.weight'])
+        G.add_edge(row["center.name"], row["surrounding.name"], weight=row["r.weight"])
 
     # Draw graph
-    edge_colors = [d['weight'] for _, _, d in G.edges(data=True)]
+    edge_colors = [d["weight"] for _, _, d in G.edges(data=True)]
 
     if use_weights_for_thickness:
-        edge_widths = [d['weight'] for _, _, d in G.edges(data=True)]
+        edge_widths = [d["weight"] for _, _, d in G.edges(data=True)]
     else:
         edge_widths = None
 
     min_width = min(edge_widths)
     max_width = max(edge_widths)
 
-    normalized_edge_widths = [1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths]
+    normalized_edge_widths = [
+        1 + 9 * ((w - min_width) / (max_width - min_width)) for w in edge_widths
+    ]
 
     plt.figure(figsize=figsize)
 
     # Use spring layout
-    pos = nx.spring_layout(G, k=node_spacing)  # k adjusts the optimal distance between nodes. Play around with it.
+    pos = nx.spring_layout(
+        G, k=node_spacing
+    )  # k adjusts the optimal distance between nodes. Play around with it.
 
     edge_labels = nx.get_edge_attributes(G, "weight")
     # nx.draw_networkx_edge_labels(G, pos, edge_labels,verticalalignment='top')
 
-    nx.draw(G, pos=pos, with_labels=True, edge_color=edge_colors, edge_cmap=plt.cm.Blues, width=normalized_edge_widths,
-            node_size=node_size, font_size=font_size, style='dashed')
+    nx.draw(
+        G,
+        pos=pos,
+        with_labels=True,
+        edge_color=edge_colors,
+        edge_cmap=plt.cm.Blues,
+        width=normalized_edge_widths,
+        node_size=node_size,
+        font_size=font_size,
+        style="dashed",
+    )
 
     if filename:
         plt.savefig(filename)
@@ -291,13 +362,13 @@ def plot_node_and_connections_from_neo4j_session(session, center_name, center_cl
         plt.show()
 
 
-
-
 # Function to plot bond order matrices
-def plot_bond_order_matrix(matrix, title, filename, atomic_symbols, save_dir, use_log_scale=False):
+def plot_bond_order_matrix(
+    matrix, title, filename, atomic_symbols, save_dir, use_log_scale=False
+):
     """
     Plot and save a bond order matrix.
-    
+
     Args:
         matrix (np.ndarray): The bond order matrix to be plotted.
         title (str): Title of the plot.
@@ -307,64 +378,93 @@ def plot_bond_order_matrix(matrix, title, filename, atomic_symbols, save_dir, us
         use_log_scale (bool): Whether to use logarithmic scaling for the plot.
     """
     fig, ax = plt.subplots(figsize=(16, 16))
-    
+
     if use_log_scale:
-        im = ax.imshow(matrix, cmap='hot', interpolation='nearest', norm=mcolors.LogNorm())
+        im = ax.imshow(
+            matrix, cmap="hot", interpolation="nearest", norm=mcolors.LogNorm()
+        )
     else:
-        im = ax.imshow(matrix, cmap='hot', interpolation='nearest')
-    
+        im = ax.imshow(matrix, cmap="hot", interpolation="nearest")
+
     fig.colorbar(im)
     ax.set_title(title)
-    ax.set_xlabel('Atomic Symbols')
-    ax.set_ylabel('Atomic Symbols')
+    ax.set_xlabel("Atomic Symbols")
+    ax.set_ylabel("Atomic Symbols")
     ax.set_xticks(np.arange(len(atomic_symbols)))
     ax.set_yticks(np.arange(len(atomic_symbols)))
     ax.set_xticklabels(atomic_symbols, rotation=90)
     ax.set_yticklabels(atomic_symbols)
     ax.set_xlim(0, 90)
     ax.set_ylim(0, 90)
-    
+
     plt.savefig(os.path.join(save_dir, filename))  # Save the figure
     plt.close()
+
 
 # Main function to handle all bond order plotting
 def plot_all_bond_order_matrices(json_file, save_dir):
     """
     Load bond order data and plot various matrices (avg, std, occurrences, log occurrences).
-    
+
     Args:
         json_file (str): Path to the JSON file containing bond order data.
         save_dir (str): Directory to save the plots.
     """
     from matgraphdb.utils.chem_utils.periodic import atomic_symbols
-    atomic_symbols=atomic_symbols[1:]
 
-    os.makedirs(save_dir,exist_ok=True)
-    
+    atomic_symbols = atomic_symbols[1:]
+
+    os.makedirs(save_dir, exist_ok=True)
+
     data = load_json(json_file)
-    
-    bond_orders_avg = np.array(data['bond_orders_avg'])
-    bond_orders_std = np.array(data['bond_orders_std'])
-    n_bond_orders = np.array(data['n_bond_orders'])
-    
+
+    bond_orders_avg = np.array(data["bond_orders_avg"])
+    bond_orders_std = np.array(data["bond_orders_std"])
+    n_bond_orders = np.array(data["n_bond_orders"])
+
     # Plot Bond Orders Average
-    plot_bond_order_matrix(bond_orders_avg, 'Bond Orders Average', 'bond_orders_avg.png', atomic_symbols, save_dir)
-    
+    plot_bond_order_matrix(
+        bond_orders_avg,
+        "Bond Orders Average",
+        "bond_orders_avg.png",
+        atomic_symbols,
+        save_dir,
+    )
+
     # Plot Bond Orders Standard Deviation
-    plot_bond_order_matrix(bond_orders_std, 'Bond Orders Standard Deviation', 'bond_orders_std.png', atomic_symbols, save_dir)
-    
+    plot_bond_order_matrix(
+        bond_orders_std,
+        "Bond Orders Standard Deviation",
+        "bond_orders_std.png",
+        atomic_symbols,
+        save_dir,
+    )
+
     # Plot Bond Orders Occurrences
-    plot_bond_order_matrix(n_bond_orders, 'Bond Orders Occurrences', 'bond_orders_occurrences.png', atomic_symbols, save_dir)
-    
+    plot_bond_order_matrix(
+        n_bond_orders,
+        "Bond Orders Occurrences",
+        "bond_orders_occurrences.png",
+        atomic_symbols,
+        save_dir,
+    )
+
     # Handle log scale for occurrences
     min_nonzero = np.min(n_bond_orders[n_bond_orders > 0])
     n_bond_orders_log = np.where(n_bond_orders > 0, n_bond_orders, min_nonzero)
-    
+
     # Plot Bond Orders Occurrences with Logarithmic Scale
-    plot_bond_order_matrix(n_bond_orders_log, 'Bond Orders Occurrences (Log Scale)', 'bond_orders_occurrences_log.png', atomic_symbols, save_dir, use_log_scale=True)
+    plot_bond_order_matrix(
+        n_bond_orders_log,
+        "Bond Orders Occurrences (Log Scale)",
+        "bond_orders_occurrences_log.png",
+        atomic_symbols,
+        save_dir,
+        use_log_scale=True,
+    )
 
 
-def plot_points(plotter, points, color='green', size=15):
+def plot_points(plotter, points, color="green", size=15):
     """
     Plot a set of points in a 3D plotter.
 
@@ -382,7 +482,10 @@ def plot_points(plotter, points, color='green', size=15):
     None
     """
     import pyvista
-    plotter.add_mesh(points, color=color, point_size=size, render_points_as_spheres=True)
+
+    plotter.add_mesh(
+        points, color=color, point_size=size, render_points_as_spheres=True
+    )
 
 
 def plot_adjacency(plotter, adj_matrix, points):
@@ -399,9 +502,10 @@ def plot_adjacency(plotter, adj_matrix, points):
     """
 
     import pyvista
+
     lines = []
     for i in range(len(points)):
-        for j in range(i+1, len(points)):
+        for j in range(i + 1, len(points)):
             if adj_matrix[i, j]:
                 plotter.add_lines(np.array([points[i], points[j]]))
 
@@ -420,28 +524,42 @@ def plot_similarity_matrix(similarity_matrix, labels, add_values=True, filename=
     None
     """
     fig, ax = plt.subplots()
-    cax = ax.matshow(similarity_matrix, cmap='coolwarm')
+    cax = ax.matshow(similarity_matrix, cmap="coolwarm")
     fig.colorbar(cax)
 
     plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
 
-    fig.suptitle('Similarity matrix')
+    fig.suptitle("Similarity matrix")
 
     if add_values:
         for i in range(similarity_matrix.shape[0]):
             for j in range(similarity_matrix.shape[1]):
-                ax.text(j, i, format(similarity_matrix[i, j], ".2f"), 
-                        ha="center", va="center", 
-                        color="w" if np.abs(similarity_matrix[i, j]) > 0.5 else "black")
-    
+                ax.text(
+                    j,
+                    i,
+                    format(similarity_matrix[i, j], ".2f"),
+                    ha="center",
+                    va="center",
+                    color="w" if np.abs(similarity_matrix[i, j]) > 0.5 else "black",
+                )
+
     plt.tight_layout()
     if filename:
         plt.savefig(filename)
     else:
         plt.show()
 
-def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None, loss_label='MSE', filename=None, log_scale=False):
+
+def plot_training_curves(
+    epochs,
+    train_loss,
+    val_loss=None,
+    test_loss=None,
+    loss_label="MSE",
+    filename=None,
+    log_scale=False,
+):
     """
     Plots the training curves for a given set of epochs and loss values.
 
@@ -458,20 +576,20 @@ def plot_training_curves(epochs, train_loss, val_loss=None, test_loss=None, loss
     - None
 
     """
-    
+
     fig, ax = plt.subplots(1)
 
-    ax.plot(epochs, train_loss, label='train')
+    ax.plot(epochs, train_loss, label="train")
     if val_loss:
-        ax.plot(epochs, val_loss, label='val')
+        ax.plot(epochs, val_loss, label="val")
     if test_loss:
-        ax.plot(epochs, test_loss, label='test')
+        ax.plot(epochs, test_loss, label="test")
 
     if log_scale:
-        ax.set_yscale('log')
+        ax.set_yscale("log")
 
-    ax.set_xlabel('epochs')
-    ax.set_ylabel(loss_label) 
+    ax.set_xlabel("epochs")
+    ax.set_ylabel(loss_label)
     ax.legend()
 
     fig.suptitle("Training Curves")
@@ -488,49 +606,51 @@ def plot_dataframe_distributions(df, save_dir=None, col_names=None):
     """Plots the distributions of the columns in a dataframe."""
 
     if col_names is None:
-        numeric_columns = df.select_dtypes(include=['number']).columns
+        numeric_columns = df.select_dtypes(include=["number"]).columns
     else:
         numeric_columns = col_names
 
     num_cols = len(numeric_columns)
-    
+
     if num_cols == 0:
         print("No numeric columns to plot.")
         return
 
-    os.makedirs(save_dir,exist_ok=True)
-    
+    os.makedirs(save_dir, exist_ok=True)
+
     for i, col in enumerate(numeric_columns):
-        property_name=col.split(':')[0]
-        fig, axes = plt.subplots(1, 4, figsize=(20, 5))  # Create a subplot for each type of plot
+        property_name = col.split(":")[0]
+        fig, axes = plt.subplots(
+            1, 4, figsize=(20, 5)
+        )  # Create a subplot for each type of plot
 
         # Histogram
         sns.histplot(df[col], kde=False, ax=axes[0])
-        axes[0].set_title(f'Histogram of {col}')
+        axes[0].set_title(f"Histogram of {col}")
         axes[0].set_xlabel(col)
-        axes[0].set_ylabel('Frequency')
+        axes[0].set_ylabel("Frequency")
 
         # Density Plot
         sns.kdeplot(df[col], ax=axes[1], fill=True)
-        axes[1].set_title(f'Density Plot of {col}')
+        axes[1].set_title(f"Density Plot of {col}")
         axes[1].set_xlabel(col)
-        axes[1].set_ylabel('Density')
+        axes[1].set_ylabel("Density")
 
         # Box Plot
         sns.boxplot(x=df[col], ax=axes[2])
-        axes[2].set_title(f'Box Plot of {col}')
+        axes[2].set_title(f"Box Plot of {col}")
         axes[2].set_xlabel(col)
-        axes[2].set_ylabel('Value')
+        axes[2].set_ylabel("Value")
 
         # Violin Plot
         sns.violinplot(x=df[col], ax=axes[3])
-        axes[3].set_title(f'Violin Plot of {col}')
+        axes[3].set_title(f"Violin Plot of {col}")
         axes[3].set_xlabel(col)
-        axes[3].set_ylabel('Value')
+        axes[3].set_ylabel("Value")
 
         plt.tight_layout()
 
         if save_dir:
-            plt.savefig(os.path.join(save_dir,f'{property_name}.png'))
+            plt.savefig(os.path.join(save_dir, f"{property_name}.png"))
         else:
             plt.show()
