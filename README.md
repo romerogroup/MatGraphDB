@@ -1,19 +1,27 @@
 # MatGraphDB
 
+**MatGraphDB** is a Python package designed to simplify graph-based data management and analysis in materials and molecular science. It enables researchers to efficiently transform complex theoretical data into structured graph representations, leveraging:
+
+- **High-performance storage:** Utilizes Apache Parquet for scalable and rapid data access.
+- **Automated workflows:** Converts theoretical and computational data into graph structures.
+- **Robust data operations:** Offers comprehensive CRUD functionality and custom generators to maintain consistent relationships between entities.
+
 
 
 ## Table of Contents
+- [ParquetDB](#parquetdb)
+    - [Table of Contents](#table-of-contents)
+    - [Documentation](#documentation)
+    - [Installing](#installing)
+    - [Usage](#usage)
+    - [Contributing](#contributing)
+    - [License](#license)
 
-- [Introduction to MatGraphDB](#introduction-to-matgraphdb)
-- [Installing](#installing)
-- [Usage](#usage)
-  - [Interacting with the materials database](#interacting-with-the-materials-database)
-  - [Interacting with the graph database](#interacting-with-the-graph-database)
-- [Contributing](#contributing)
-- [License](#license)
 
-## Introduction to MatGraphDB
-To be written..
+## Documentation
+
+Check out the [docs](https://romerogroup.github.io/MatGraphDB/)
+
 
 ## Installing
 
@@ -24,12 +32,10 @@ pip install matgraphdb
 
 ### Installing from github
 ```bash
-git clone https://github.com/lllangWV/MatGraphDB.git
+git clone https://github.com/romerogroup/MatGraphDB.git
 cd MatGraphDB
 pip install -e .
 ```
-
-
 
 ## Usage
 
@@ -41,7 +47,7 @@ from matgraphdb import MatGraphDB
 
 # Initialize MatGraphDB
 mgdb = MatGraphDB(storage_path="MatGraphDB")
-print(mgdb.summary())
+print(mgdb)
 ```
 
 #### Adding material properties
@@ -136,10 +142,6 @@ To delete materials from the database, you can use the `delete_materials` functi
 ```python
 materials = mgdb.delete_materials(ids=[0])
 ```
-
-### Interacting with the graph database
-
-
 
 
 
