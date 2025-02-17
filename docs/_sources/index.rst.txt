@@ -1,8 +1,6 @@
 MatGraphDB Docs!
 ========================================
 
-# Introduction
-
 **MatGraphDB** is a Python package designed to simplify graph-based data management and analysis in materials and molecular science. It enables researchers to efficiently transform complex theoretical data into structured graph representations, leveraging:
 
 - **High-performance storage:** Utilizes Apache Parquet for scalable and rapid data access.
