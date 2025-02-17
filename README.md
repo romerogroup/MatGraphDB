@@ -6,8 +6,6 @@
 - **Automated workflows:** Converts theoretical and computational data into graph structures.
 - **Robust data operations:** Offers comprehensive CRUD functionality and custom generators to maintain consistent relationships between entities.
 
-
-
 ## Table of Contents
 - [ParquetDB](#parquetdb)
     - [Table of Contents](#table-of-contents)
