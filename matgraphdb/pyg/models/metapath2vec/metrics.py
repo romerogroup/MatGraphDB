@@ -128,10 +128,13 @@ class LearningCurve:
 def plot_pca(
     embeddings,
     save_dir=None,
-    n_components=4,
+    n_components=1,
+    n_nodes_per_type=None,
+    node_labels_per_type=None,
     figsize=(10, 8),
     colors=DEFAULT_COLORS,
     close=True,
+    save_name='embeddings_pca_grid.png'
 ):
     """
     Args:
@@ -143,11 +146,23 @@ def plot_pca(
         fig: matplotlib figure object
         ax: matplotlib axes object
     """
-
+    if n_nodes_per_type is None:
+        n_nodes_per_type = {}
+    if node_labels_per_type is None:
+        node_labels_per_type = {}
     # Fit PCA with enough components
     pca = PCA(n_components=n_components)
     embeddings_pca = pca.fit_transform(embeddings)
 
+    embeddings_pca_per_type = {}
+    count = 0
+    for i, (node_type, n_nodes) in enumerate(n_nodes_per_type.items()):
+        embeddings_pca_per_type[node_type] = embeddings_pca[count:count+n_nodes, :]
+        count += n_nodes
+    
+    if len(embeddings_pca_per_type) == 0:
+        embeddings_pca_per_type['all'] = embeddings_pca
+    
     # 6. For each pair of PCA components, create plots
     figs_and_axes = []
     # Get unique x and y components
@@ -160,27 +175,45 @@ def plot_pca(
     fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
 
     # Create plots for each component combination
+    
     for x_comp in x_comps:
         for y_comp in y_comps:
-            # Get row and column index for subplot
-            row_idx = y_comp - 1  # Subtract 1 since PCA components are 1-based but array indices are 0-based
-            col_idx = x_comp - 1
+            for i, (node_type, embeddings_pca) in enumerate(embeddings_pca_per_type.items()):
             
-            ax = axes[row_idx, col_idx]
-            ax.scatter(
-                embeddings_pca[:, x_comp - 1],  # Also adjust indices for embeddings_pca
-                embeddings_pca[:, y_comp - 1],
-                c=colors[0],
-                alpha=0.6,
-            )
+                # Get row and column index for subplot
+                row_idx = y_comp - 1  # Subtract 1 since PCA components are 1-based but array indices are 0-based
+                col_idx = x_comp - 1
+                
+                ax = axes[row_idx, col_idx]
+                ax.scatter(
+                    embeddings_pca[:, x_comp - 1],  # Also adjust indices for embeddings_pca
+                    embeddings_pca[:, y_comp - 1],
+                    c=colors[i % len(colors)],
+                    alpha=0.6,
+                    label=node_type
+                )
+                
+            # Add text labels for each point
+            for j, coords in enumerate(embeddings_pca):
+                if node_type not in node_labels_per_type:
+                    continue
+                node_label = node_labels_per_type[node_type][j]
+                ax.annotate(f'{node_label}', 
+                          (coords[x_comp - 1], coords[y_comp - 1]),
+                          xytext=(5, 5),
+                          textcoords='offset points',
+                          fontsize=8,
+                          alpha=0.5)
+                
             ax.set_xlabel(f"PCA {x_comp}")
             ax.set_ylabel(f"PCA {y_comp}")
             ax.set_title(f"PCA {x_comp} vs {y_comp}")
+            ax.legend()
 
     plt.tight_layout()
 
     if save_dir is not None:
-        save_path = os.path.join(save_dir, "embeddings_pca_grid.png")
+        save_path = os.path.join(save_dir, save_name)
         plt.savefig(save_path)
 
     if close:

@@ -16,8 +16,8 @@ from torch_geometric import nn as pyg_nn
 
 from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.data import HeteroGraphBuilder
-from matgraphdb.pyg.models.heterograph_encoder.model import MaterialEdgePredictor
-from matgraphdb.pyg.models.heterograph_encoder.trainer import (
+from matgraphdb.pyg.models.hetero_encoder.model import HeteroEncoder
+from matgraphdb.pyg.models.hetero_encoder.trainer import (
     Trainer,
     learning_curve,
     pca_plots,
@@ -32,7 +32,7 @@ CONFIG = OmegaConf.create(
         "data": {
             "dataset_dir": os.path.join("data", "datasets", "MPNearHull"),
             "create_random_features": True,
-            "n_material_dim": 4,
+            "n_material_dim": 16,
             "train_ratio": 0.8,
             "val_ratio": 0.1,
             "random_link_split_args": {
@@ -57,10 +57,11 @@ CONFIG = OmegaConf.create(
         "training": {
             "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
             "learning_rate": 0.001,
-            "num_epochs": 10001,
-            "eval_interval": 1000,
+            "num_epochs": 40001,
+            "eval_interval": 2000,
             "weights": None,
             "use_weights": False,
+            "use_scheduler": False,
             "metrics_to_print": ["accuracy", "precision", "recall"],
             "scheduler_milestones": [4000, 20000],
             "use_mlflow": False,
@@ -239,26 +240,31 @@ print(f"Test val materials: {len(test_val_materials)}")
 # data = None
 builder = None
 
-print(CONFIG.data.random_link_split_args)
+# print(CONFIG.data.random_link_split_args)
 
-random_link_split_args = OmegaConf.to_container(CONFIG.data.random_link_split_args, resolve=True)
-print(type(random_link_split_args))
-for i,edge_type in enumerate(random_link_split_args['edge_types']):
-    random_link_split_args['edge_types'][i] = tuple(edge_type)
+# random_link_split_args = OmegaConf.to_container(CONFIG.data.random_link_split_args, resolve=True)
+# print(type(random_link_split_args))
+# for i,edge_type in enumerate(random_link_split_args['edge_types']):
+#     random_link_split_args['edge_types'][i] = tuple(edge_type)
     
-for i,edge_type in enumerate(random_link_split_args['rev_edge_types']):
-    random_link_split_args['rev_edge_types'][i] = tuple(edge_type)
+# for i,edge_type in enumerate(random_link_split_args['rev_edge_types']):
+#     random_link_split_args['rev_edge_types'][i] = tuple(edge_type)
     
-print(random_link_split_args)
-# Perform a link-level split into training, validation, and test edges:
-train_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_train_data)
-train_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
-    original_train_val_data
-)
-test_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_test_data)
-test_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
-    original_test_val_data
-)
+# print(random_link_split_args)
+# # Perform a link-level split into training, validation, and test edges:
+# train_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_train_data)
+# train_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
+#     original_train_val_data
+# )
+# test_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_test_data)
+# test_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
+#     original_test_val_data
+# )
+
+train_data = original_train_data
+train_val_data = original_train_val_data
+test_data = original_test_data
+test_val_data = original_test_val_data
 
 
 
@@ -272,7 +278,6 @@ train_val_data = train_val_data.to(device)
 test_data = test_data.to(device)
 test_val_data = test_val_data.to(device)
 
-print(test_val_data)
 
 data_dict = {
     "train": train_data,
@@ -288,52 +293,50 @@ print(f"Max memory allocated: {torch.cuda.max_memory_allocated()}")
 ####################################################################################################
 
 
-def compute_class_distribution(data):
-    edge_label = data["materials", "elements"].edge_label.to(torch.int64)
-    class_count = torch.bincount(edge_label)
-    unique_classes = torch.unique(edge_label)
-    majority_class = int(torch.argmax(class_count).item())
-    proposed_weights = class_count.max() / class_count
+# def compute_class_distribution(data):
+#     edge_label = data["materials", "elements"].edge_label.to(torch.int64)
+#     class_count = torch.bincount(edge_label)
+#     unique_classes = torch.unique(edge_label)
+#     majority_class = int(torch.argmax(class_count).item())
+#     proposed_weights = class_count.max() / class_count
 
-    print(f"Unique classes: {unique_classes}")
-    print(f"Class_count: {class_count}")
-    print(f"Proposed weights: {proposed_weights}")
-    print(f"Majority class: {majority_class}")
+#     print(f"Unique classes: {unique_classes}")
+#     print(f"Class_count: {class_count}")
+#     print(f"Proposed weights: {proposed_weights}")
+#     print(f"Majority class: {majority_class}")
 
-    return edge_label, majority_class, proposed_weights
-
-
-print(f"Classes: Edge does not exist (0) | Edge exists (1) ")
-
-for label in split_data.keys():
-    data = split_data[label]["data"]
-    edge_label, majority_class, proposed_weights = compute_class_distribution(data)
-
-    split_data[label]["edge_label"] = edge_label
-    split_data[label]["majority_class"] = majority_class
-    split_data[label]["proposed_weights"] = proposed_weights
-
-weights = CONFIG.training.weights
-if weights is None and CONFIG.training.use_weights:
-    weights = split_data["train"]["proposed_weights"]
+#     return edge_label, majority_class, proposed_weights
 
 
-print(f"Actual Weights Used: {weights}")
-print("-" * 100)
+# print(f"Classes: Edge does not exist (0) | Edge exists (1) ")
+
+# for label in split_data.keys():
+#     data = split_data[label]["data"]
+#     edge_label, majority_class, proposed_weights = compute_class_distribution(data)
+
+#     split_data[label]["edge_label"] = edge_label
+#     split_data[label]["majority_class"] = majority_class
+#     split_data[label]["proposed_weights"] = proposed_weights
+
+# weights = CONFIG.training.weights
+# if weights is None and CONFIG.training.use_weights:
+#     weights = split_data["train"]["proposed_weights"]
+
+
+# print(f"Actual Weights Used: {weights}")
+# print("-" * 100)
 
 ####################################################################################################
 ####################################################################################################
 ####################################################################################################
 # Model
 ####################################################################################################
-model = MaterialEdgePredictor(
+model = HeteroEncoder(
     hidden_channels=CONFIG.model.hidden_channels,
     data=parent_data,
     decoder_kwargs={
         "num_layers": CONFIG.model.num_decoder_layers,
         "dropout": CONFIG.model.dropout_rate,
-        "src_node_name": "materials",
-        "tgt_node_name": "elements",
     },
     encoder_kwargs={
         "num_conv_layers": CONFIG.model.num_conv_layers,
@@ -352,21 +355,15 @@ print(model)
 ####################################################################################################
 
 
-def weighted_binary_cross_entropy(pred, target, weights=None):
-    if weights is None:
-        weights = 1.0
-        y = F.binary_cross_entropy(pred, target)
-        return y
-    else:
-        weights = weights[target.long()]
-        return F.binary_cross_entropy(pred, target, weight=weights)
-
-
 optimizer = torch.optim.Adam(model.parameters(), lr=CONFIG.training.learning_rate)
 
-scheduler = lr_scheduler.MultiStepLR(
-    optimizer, milestones=CONFIG.training.scheduler_milestones, gamma=0.1, verbose=False
-)
+
+if CONFIG.training.use_scheduler:
+    scheduler = lr_scheduler.MultiStepLR(
+        optimizer, milestones=CONFIG.training.scheduler_milestones, gamma=0.1, verbose=False
+    )
+else:
+    scheduler = None
 # scheduler = lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.3, total_iters=10)
 # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
 #                                            factor=0.1,
@@ -378,7 +375,7 @@ scheduler = lr_scheduler.MultiStepLR(
 
 trainer = Trainer(
     model=model,
-    loss_fn=weighted_binary_cross_entropy,
+    loss_fn=None,
     optimizer=optimizer,
     train_data=train_data,
     train_val_data=train_val_data,
@@ -388,7 +385,7 @@ trainer = Trainer(
     eval_interval=CONFIG.training.eval_interval,
     training_dir=os.path.join("data", "training_runs", "heterograph_encoder"),
     scheduler=scheduler,
-    evaluation_callbacks=[learning_curve, roc_curve, pca_plots],
+    evaluation_callbacks=[learning_curve, pca_plots],
     use_mlflow=CONFIG.training.use_mlflow,
     mlflow_experiment_name=CONFIG.training.mlflow_experiment_name,
     mlflow_tracking_uri=CONFIG.training.mlflow_tracking_uri,
@@ -396,15 +393,4 @@ trainer = Trainer(
 )
 
 
-trainer.train(metrics_to_record=["loss", "accuracy", "precision", "recall"])
-
-
-
-
-out = model.encode(test_val_data.x_dict, test_val_data.edge_index_dict, 
-                   node_ids={'materials':test_val_data['materials'].node_ids,
-                            'elements': test_val_data['elements'].node_ids})
-
-
-
-print(out)
+trainer.train(metrics_to_record=["loss"])

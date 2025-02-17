@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any, Callable, Dict, Tuple
@@ -56,6 +57,7 @@ class BaseTrainer(ABC):
         """
 
         self.training_dir = training_dir
+        os.makedirs(self.training_dir, exist_ok=True)
         n_runs = len(os.listdir(self.training_dir))
         self.run_dir = os.path.join(self.training_dir, f"run_{n_runs}")
         os.makedirs(self.run_dir, exist_ok=True)
@@ -81,6 +83,8 @@ class BaseTrainer(ABC):
         self.split_names = list(self.data_splits.keys())
 
         if self.use_mlflow:
+            if mlflow_experiment_name is None:
+                mlflow_experiment_name = "default"
             self.mlflow_experiment_name = mlflow_experiment_name
             self.mlflow_tracking_uri = mlflow_tracking_uri
             mlflow.set_tracking_uri(self.mlflow_tracking_uri)
@@ -165,9 +169,9 @@ class BaseTrainer(ABC):
 
         self.data_splits_metrics = {}
         for split_name in self.split_names:
-            self.data_splits_metrics[split_name]["loss"] = []
+            self.data_splits_metrics[split_name] = {'loss': [], 'epochs': []}
 
-        epoch_str = f"Epoch: {epoch:03d}"
+        epoch_str = f"Epoch: "
         epoch_str += "(" + "|".join(self.split_names) + ")"
         print(epoch_str)
 
@@ -179,20 +183,20 @@ class BaseTrainer(ABC):
         self.current_loss = None
         self.current_train_loss = None
         self.current_epoch = 0
+        start_time = time.time()
         for epoch in range(1, self.num_epochs + 1):
 
             self.current_train_loss = self.train_step(self.data_splits["train"])
 
             if self.scheduler:
                 self.scheduler.step()
-
+            # print(f"Epoch: {epoch:03d}")
             if epoch % self.eval_interval == 0:
                 self.current_epoch = epoch
                 self.epoch_dir = os.path.join(self.epochs_dir, f"epoch_{epoch}")
                 os.makedirs(self.epoch_dir, exist_ok=True)
 
                 metrics_str = f"Epoch: {epoch:03d}"
-
                 for split_name, data_batch in self.data_splits.items():
                     loss, self.current_preds, self.current_targets = (
                         self.validation_step(data_batch)
@@ -200,23 +204,24 @@ class BaseTrainer(ABC):
                     metrics_dict = self.eval_metrics(
                         self.current_preds, self.current_targets
                     )
-                    if epoch == 1:
-                        self.data_splits_metrics[split_name]["loss"] = []
-                        for metric_name in metrics_dict.keys():
-                            self.data_splits_metrics[split_name][metric_name] = []
 
                     self.data_splits_metrics[split_name]["loss"].append(loss)
+                    self.data_splits_metrics[split_name]["epochs"].append(epoch)
                     for metric_name, metric_value in metrics_dict.items():
+                        if metric_name not in self.data_splits_metrics[split_name]:
+                            self.data_splits_metrics[split_name][metric_name] = []
                         self.data_splits_metrics[split_name][metric_name].append(
                             metric_value
                         )
 
-                    metrics_str += f" || {split_name} Loss: {loss:.4f}"
                 for metric_name in metrics_to_record:
+                    metrics_str += f" || {metric_name}: "
                     for split_name in self.split_names:
-                        metrics_str += f" || {metric_name}: {self.data_splits_metrics[split_name][metric_name][-1]:.4f} "
+                        metrics_str += f"|{self.data_splits_metrics[split_name][metric_name][-1]:.4f}"
+                    metrics_str += "|"
 
-                for callback in evaluation_callbacks:
+                print(metrics_str)
+                for callback in self.evaluation_callbacks:
                     callback(self)
 
                 with open(os.path.join(self.epoch_dir, "metrics.json"), "w") as f:
@@ -236,6 +241,9 @@ class BaseTrainer(ABC):
                     mlflow.pytorch.log_model(
                         self.model, os.path.join(self.epoch_dir, "model")
                     )
+                end_time = time.time()
+                print(f"Time taken for epoch {epoch}: {end_time - start_time:.2f} seconds")
+                start_time = end_time
 
         if self.use_mlflow:
             mlflow.end_run()

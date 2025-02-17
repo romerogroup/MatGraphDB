@@ -71,10 +71,16 @@ class GNNEncoder(torch.nn.Module):
 
 
 class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels, src_node_name, tgt_node_name, num_layers=1, dropout=0.0):
+    def __init__(self, hidden_channels, 
+                 num_layers=1, 
+                 dropout=0.0,
+                 src_node_type='materials',
+                 dst_node_type='elements',
+                 ):
         super().__init__()
-        self.src_node_name = src_node_name
-        self.tgt_node_name = tgt_node_name
+        self.src_node_type = src_node_type
+        self.dst_node_type = dst_node_type
+
         self.mlp = MultiLayerPercetronLayer(
             input_dim=2 * hidden_channels, num_layers=num_layers, dropout=dropout
         )
@@ -82,14 +88,14 @@ class EdgeDecoder(torch.nn.Module):
 
     def forward(self, z_dict, edge_label_index):
         row, col = edge_label_index
-        z = torch.cat([z_dict[self.src_node_name][row], z_dict[self.tgt_node_name][col]], dim=-1)
+        z = torch.cat([z_dict[self.src_node_type][row], z_dict[self.dst_node_type][col]], dim=-1)
 
         z = self.mlp(z)
         z = self.mlp_out(z)
         return z.view(-1).sigmoid()
 
 
-class MaterialEdgePredictor(torch.nn.Module):
+class HeteroEncoder(torch.nn.Module):
     def __init__(
         self,
         hidden_channels,
@@ -125,9 +131,10 @@ class MaterialEdgePredictor(torch.nn.Module):
         if use_projections:
             node_projections = {}
             for node_type in self.node_types:
-                node_projections[node_type] = torch.nn.Linear(
-                    data[node_type].x.shape[1], hidden_channels
-                )
+                if data[node_type].x is not None:
+                    node_projections[node_type] = torch.nn.Linear(
+                        data[node_type].x.shape[1], hidden_channels
+                    )
             self.node_projections = torch.nn.ModuleDict(node_projections)
 
         if decoder_kwargs is None:
@@ -135,16 +142,24 @@ class MaterialEdgePredictor(torch.nn.Module):
         if encoder_kwargs is None:
             encoder_kwargs = {}
         self.encoder = GNNEncoder(hidden_channels, hidden_channels, **encoder_kwargs)
-        if data is not None:
-            self.encoder = pyg.nn.to_hetero(self.encoder, data.metadata(), aggr="sum")
-        self.decoder = EdgeDecoder(hidden_channels, **decoder_kwargs)
+        # if data is not None:
+        #     self.encoder = pyg.nn.to_hetero(self.encoder, data.metadata(), aggr="sum")
+        # self.decoder = EdgeDecoder(hidden_channels, **decoder_kwargs)
 
-    def process_input_nodes(self, x_dict, node_ids=None):
-        z_dict = {}
-
+    def process_input_nodes(self, hetero_data):
+        
+        
         for node_type in self.node_types:
+            x=None
+            if hasattr(hetero_data[node_type], "x"):
+                x=hetero_data[node_type].x
+            
+    
+            node_ids=hetero_data[node_type].node_ids
             if self.use_projections and self.use_embeddings:
-                z_dict[node_type] = self.node_projections[node_type](x_dict[node_type])
+                if x is not None:
+                    hetero_data[node_type].z = self.node_projections[node_type](x)
+                
                 if node_ids is None:
                     raise ValueError(
                         "node_ids must be provided if use_embeddings is True"
@@ -154,11 +169,15 @@ class MaterialEdgePredictor(torch.nn.Module):
                     and node_type == "materials"
                 ):
                     continue
-                z_dict[node_type] += self.node_embeddings[node_type](
-                    node_ids[node_type]
-                )
+                if hasattr(hetero_data[node_type], "z"):
+                    hetero_data[node_type].z += self.node_embeddings[node_type](node_ids)
+                else:
+                    hetero_data[node_type].z = self.node_embeddings[node_type](node_ids)
+                
             elif self.use_projections and not self.use_embeddings:
-                z_dict[node_type] = self.node_projections[node_type](x_dict[node_type])
+                hetero_data[node_type].z = self.node_projections[node_type](x)
+                
+                
             elif not self.use_projections and self.use_embeddings:
                 if node_ids is None:
                     raise ValueError(
@@ -171,18 +190,27 @@ class MaterialEdgePredictor(torch.nn.Module):
                     raise ValueError(
                         "use_shallow_embedding_for_materials must be False if use_embeddings is True and use_projections is False"
                     )
-                z_dict[node_type] = self.node_embeddings[node_type](node_ids[node_type])
+                hetero_data[node_type].z = self.node_embeddings[node_type](node_ids)
             else:
                 raise ValueError(
                     "Either use_projections or use_embeddings must be True"
                 )
-        return z_dict
+                
+            
+        return hetero_data
 
-    def forward(self, x_dict, edge_index_dict, edge_label_index, node_ids=None):
-        z_dict = self.process_input_nodes(x_dict, node_ids)
-        z_dict = self.encoder(z_dict, edge_index_dict)
-        return self.decoder(z_dict, edge_label_index)
+    def forward(self, hetero_data):
+        hetero_data = self.process_input_nodes(hetero_data)
+        data = hetero_data.to_homogeneous()
+        z = self.encoder(data.z, data.edge_index)
+        data.z=z
+        return data
+    
+    def encode(self, hetero_data):
+        hetero_data = self.process_input_nodes(hetero_data)
+        data = hetero_data.to_homogeneous()
+        z = self.encoder(data.z, data.edge_index)
+        return z
 
-    def encode(self, x_dict, edge_index_dict, node_ids=None):
-        z_dict = self.process_input_nodes(x_dict, node_ids)
-        return self.encoder(z_dict, edge_index_dict)
+
+    
