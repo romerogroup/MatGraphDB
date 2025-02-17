@@ -1,6 +1,31 @@
 
 ___
 
+# 0.3.0 (02-08-2025)
+
+##### Bugs
+- None identified
+
+##### New Features
+- Implemented heterogeneous graph encoder training infrastructure
+- Added PyTorch Geometric (PyG) infrastructure for graph machine learning
+- Included new periodic table values and coordination geometries to support advanced material analysis
+- Added new dataset initialization in the materials.datasets module to support the new MPNearHull functionality
+
+##### Documentation
+- Updated _version.py and CHANGELOG.md due to new release
+
+##### Maintenance
+- Streamlined dependency management in pyproject.toml
+- Improved initialization logic to handle dataset presence and downloading options
+- Updated .gitignore to exclude the /data/external directory, streamlining data management and ensuring that only relevant data directories are tracked
+- Added .gitattributes to track data
+- Added comprehensive tests for the new GraphBuilder functionality and updated existing tests to reflect changes in edge data structure
+
+___
+
+___
+
 # 0.2.0 (01-13-2025)
 
 ##### Bugs
