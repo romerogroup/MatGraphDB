@@ -15,7 +15,7 @@ import shutil
 import sys
 from distutils.sysconfig import get_python_lib
 
-from parquetdb._version import version
+from matgraphdb._version import version
 
 # ---------------
 project = "MatGraphDB"
