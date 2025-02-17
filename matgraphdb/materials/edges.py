@@ -649,3 +649,72 @@ def element_chemenv_canOccur(element_store, chemenv_store, material_store):
         raise e
 
     return edge_table
+
+
+@edge_generator
+def spg_crystalSystem_isApart(spg_store, crystal_system_store):
+    try:
+        connection_name = "isApart"
+        
+    except Exception as e:
+        logger.exception(f"Error creating spg-crystalSystem-isApart relationships: {e}")
+        raise e
+    
+    spg_table = spg_store.read_nodes(columns=["id", "spg"])
+    crystal_system_table = crystal_system_store.read_nodes(columns=["id", "crystal_system"])
+    
+    
+    spg_df = spg_table.to_pandas(split_blocks=True, self_destruct=True)
+    crystal_system_df = crystal_system_table.to_pandas(split_blocks=True, self_destruct=True)
+
+    spg_target_id_map = {
+        row["spg"]: row["id"] for _, row in spg_df.iterrows()
+    }
+    crystal_system_target_id_map = {
+        row["crystal_system"]: row["id"] for _, row in crystal_system_df.iterrows()
+    }
+    
+    
+    crys_spg_map = {
+        'triclinic': np.arange(1,3),
+        'monoclinic': np.arange(3,16),
+        'orthorhombic': np.arange(16,75),
+        'tetragonal': np.arange(75,143),
+        'trigonal': np.arange(143,168),
+        'hexagonal': np.arange(168,195),
+        'cubic': np.arange(195,230),
+    }
+    table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+        }
+    try:
+        for crystal_system, spg_range in crys_spg_map.items():
+            for spg in spg_range:
+                source_id = spg_target_id_map[spg]
+                target_id = crystal_system_target_id_map[crystal_system]
+                
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(spg_store.node_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(crystal_system_store.node_type)
+                table_dict["edge_type"].append(connection_name)
+                table_dict["name"].append(f"{crystal_system}_{connection_name}_{spg}")
+                
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created spg-crystalSystem-isApart relationships. Shape: {edge_table.shape}"
+        )
+
+    except Exception as e:
+        logger.exception(f"Error creating element-chemenv-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
+            
+            

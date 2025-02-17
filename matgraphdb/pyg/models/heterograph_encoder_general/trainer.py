@@ -9,7 +9,7 @@ from sklearn.metrics import (
     roc_curve,
 )
 
-from matgraphdb.pyg.models.heterograph_encoder.metrics import (
+from matgraphdb.pyg.models.heterograph_encoder_general.metrics import (
     LearningCurve,
     ROCCurve,
     plot_pca,
@@ -36,22 +36,24 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.optimizer.zero_grad()
-        pred = self.model(
-            data_batch.x_dict,
-            data_batch.edge_index_dict,
-            data_batch["materials", "elements"].edge_label_index,
-            node_ids={
-                "materials": data_batch["materials"].node_ids,
-                "elements": data_batch["elements"].node_ids,
-            },
-        )
-        target = data_batch["materials", "elements"].edge_label
 
-        loss = self.loss_fn(pred, target)
-
-        loss.backward()
+        loss_dict = {}
+        total_loss = 0
+        pred_edge_dict = self.model(data_batch)
+        for edge_type, key in self.model.edge_types_to_decoder_keys.items():
+            src, rel, dst = edge_type
+            pred = pred_edge_dict[key]
+            
+            if not hasattr(data_batch[src, dst], "edge_label"):
+                continue
+            
+            target = data_batch[src,rel,dst].edge_label
+            loss = self.loss_fn(pred, target)
+            total_loss += loss
+            loss_dict[key] = loss
+        total_loss.backward()
         self.optimizer.step()
-        return loss
+        return total_loss
 
     def validation_step(self, data_batch, **kwargs):
         """
@@ -69,18 +71,21 @@ class Trainer(BaseTrainer):
             torch.Tensor: The validation target.
         """
         self.model.eval()
-        pred = self.model(
-            data_batch.x_dict,
-            data_batch.edge_index_dict,
-            data_batch["materials", "elements"].edge_label_index,
-            node_ids={
-                "materials": data_batch["materials"].node_ids,
-                "elements": data_batch["elements"].node_ids,
-            },
-        )
-        target = data_batch["materials", "elements"].edge_label
-        loss = self.loss_fn(pred, target)
-        return float(loss.cpu().float()), pred, target
+        loss_dict = {}
+        total_loss = 0
+        pred_edge_dict = self.model(data_batch)
+        for edge_type, key in self.model.edge_types_to_decoder_keys.items():
+            src, rel, dst = edge_type
+            pred = pred_edge_dict[key]
+            
+            if not hasattr(data_batch[src, dst], "edge_label"):
+                continue
+            
+            target = data_batch[src,rel,dst].edge_label
+            loss = self.loss_fn(pred, target)
+            total_loss += loss
+            loss_dict[key] = loss
+        return float(total_loss.cpu().float()), pred_edge_dict, data_batch
 
     def eval_metrics(self, preds, targets, **kwargs):
         # Calculate metrics
