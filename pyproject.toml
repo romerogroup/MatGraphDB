@@ -79,8 +79,23 @@ materials=[
     "crystals",
 ]
 
-dev = ["sphinx", 
-"sphinx_rtd_theme"]
+dev = [
+
+    "ipython",
+    "pymongo",
+    "pymatgen",
+    "sphinx", 
+    "sphinx_rtd_theme",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "sphinx_design",
+    "sphinx-new-tab-link",
+    "sphinxcontrib-youtube",
+    "sphinxcontrib-video",
+    "pandoc",
+    "furo",
+    "numpydoc",
+]
 
 
 [project.urls]
