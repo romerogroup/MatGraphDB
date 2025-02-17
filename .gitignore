@@ -187,3 +187,5 @@ dev_scripts/
 
 /mlruns/
 /mlartifacts/
+
+/papers/
