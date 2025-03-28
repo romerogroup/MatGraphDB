@@ -140,7 +140,7 @@ def element_element_bonds(element_store, material_store):
                 continue
 
             elements = row["core.species"]
-
+            element_graph = {}
             for i, site_connections in enumerate(bond_connections):
                 site_element_name = elements[i]
                 for i_neighbor_element in site_connections:
