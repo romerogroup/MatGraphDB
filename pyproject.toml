@@ -41,7 +41,8 @@ dependencies = [
     "parquetdb",
     "variconfig",
     "gdown",
-    "mlflow"
+    "mlflow",
+    "huggingface_hub[cli,torch]",
 ]
 
 [project.optional-dependencies]
