@@ -13,7 +13,7 @@ directory`_ of the package and showcase how to effectively use MatGraphDB's feat
     :caption: Example Gallery
     :name: rst-link-gallery
 
-    notebooks/01 - Creating MatGraphDB Instance
+    notebooks/01 - Getting Started
 
 Contents
 --------
@@ -22,4 +22,4 @@ Contents
    :maxdepth: 3
    :caption: Example Gallery
 
-   notebooks/01 - Creating MatGraphDB Instance
+   notebooks/01 - Getting Started
