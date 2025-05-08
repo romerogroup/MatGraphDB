@@ -5,9 +5,9 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import torch
+from parquetdb import ParquetGraphDB
 from torch_geometric.data import HeteroData
 
-from matgraphdb.core.graph_db import GraphDB
 from matgraphdb.pyg.data.hetero_graph import GraphBuilder
 
 
@@ -23,7 +23,7 @@ def tmp_dir(tmp_path):
 @pytest.fixture
 def graph_db(tmp_dir):
     """Fixture to create a GraphDB instance with test data."""
-    db = GraphDB(storage_path=tmp_dir)
+    db = ParquetGraphDB(storage_path=tmp_dir)
 
     # Add test materials
     materials_data = pd.DataFrame(
