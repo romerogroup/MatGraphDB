@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch_geometric.nn import CGConv, global_mean_pool
 
 from matgraphdb import config
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.core import BaseTrainer
 from matgraphdb.pyg.core.experiment import run_experiment
 from matgraphdb.pyg.data import CrystalGraphBuilder

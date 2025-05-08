@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 import pytest
 
-from matgraphdb.materials.nodes.materials import MaterialStore
+from matgraphdb.core.nodes.materials import MaterialStore
 
 
 @pytest.fixture

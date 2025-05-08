@@ -4,9 +4,9 @@ import shutil
 import pyarrow as pa
 import pytest
 
-from matgraphdb.materials.core import MatGraphDB
-from matgraphdb.materials.edges import *
-from matgraphdb.materials.nodes import *
+from matgraphdb.core.edges import *
+from matgraphdb.core.matgraphdb_base import MatGraphDB
+from matgraphdb.core.nodes import *
 from matgraphdb.utils.config import DATA_DIR, PKG_DIR, config
 
 config.logging_config.loggers.matgraphdb.level = "DEBUG"

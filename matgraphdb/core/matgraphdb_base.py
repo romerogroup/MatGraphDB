@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 import pyarrow as pa
 from parquetdb import ParquetGraphDB
 
-from matgraphdb.materials.nodes import MaterialStore
+from matgraphdb.core.nodes import MaterialStore
 
 logger = logging.getLogger(__name__)
 

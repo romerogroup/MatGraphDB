@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from matgraphdb.materials import MatGraphDB
+from matgraphdb.core import MatGraphDB
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,9 @@ import os
 
 from huggingface_hub import snapshot_download
 
-from matgraphdb.materials import MatGraphDB
-from matgraphdb.materials.edges import *
-from matgraphdb.materials.nodes import *
+from matgraphdb.core import MatGraphDB
+from matgraphdb.core.edges import *
+from matgraphdb.core.nodes import *
 from matgraphdb.utils.config import config
 
 MPNEARHULL_PATH = os.path.join(config.data_dir, "datasets", "MPNearHull")

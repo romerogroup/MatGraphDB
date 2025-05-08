@@ -1,4 +1,4 @@
-from matgraphdb.materials.nodes.generators import (
+from matgraphdb.core.nodes.generators import (
     chemenv,
     crystal_system,
     element,
@@ -7,7 +7,7 @@ from matgraphdb.materials.nodes.generators import (
     space_group,
     wyckoff,
 )
-from matgraphdb.materials.nodes.materials import (
+from matgraphdb.core.nodes.materials import (
     MaterialStore,
     material_lattice,
     material_site,

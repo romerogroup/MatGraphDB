@@ -13,8 +13,9 @@ import torch_geometric as pyg
 import torch_geometric.transforms as T
 from omegaconf import OmegaConf
 from torch_geometric import nn as pyg_nn
+from torch_geometric.nn import MetaPath2Vec
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.data import HeteroGraphBuilder
 from matgraphdb.pyg.models.han.model import HAN
 from matgraphdb.pyg.models.han.trainer import (
@@ -23,9 +24,6 @@ from matgraphdb.pyg.models.han.trainer import (
     pca_plots,
     roc_curve,
 )
-
-from torch_geometric.nn import MetaPath2Vec
-
 
 ########################################################################################################################
 
@@ -58,7 +56,9 @@ CONFIG = OmegaConf.create(
             "use_shallow_embedding_for_materials": False,
         },
         "training": {
-            "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
+            "training_dir": os.path.join(
+                "data", "training_runs", "heterograph_encoder"
+            ),
             "learning_rate": 0.001,
             "num_epochs": 40001,
             "eval_interval": 2000,
@@ -71,7 +71,7 @@ CONFIG = OmegaConf.create(
             "mlflow_experiment_name": "heterograph_encoder",
             "mlflow_tracking_uri": "${training.training_dir}/mlflow",
             "mlflow_record_system_metrics": True,
-        }
+        },
     }
 )
 
@@ -179,15 +179,19 @@ print(parent_data)
 data = None
 
 
-
 metapaths = [
-    [('materials', 'has', 'elements'), ('elements', 'rev_has', 'materials')],
-    [('materials', 'has', 'elements'), ('elements', 'neighborsByGroupPeriod', 'elements'), ('elements', 'rev_has', 'materials')],
+    [("materials", "has", "elements"), ("elements", "rev_has", "materials")],
+    [
+        ("materials", "has", "elements"),
+        ("elements", "neighborsByGroupPeriod", "elements"),
+        ("elements", "rev_has", "materials"),
+    ],
     # [('elements', 'neighborsByGroupPeriod', 'elements'), ('elements', 'neighborsByGroupPeriod', 'elements')],
     # [('elements', 'rev_has', 'materials'), ('materials', 'has', 'elements')],
-    ]
-transform = T.AddMetaPaths(metapaths=metapaths, drop_orig_edge_types=True,
-                           drop_unconnected_node_types=True)
+]
+transform = T.AddMetaPaths(
+    metapaths=metapaths, drop_orig_edge_types=True, drop_unconnected_node_types=True
+)
 parent_data = transform(parent_data)
 
 
@@ -263,7 +267,6 @@ test_data = original_test_data
 test_val_data = original_test_val_data
 
 
-
 print(train_data)
 print(train_val_data)
 print(test_data)
@@ -290,7 +293,14 @@ print(f"Max memory allocated: {torch.cuda.max_memory_allocated()}")
 # ####################################################################################################
 # # Model
 # ####################################################################################################
-model = HAN(in_channels=-1, out_channels=16, hidden_channels=128, heads=8, out_node_name='materials', data=parent_data).to(device)
+model = HAN(
+    in_channels=-1,
+    out_channels=16,
+    hidden_channels=128,
+    heads=8,
+    out_node_name="materials",
+    data=parent_data,
+).to(device)
 
 print(model)
 
@@ -298,4 +308,3 @@ print(model)
 # ####################################################################################################
 # # Training
 # ####################################################################################################
-

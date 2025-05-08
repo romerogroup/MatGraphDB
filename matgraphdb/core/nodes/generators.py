@@ -10,7 +10,7 @@ import pyarrow.compute as pc
 from parquetdb import ParquetDB, node_generator
 from parquetdb.utils import pyarrow_utils
 
-from matgraphdb.materials.nodes import *
+from matgraphdb.core.nodes import *
 from matgraphdb.utils.config import PKG_DIR
 
 logger = logging.getLogger(__name__)

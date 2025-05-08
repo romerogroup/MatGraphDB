@@ -14,7 +14,7 @@ import torch_geometric.transforms as T
 from omegaconf import OmegaConf
 from torch_geometric import nn as pyg_nn
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.data import HeteroGraphBuilder
 from matgraphdb.pyg.models.heterograph_encoder.model import MaterialEdgePredictor
 from matgraphdb.pyg.models.heterograph_encoder.trainer import (
@@ -55,7 +55,9 @@ CONFIG = OmegaConf.create(
             "use_shallow_embedding_for_materials": False,
         },
         "training": {
-            "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
+            "training_dir": os.path.join(
+                "data", "training_runs", "heterograph_encoder"
+            ),
             "learning_rate": 0.001,
             "num_epochs": 10001,
             "eval_interval": 1000,
@@ -67,7 +69,7 @@ CONFIG = OmegaConf.create(
             "mlflow_experiment_name": "heterograph_encoder",
             "mlflow_tracking_uri": "${training.training_dir}/mlflow",
             "mlflow_record_system_metrics": True,
-        }
+        },
     }
 )
 
@@ -241,14 +243,16 @@ builder = None
 
 print(CONFIG.data.random_link_split_args)
 
-random_link_split_args = OmegaConf.to_container(CONFIG.data.random_link_split_args, resolve=True)
+random_link_split_args = OmegaConf.to_container(
+    CONFIG.data.random_link_split_args, resolve=True
+)
 print(type(random_link_split_args))
-for i,edge_type in enumerate(random_link_split_args['edge_types']):
-    random_link_split_args['edge_types'][i] = tuple(edge_type)
-    
-for i,edge_type in enumerate(random_link_split_args['rev_edge_types']):
-    random_link_split_args['rev_edge_types'][i] = tuple(edge_type)
-    
+for i, edge_type in enumerate(random_link_split_args["edge_types"]):
+    random_link_split_args["edge_types"][i] = tuple(edge_type)
+
+for i, edge_type in enumerate(random_link_split_args["rev_edge_types"]):
+    random_link_split_args["rev_edge_types"][i] = tuple(edge_type)
+
 print(random_link_split_args)
 # Perform a link-level split into training, validation, and test edges:
 train_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_train_data)
@@ -259,7 +263,6 @@ test_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_test_data
 test_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
     original_test_val_data
 )
-
 
 
 print(train_data)
@@ -399,12 +402,14 @@ trainer = Trainer(
 trainer.train(metrics_to_record=["loss", "accuracy", "precision", "recall"])
 
 
-
-
-out = model.encode(test_val_data.x_dict, test_val_data.edge_index_dict, 
-                   node_ids={'materials':test_val_data['materials'].node_ids,
-                            'elements': test_val_data['elements'].node_ids})
-
+out = model.encode(
+    test_val_data.x_dict,
+    test_val_data.edge_index_dict,
+    node_ids={
+        "materials": test_val_data["materials"].node_ids,
+        "elements": test_val_data["elements"].node_ids,
+    },
+)
 
 
 print(out)

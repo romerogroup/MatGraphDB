@@ -6,7 +6,7 @@ import torch
 from torch import optim
 from torch_geometric import nn as pyg_nn
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.data import HeteroGraphBuilder
 from matgraphdb.utils.config import DATA_DIR
 
