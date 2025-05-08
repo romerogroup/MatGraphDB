@@ -5,13 +5,9 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
-from parquetdb import ParquetDB
+from parquetdb import EdgeStore, NodeStore, ParquetDB, edge_generator
 from parquetdb.utils import pyarrow_utils
 
-from matgraphdb.core.edges import EdgeStore, edge_generator
-from matgraphdb.core.nodes import NodeStore
-
-# from matgraphdb.materials.nodes import *
 from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 
 logger = logging.getLogger(__name__)

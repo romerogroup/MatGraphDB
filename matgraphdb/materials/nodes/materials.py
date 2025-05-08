@@ -12,12 +12,11 @@ import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import spglib
-from parquetdb import ParquetDB
+from parquetdb import NodeStore, node_generator
 from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
 from pymatgen.core import Composition, Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from matgraphdb.core.nodes import NodeStore, node_generator
 from matgraphdb.utils.general_utils import set_verbosity
 from matgraphdb.utils.mp_utils import multiprocess_task
 

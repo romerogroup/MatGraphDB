@@ -3,14 +3,14 @@ import os
 from typing import Dict, List, Union
 
 import pyarrow as pa
+from parquetdb import ParquetGraphDB
 
-from matgraphdb.core import GraphDB
 from matgraphdb.materials.nodes import MaterialStore
 
 logger = logging.getLogger(__name__)
 
 
-class MatGraphDB(GraphDB):
+class MatGraphDB(ParquetGraphDB):
     """
     The main entry point for advanced material analysis and graph storage.
 

@@ -7,10 +7,9 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
-from parquetdb import ParquetDB
+from parquetdb import ParquetDB, node_generator
 from parquetdb.utils import pyarrow_utils
 
-from matgraphdb.core.nodes import node_generator
 from matgraphdb.materials.nodes import *
 from matgraphdb.utils.config import PKG_DIR
 
