@@ -39,7 +39,7 @@ from torch_geometric.loader import DataLoader
 from torch_sparse import SparseTensor
 
 from matgraphdb.core.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data import HeteroGraphBuilder
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 from matgraphdb.pyg.models.heterograph_encoder_general.metrics import (
     LearningCurve,
     ROCCurve,

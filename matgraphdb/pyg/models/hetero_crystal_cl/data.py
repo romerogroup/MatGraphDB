@@ -7,7 +7,7 @@ from torch import optim
 from torch_geometric import nn as pyg_nn
 
 from matgraphdb.core.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data import HeteroGraphBuilder
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 from matgraphdb.utils.config import DATA_DIR
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

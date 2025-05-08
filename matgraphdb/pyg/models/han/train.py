@@ -16,7 +16,7 @@ from torch_geometric import nn as pyg_nn
 from torch_geometric.nn import MetaPath2Vec
 
 from matgraphdb.core.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data import HeteroGraphBuilder
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 from matgraphdb.pyg.models.han.model import HAN
 from matgraphdb.pyg.models.han.trainer import (
     Trainer,

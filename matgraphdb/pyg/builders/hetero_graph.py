@@ -5,10 +5,9 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import torch
+from parquetdb import ParquetGraphDB
 from parquetdb.utils import pyarrow_utils
 from torch_geometric.data import HeteroData
-
-from matgraphdb.core.graph_db import GraphDB
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class HeteroGraphBuilder:
     into PyTorch Geometric HeteroData objects for machine learning.
     """
 
-    def __init__(self, graph_db: GraphDB):
+    def __init__(self, graph_db: ParquetGraphDB):
         """
         Initialize the graph builder.
 
@@ -78,7 +77,7 @@ class HeteroGraphBuilder:
         node_type: str,
         columns: Optional[List[str]] = None,
         filters: Optional[Dict] = None,
-        embedding_vectors:bool=False,
+        embedding_vectors: bool = False,
         label_column: Optional[str] = None,
         drop_null: bool = True,
         encoders: Optional[Dict] = None,
@@ -101,9 +100,13 @@ class HeteroGraphBuilder:
         logger.info(f"Adding {node_type} nodes to graph")
 
         ids, torch_tensor, feature_names, labels = self._process_node_type(
-            node_type=node_type, columns=columns, filters=filters, 
-            encoders=encoders, label_column=label_column, 
-            read_kwargs=read_kwargs, drop_null=drop_null
+            node_type=node_type,
+            columns=columns,
+            filters=filters,
+            encoders=encoders,
+            label_column=label_column,
+            read_kwargs=read_kwargs,
+            drop_null=drop_null,
         )
 
         logger.info(f"ids: {ids.shape}")
@@ -111,7 +114,7 @@ class HeteroGraphBuilder:
         self.hetero_data[node_type].node_ids = torch.tensor(ids, dtype=torch.int64)
         if labels is not None:
             self.hetero_data[node_type].labels = labels
-            
+
         if torch_tensor is not None:
             logger.info(f"torch_tensor: {torch_tensor.shape}")
             logger.info(f"feature_names: {feature_names}")
@@ -119,7 +122,7 @@ class HeteroGraphBuilder:
             self.hetero_data[node_type].x = torch_tensor
             logger.info(f"x: {self.hetero_data[node_type].x.shape}")
             self.hetero_data[node_type].feature_names = feature_names
-            
+
         if embedding_vectors:
             num_nodes = len(self.hetero_data[node_type].node_ids)
             self.hetero_data[node_type].x = torch.eye(num_nodes)
@@ -140,12 +143,12 @@ class HeteroGraphBuilder:
             raise ValueError(f"Node type {node_type} has not been added to the graph")
 
         ids, torch_tensor, feature_names, labels = self._process_node_type(
-            node_type=node_type, 
-            columns=columns, 
-            filters=filters, 
+            node_type=node_type,
+            columns=columns,
+            filters=filters,
             encoders=encoders,
             label_column=label_column,
-            read_kwargs=read_kwargs, 
+            read_kwargs=read_kwargs,
             drop_null=drop_null,
         )
 
@@ -154,7 +157,7 @@ class HeteroGraphBuilder:
         # logger.info(f"feature_names: {feature_names}")
 
         target_feature_ids = torch.tensor(ids, dtype=torch.int64)
-        
+
         all_feature_ids = self.hetero_data[node_type].node_ids.clone().detach()
         # all_feature_ids = torch.tensor(
         #     self.hetero_data[node_type].node_id, dtype=torch.int64
@@ -225,7 +228,7 @@ class HeteroGraphBuilder:
             labels = table[label_column].combine_chunks().to_pylist()
         else:
             labels = None
-        
+
         torch_tensor = None
         feature_names = None
         if columns:

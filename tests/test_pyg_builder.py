@@ -8,7 +8,7 @@ import torch
 from parquetdb import ParquetGraphDB
 from torch_geometric.data import HeteroData
 
-from matgraphdb.pyg.data.hetero_graph import GraphBuilder
+from matgraphdb.pyg.builders.hetero_graph import GraphBuilder
 
 
 @pytest.fixture
