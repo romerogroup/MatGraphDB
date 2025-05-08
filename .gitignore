@@ -183,6 +183,13 @@ reports/
 dev_env.md
 
 dev_scripts/
+/logs/
+/notes/
+/my_tests/
+/data
+*data/
+
+_version.py
 
 /mlruns/
 /mlartifacts/
