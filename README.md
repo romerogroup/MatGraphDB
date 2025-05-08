@@ -7,7 +7,7 @@
 - **Robust data operations:** Offers comprehensive CRUD functionality and custom generators to maintain consistent relationships between entities.
 
 ## Table of Contents
-- [ParquetDB](#parquetdb)
+- [MatGraphDB](#matgraphdb)
     - [Table of Contents](#table-of-contents)
     - [Documentation](#documentation)
     - [Installing](#installing)
@@ -142,10 +142,9 @@ materials = mgdb.delete_materials(ids=[0])
 ```
 
 
-
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+Contributions are welcome! Please open an issue or submit a pull request on GitHub. More information can be found in the [CONTRIBUTING.md](https://github.com/lllangWV/ParquetDB/blob/main/CONTRIBUTING.md) file.
 
 ## License
 
