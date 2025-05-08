@@ -40,11 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 
-tests = [
-    "pytest",
-    "pytest-cov",
-    "pymatgen"
-]
+
 
 ml = [
     "torch",
@@ -56,6 +52,12 @@ ml = [
     "torch_sparse",
     "torch_cluster",
     "torch_spline_conv"
+]
+
+tests = [
+    "pytest",
+    "pytest-cov",
+    "matgraphdb[ml]"
 ]
 
 graph-tool = [
