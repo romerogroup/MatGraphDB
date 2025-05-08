@@ -490,7 +490,7 @@ class HeteroGraphBuilder:
         torch.save(self.hetero_data, path)
 
     @classmethod
-    def load(cls, graph_db: GraphDB, path: str):
+    def load(cls, graph_db: ParquetGraphDB, path: str):
         """Load a saved graph."""
         builder = cls(graph_db)
         builder.hetero_data = torch.load(path)
