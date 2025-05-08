@@ -71,9 +71,10 @@ class GNNEncoder(torch.nn.Module):
 
 
 class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels, num_layers=1, dropout=0.0):
+    def __init__(self, hidden_channels, src_node_name, tgt_node_name, num_layers=1, dropout=0.0):
         super().__init__()
-
+        self.src_node_name = src_node_name
+        self.tgt_node_name = tgt_node_name
         self.mlp = MultiLayerPercetronLayer(
             input_dim=2 * hidden_channels, num_layers=num_layers, dropout=dropout
         )
@@ -81,14 +82,14 @@ class EdgeDecoder(torch.nn.Module):
 
     def forward(self, z_dict, edge_label_index):
         row, col = edge_label_index
-        z = torch.cat([z_dict["materials"][row], z_dict["elements"][col]], dim=-1)
+        z = torch.cat([z_dict[self.src_node_name][row], z_dict[self.tgt_node_name][col]], dim=-1)
 
         z = self.mlp(z)
         z = self.mlp_out(z)
         return z.view(-1).sigmoid()
 
 
-class MaterialElementEdgePredictor(torch.nn.Module):
+class MaterialEdgePredictor(torch.nn.Module):
     def __init__(
         self,
         hidden_channels,

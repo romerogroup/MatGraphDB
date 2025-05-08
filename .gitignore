@@ -154,7 +154,6 @@ _build/
 
 /models/
 
-docs/
 /reports/
 /runs/
 notebooks/data/
@@ -184,6 +183,17 @@ reports/
 dev_env.md
 
 dev_scripts/
+/logs/
+/notes/
+/my_tests/
+/data
+*data/
+
+_version.py
 
 /mlruns/
 /mlartifacts/
+
+/papers/
+
+sphinx/_build/

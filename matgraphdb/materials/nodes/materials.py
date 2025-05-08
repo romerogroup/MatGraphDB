@@ -190,8 +190,9 @@ class MaterialStore(NodeStore):
         lattice : list or np.ndarray, optional
             Lattice parameters for the structure.
 
-        Returns:
-        --------
+        Returns
+        -------
+
         Structure or None
             A `Structure` object if valid inputs are provided, or None if inputs are incomplete.
         """
@@ -270,8 +271,9 @@ class MaterialStore(NodeStore):
         **kwargs
             Additional keyword arguments passed to the ParquetDB `create` method.
 
-        Returns:
-        --------
+        Returns
+        -------
+
         None
         """
         set_verbosity(verbose)
@@ -305,15 +307,17 @@ class MaterialStore(NodeStore):
         This method prepares the material data by disabling automatic database saving and then calls
         the `add` method to process the material. It is typically used in batch processing scenarios.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
+
         material : dict
             A dictionary containing the material data, passed as arguments to the `add` method.
         **kwargs
             Additional keyword arguments passed to the `add` method.
 
-        Returns:
-        --------
+        Returns
+        -------
+
         dict
             The processed material data returned by the `add` method.
         """
@@ -361,8 +365,9 @@ class MaterialStore(NodeStore):
         normalize_config : NormalizeConfig, optional
             Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
 
-        Returns:
-        --------
+        Returns
+        -------
+
         Depends on `output_format`
             The material data in the specified format (e.g., a dataset or another format supported by the database).
         """
@@ -407,8 +412,8 @@ class MaterialStore(NodeStore):
         must include an 'id' key that corresponds to the record to be updated. Field types can also be updated
         if specified in `field_type_dict`.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data : Union[List[dict], dict, pd.DataFrame]
             The data to update in the database. It can be a dictionary, a list of dictionaries, or a pandas DataFrame.
             Each dictionary should have an 'id' key for identifying the record to update.
@@ -429,8 +434,9 @@ class MaterialStore(NodeStore):
         verbose : int, optional
             The verbosity level for logging (default is 3).
 
-        Returns:
-        --------
+        Returns
+        -------
+
         None
         """
 
@@ -461,8 +467,8 @@ class MaterialStore(NodeStore):
 
         This method deletes specific records from the database based on the provided list of IDs.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         ids : List[int]
             A list of record IDs to delete from the database.
         columns : List[str], optional
@@ -472,12 +478,12 @@ class MaterialStore(NodeStore):
         verbose : int, optional
             The verbosity level for logging (default is 3).
 
-        Returns:
-        --------
+        Returns
+        -------
         None
 
-        Examples:
-        ---------
+        Examples
+        --------
         # Example usage:
         # Delete records by ID
         .. highlight:: python
@@ -499,13 +505,15 @@ def check_all_params_provided(**kwargs):
     are set. If only some parameters are provided, it raises a `ValueError`, indicating
     which parameters are missing and which are provided.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
+
     **kwargs : dict
         A dictionary of parameter names and their corresponding values to be checked.
 
-    Returns:
-    --------
+    Returns
+    -------
+
     None
     """
 
@@ -529,7 +537,7 @@ def check_all_params_provided(**kwargs):
 
 
 @node_generator
-def material_lattices(material_store: NodeStore):
+def material_lattice(material_store: NodeStore):
     """
     Creates Lattice nodes if no file exists, otherwise loads them from a file.
     """
@@ -572,7 +580,7 @@ def material_lattices(material_store: NodeStore):
 
 
 @node_generator
-def material_sites(material_store: NodeStore):
+def material_site(material_store: NodeStore):
     try:
         material_nodes = material_store
         lattice_names = [

@@ -81,7 +81,7 @@ class EdgeStore(ParquetDB):
             self._setup(**setup_kwargs)
 
     def __repr__(self):
-        return self.summary(show_column_names=True)
+        return self.summary(show_column_names=False)
 
     @property
     def storage_path(self):
@@ -206,8 +206,8 @@ class EdgeStore(ParquetDB):
             If True, the ragged arrays will be converted to fixed shape arrays.
         normalize_config : NormalizeConfig, optional
             Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-        Example
-        -------
+        Examples
+        --------
         >>> db.create_nodes(data=my_data, schema=my_schema, metadata={'source': 'api'}, normalize_dataset=True)
         """
         create_kwargs = dict(
@@ -281,8 +281,8 @@ class EdgeStore(ParquetDB):
         pa.Table, generator, or dataset
             The data read from the database. The output can be in table format or as a batch generator.
 
-        Example
-        -------
+        Examples
+        --------
         >>> data = db.read_edges(ids=[1, 2, 3], columns=['name', 'age'], filters=[pc.field('age') > 18])
         """
         logger.debug(f"Reading edges with ids: {ids}, columns: {columns}")
@@ -347,8 +347,8 @@ class EdgeStore(ParquetDB):
         normalize_config : NormalizeConfig, optional
             Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
 
-        Example
-        -------
+        Examples
+        --------
         >>> db.update(data=[{'id': 1, 'name': 'John', 'age': 30}, {'id': 2, 'name': 'Jane', 'age': 25}])
         """
         logger.debug(f"Updating edges")
@@ -394,8 +394,8 @@ class EdgeStore(ParquetDB):
         -------
         None
 
-        Example
-        -------
+        Examples
+        --------
         >>> db.delete(ids=[1, 2, 3])
         """
         logger.debug(f"Deleting edges with ids: {ids}, columns: {columns}")

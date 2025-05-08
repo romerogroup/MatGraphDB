@@ -16,7 +16,7 @@ from torch_geometric import nn as pyg_nn
 
 from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
 from matgraphdb.pyg.data import HeteroGraphBuilder
-from matgraphdb.pyg.models.heterograph_encoder.model import MaterialElementEdgePredictor
+from matgraphdb.pyg.models.heterograph_encoder.model import MaterialEdgePredictor
 from matgraphdb.pyg.models.heterograph_encoder.trainer import (
     Trainer,
     learning_curve,
@@ -30,11 +30,11 @@ from matgraphdb.pyg.models.heterograph_encoder.trainer import (
 CONFIG = OmegaConf.create(
     {
         "data": {
+            "dataset_dir": os.path.join("data", "datasets", "MPNearHull"),
             "create_random_features": True,
             "n_material_dim": 4,
             "train_ratio": 0.8,
             "val_ratio": 0.1,
-            "test_ratio": 0.1,
             "random_link_split_args": {
                 "num_val": 0.0,
                 "num_test": 0.0,
@@ -55,14 +55,19 @@ CONFIG = OmegaConf.create(
             "use_shallow_embedding_for_materials": False,
         },
         "training": {
+            "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
             "learning_rate": 0.001,
-            "num_epochs": 30001,
+            "num_epochs": 10001,
             "eval_interval": 1000,
             "weights": None,
             "use_weights": False,
             "metrics_to_print": ["accuracy", "precision", "recall"],
             "scheduler_milestones": [4000, 20000],
-        },
+            "use_mlflow": False,
+            "mlflow_experiment_name": "heterograph_encoder",
+            "mlflow_tracking_uri": "${training.training_dir}/mlflow",
+            "mlflow_record_system_metrics": True,
+        }
     }
 )
 
@@ -85,7 +90,7 @@ print("-" * 100)
 ####################################################################################################q
 # Data Loading
 ####################################################################################################
-mdb = MPNearHull("/users/lllang/SCRATCH/MatGraphDB/data/datasets/MPNearHull")
+mdb = MPNearHull(CONFIG.data.dataset_dir)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 builder = HeteroGraphBuilder(mdb)
@@ -157,7 +162,6 @@ data = builder.hetero_data
 # )
 
 # Set random feature vector for materials
-
 if CONFIG.data.create_random_features:
     n_materials = data["materials"].num_nodes
     data["materials"].x = torch.normal(
@@ -166,6 +170,8 @@ if CONFIG.data.create_random_features:
 
 
 parent_data = T.ToUndirected()(data)
+
+print(parent_data)
 data = None
 
 
@@ -233,15 +239,17 @@ print(f"Test val materials: {len(test_val_materials)}")
 # data = None
 builder = None
 
-random_link_split_args = {
-    "num_val": 0.0,
-    "num_test": 0.0,
-    "neg_sampling_ratio": 2.0,
-    "is_undirected": True,
-    "edge_types": [("materials", "has", "elements")],
-    "rev_edge_types": [("elements", "rev_has", "materials")],
-}
+print(CONFIG.data.random_link_split_args)
 
+random_link_split_args = OmegaConf.to_container(CONFIG.data.random_link_split_args, resolve=True)
+print(type(random_link_split_args))
+for i,edge_type in enumerate(random_link_split_args['edge_types']):
+    random_link_split_args['edge_types'][i] = tuple(edge_type)
+    
+for i,edge_type in enumerate(random_link_split_args['rev_edge_types']):
+    random_link_split_args['rev_edge_types'][i] = tuple(edge_type)
+    
+print(random_link_split_args)
 # Perform a link-level split into training, validation, and test edges:
 train_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_train_data)
 train_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
@@ -251,6 +259,8 @@ test_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_test_data
 test_val_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(
     original_test_val_data
 )
+
+
 
 print(train_data)
 print(train_val_data)
@@ -303,7 +313,8 @@ for label in split_data.keys():
     split_data[label]["majority_class"] = majority_class
     split_data[label]["proposed_weights"] = proposed_weights
 
-if CONFIG.training.weights is None and CONFIG.training.use_weights:
+weights = CONFIG.training.weights
+if weights is None and CONFIG.training.use_weights:
     weights = split_data["train"]["proposed_weights"]
 
 
@@ -315,12 +326,14 @@ print("-" * 100)
 ####################################################################################################
 # Model
 ####################################################################################################
-model = MaterialElementEdgePredictor(
+model = MaterialEdgePredictor(
     hidden_channels=CONFIG.model.hidden_channels,
     data=parent_data,
     decoder_kwargs={
         "num_layers": CONFIG.model.num_decoder_layers,
         "dropout": CONFIG.model.dropout_rate,
+        "src_node_name": "materials",
+        "tgt_node_name": "elements",
     },
     encoder_kwargs={
         "num_conv_layers": CONFIG.model.num_conv_layers,
@@ -371,9 +384,27 @@ trainer = Trainer(
     train_val_data=train_val_data,
     test_data=test_data,
     test_val_data=test_val_data,
+    num_epochs=CONFIG.training.num_epochs,
+    eval_interval=CONFIG.training.eval_interval,
+    training_dir=os.path.join("data", "training_runs", "heterograph_encoder"),
     scheduler=scheduler,
     evaluation_callbacks=[learning_curve, roc_curve, pca_plots],
+    use_mlflow=CONFIG.training.use_mlflow,
+    mlflow_experiment_name=CONFIG.training.mlflow_experiment_name,
+    mlflow_tracking_uri=CONFIG.training.mlflow_tracking_uri,
+    mlflow_record_system_metrics=CONFIG.training.mlflow_record_system_metrics,
 )
 
 
 trainer.train(metrics_to_record=["loss", "accuracy", "precision", "recall"])
+
+
+
+
+out = model.encode(test_val_data.x_dict, test_val_data.edge_index_dict, 
+                   node_ids={'materials':test_val_data['materials'].node_ids,
+                            'elements': test_val_data['elements'].node_ids})
+
+
+
+print(out)

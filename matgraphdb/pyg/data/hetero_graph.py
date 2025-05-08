@@ -108,7 +108,7 @@ class HeteroGraphBuilder:
 
         logger.info(f"ids: {ids.shape}")
 
-        self.hetero_data[node_type].node_id = torch.tensor(ids, dtype=torch.int64)
+        self.hetero_data[node_type].node_ids = torch.tensor(ids, dtype=torch.int64)
         if labels is not None:
             self.hetero_data[node_type].labels = labels
             
@@ -121,7 +121,7 @@ class HeteroGraphBuilder:
             self.hetero_data[node_type].feature_names = feature_names
             
         if embedding_vectors:
-            num_nodes = len(self.hetero_data[node_type].node_id)
+            num_nodes = len(self.hetero_data[node_type].node_ids)
             self.hetero_data[node_type].x = torch.eye(num_nodes)
 
         self.hetero_data[node_type].num_nodes = len(torch.tensor(ids))
@@ -155,7 +155,7 @@ class HeteroGraphBuilder:
 
         target_feature_ids = torch.tensor(ids, dtype=torch.int64)
         
-        all_feature_ids = self.hetero_data[node_type].node_id.clone().detach()
+        all_feature_ids = self.hetero_data[node_type].node_ids.clone().detach()
         # all_feature_ids = torch.tensor(
         #     self.hetero_data[node_type].node_id, dtype=torch.int64
         # )

@@ -1,20 +1,18 @@
+import logging
 import os
-import shutil
-import zipfile
 
-import gdown
+from huggingface_hub import snapshot_download
 
 from matgraphdb.materials import MatGraphDB
 from matgraphdb.materials.edges import *
 from matgraphdb.materials.nodes import *
 from matgraphdb.utils.config import config
 
-MP_MATERIALS_PATH = os.path.join(config.data_dir, "raw", "MPNearHull", "materials")
 MPNEARHULL_PATH = os.path.join(config.data_dir, "datasets", "MPNearHull")
-DATASET_URL = "https://drive.google.com/uc?id=1zSmEQbV8pNvjWdhFuCwOeoOzvfoS5XKP"
-RAW_DATASET_URL = "https://drive.google.com/uc?id=14guJqEK242XgRGEZA-zIrWyg4b-gX5zk"
-RAW_DATASET_ZIP = os.path.join(config.data_dir, "raw", "MPNearHull_v0.0.1_raw.zip")
-DATASET_ZIP = os.path.join(config.data_dir, "datasets", "MPNearHull_v0.0.1.zip")
+
+# TODO: Need to find a way to deal with the case when the generator already exists
+
+logger = logging.getLogger(__name__)
 
 
 class MPNearHull(MatGraphDB):
@@ -22,77 +20,58 @@ class MPNearHull(MatGraphDB):
     energy_above_hull_max = 0.2
     nsites_max = 100
 
+    repo_id = "lllangWV/MPNearHull"
+    repo_type = "dataset"
+
     def __init__(
         self,
         storage_path: str = MPNEARHULL_PATH,
         download: bool = True,
-        from_raw_files=False,
+        from_scratch: bool = False,
+        initialize_from_scratch: bool = True,
     ):
-        # Download dataset if it doesn't exist and download is True
-        if download and not os.path.exists(storage_path) and not from_raw_files:
-            print("Downloading dataset...")
-            self.download_dataset()
-            materials_store = None
-        if from_raw_files and not download:
-            print("Downloading raw materials data...")
-            # Download raw data if it doesn't exist
-            if not os.path.exists(MP_MATERIALS_PATH):
-                print("Downloading raw materials data...")
-                gdown.download(DATASET_URL, output=RAW_DATASET_ZIP, quiet=False)
 
-                # Extract the raw dataset
-                print("Extracting raw materials data...")
-                with zipfile.ZipFile(RAW_DATASET_ZIP, "r") as zip_ref:
-                    zip_ref.extractall(os.path.dirname(MP_MATERIALS_PATH))
+        if from_scratch:
+            shutil.rmtree(storage_path)
 
-                # Clean up the zip file
-                os.remove(RAW_DATASET_ZIP)
-                print("Raw materials data ready!")
+        if download and not os.path.exists(storage_path):
+            logger.info(f"Downloading dataset from {self.repo_id}")
+            snapshot_download(
+                repo_id=self.repo_id,
+                repo_type=self.repo_type,
+                local_dir=storage_path,
+            )
 
-            materials_store = MaterialStore(storage_path=MP_MATERIALS_PATH)
-            super().__init__(storage_path=storage_path, materials_store=materials_store)
+        super().__init__(storage_path=storage_path)
 
+        n_edge_generators = len(self.edge_generator_store.generator_names)
+        n_node_generators = len(self.node_generator_store.generator_names)
+
+        logger.debug(f"n_edge_generators: {n_edge_generators}")
+        logger.debug(f"n_node_generators: {n_node_generators}")
+        if initialize_from_scratch and (
+            n_edge_generators == 0 and n_node_generators == 0
+        ):
             self.initialize_nodes()
             self.initialize_edges()
-
-        if not from_raw_files:
-            super().__init__(storage_path=storage_path)
-
-    @staticmethod
-    def download_dataset():
-        """Download and extract the MPNearHull dataset."""
-        os.makedirs(os.path.dirname(DATASET_ZIP), exist_ok=True)
-
-        # Download the dataset
-        print("Downloading MPNearHull dataset...")
-        gdown.download(DATASET_URL, output=DATASET_ZIP, quiet=False)
-
-        # Extract the dataset
-        print("Extracting dataset...")
-        with zipfile.ZipFile(DATASET_ZIP, "r") as zip_ref:
-            zip_ref.extractall(os.path.dirname(MPNEARHULL_PATH))
-
-        # Clean up the zip file
-        os.remove(DATASET_ZIP)
-        print("Dataset ready!")
 
     def initialize_nodes(self):
 
         node_generators = [
-            {"generator_func": elements},
-            {"generator_func": chemenvs},
-            {"generator_func": crystal_systems},
-            {"generator_func": magnetic_states},
-            {"generator_func": oxidation_states},
-            {"generator_func": space_groups},
-            {"generator_func": wyckoffs},
+            {"generator_func": element},
+            {"generator_func": chemenv},
+            {"generator_func": crystal_system},
+            {"generator_func": magnetic_state},
+            {"generator_func": oxidation_state},
+            {"generator_func": space_group},
+            {"generator_func": wyckoff},
             {
-                "generator_func": material_sites,
-                "generator_args": {"material_store": self.node_stores["materials"]},
+                "generator_func": material_site,
+                "generator_args": {"material_store": self.node_stores["material"]},
             },
             {
-                "generator_func": material_lattices,
-                "generator_args": {"material_store": self.node_stores["materials"]},
+                "generator_func": material_lattice,
+                "generator_args": {"material_store": self.node_stores["material"]},
             },
         ]
 
@@ -109,56 +88,56 @@ class MPNearHull(MatGraphDB):
         edge_generators = [
             {
                 "generator_func": element_element_neighborsByGroupPeriod,
-                "generator_args": {"element_store": self.node_stores["elements"]},
+                "generator_args": {"element_store": self.node_stores["element"]},
             },
             {
                 "generator_func": element_oxiState_canOccur,
                 "generator_args": {
-                    "element_store": self.node_stores["elements"],
-                    "oxiState_store": self.node_stores["oxidation_states"],
+                    "element_store": self.node_stores["element"],
+                    "oxiState_store": self.node_stores["oxidation_state"],
                 },
             },
             {
                 "generator_func": material_chemenv_containsSite,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "chemenv_store": self.node_stores["chemenvs"],
+                    "material_store": self.node_stores["material"],
+                    "chemenv_store": self.node_stores["chemenv"],
                 },
             },
             {
                 "generator_func": material_crystalSystem_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "crystal_system_store": self.node_stores["crystal_systems"],
+                    "material_store": self.node_stores["material"],
+                    "crystal_system_store": self.node_stores["crystal_system"],
                 },
             },
             {
                 "generator_func": material_element_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "element_store": self.node_stores["elements"],
+                    "material_store": self.node_stores["material"],
+                    "element_store": self.node_stores["element"],
                 },
             },
             {
                 "generator_func": material_lattice_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "lattice_store": self.node_stores["material_lattices"],
+                    "material_store": self.node_stores["material"],
+                    "lattice_store": self.node_stores["material_lattice"],
                 },
             },
             {
                 "generator_func": material_spg_has,
                 "generator_args": {
-                    "material_store": self.node_stores["materials"],
-                    "spg_store": self.node_stores["space_groups"],
+                    "material_store": self.node_stores["material"],
+                    "spg_store": self.node_stores["space_group"],
                 },
             },
             {
                 "generator_func": element_chemenv_canOccur,
                 "generator_args": {
-                    "element_store": self.node_stores["elements"],
-                    "chemenv_store": self.node_stores["chemenvs"],
-                    "material_store": self.node_stores["materials"],
+                    "element_store": self.node_stores["element"],
+                    "chemenv_store": self.node_stores["chemenv"],
+                    "material_store": self.node_stores["material"],
                 },
             },
         ]

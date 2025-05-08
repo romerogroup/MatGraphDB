@@ -78,7 +78,62 @@ class GraphDB:
         self.generator_consistency_check()
 
     def __repr__(self):
-        return self.summary(show_column_names=True)
+        return self.summary(show_column_names=False)
+
+    # def __getitem__(self, *args: QueryType) -> Any:
+    #     # `data[*]` => Link to either `_global_store`, _node_store_dict` or
+    #     # `_edge_store_dict`.
+    #     # If neither is present, we create a new `Storage` object for the given
+    #     # node/edge-type.
+    #     key = self._to_canonical(*args)
+
+    #     out = self._global_store.get(key, None)
+    #     if out is not None:
+    #         return out
+
+    #     if isinstance(key, tuple):
+    #         return self.get_edge_store(*key)
+    #     else:
+    #         return self.get_node_store(key)
+
+    # def __setitem__(self, key: str, value: Any):
+    #     if key in self.node_types:
+    #         raise AttributeError(f"'{key}' is already present as a node type")
+    #     elif key in self.edge_types:
+    #         raise AttributeError(f"'{key}' is already present as an edge type")
+    #     self._global_store[key] = value
+
+    # def __delitem__(self, *args: QueryType):
+    #     # `del data[*]` => Link to `_node_store_dict` or `_edge_store_dict`.
+    #     key = self._to_canonical(*args)
+    #     if key in self.edge_types:
+    #         del self._edge_store_dict[key]
+    #     elif key in self.node_types:
+    #         del self._node_store_dict[key]
+    #     else:
+    #         del self._global_store[key]
+
+    @property
+    def n_node_types(self):
+        return len(self.node_stores)
+
+    @property
+    def n_edge_types(self):
+        return len(self.edge_stores)
+
+    @property
+    def n_nodes_per_type(self):
+        return {
+            node_type: node_store.n_nodes
+            for node_type, node_store in self.node_stores.items()
+        }
+
+    @property
+    def n_edges_per_type(self):
+        return {
+            edge_type: edge_store.n_edges
+            for edge_type, edge_store in self.edge_stores.items()
+        }
 
     def generator_consistency_check(self):
         logger.info("Checking directory consistency")

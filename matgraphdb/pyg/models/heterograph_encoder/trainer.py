@@ -42,7 +42,7 @@ class Trainer(BaseTrainer):
             data_batch["materials", "elements"].edge_label_index,
             node_ids={
                 "materials": data_batch["materials"].node_ids,
-                "elements": data_batch["elements"].node_id,
+                "elements": data_batch["elements"].node_ids,
             },
         )
         target = data_batch["materials", "elements"].edge_label
@@ -51,7 +51,7 @@ class Trainer(BaseTrainer):
 
         loss.backward()
         self.optimizer.step()
-        return float(loss.cpu().float())
+        return loss
 
     def validation_step(self, data_batch, **kwargs):
         """
@@ -75,7 +75,7 @@ class Trainer(BaseTrainer):
             data_batch["materials", "elements"].edge_label_index,
             node_ids={
                 "materials": data_batch["materials"].node_ids,
-                "elements": data_batch["elements"].node_id,
+                "elements": data_batch["elements"].node_ids,
             },
         )
         target = data_batch["materials", "elements"].edge_label
@@ -100,7 +100,7 @@ class Trainer(BaseTrainer):
         recall = true_positives / (actual_positives + 1e-10)
         f1 = 2 * (precision * recall) / (precision + recall + 1e-10)
 
-        auc_score = roc_auc_score(targets.cpu().numpy(), preds.cpu().numpy())
+        auc_score = roc_auc_score(targets.cpu().detach().numpy(), preds.cpu().detach().numpy())
 
         results = {
             "accuracy": float(accuracy),
@@ -124,7 +124,7 @@ def learning_curve(trainer):
     learning_curve = LearningCurve()
 
     for split_label in trainer.split_names:
-        epochs = trainer.epochs
+        epochs = trainer.data_splits_metrics[split_label]["epochs"]
         loss_values = trainer.data_splits_metrics[split_label]["loss"]
 
         # Add main model curve
@@ -170,15 +170,8 @@ def pca_plots(trainer):
 
         data = trainer.data_splits[data_split]
 
-        # If user does not specify node types, use all available ones
-        if selected_node_types is None:
-            selected_node_types = data.node_types
-        else:
-            # Validate that selected_node_types is a subset
-            for nt in selected_node_types:
-                if nt not in data.node_types:
-                    raise ValueError(f"Node type '{nt}' not found in data.node_types!")
-
+        selected_node_types = data.node_types
+        
         # 1. Extract embeddings from the trained model
         with torch.no_grad():
             z_dict = trainer.model.encode(
@@ -186,7 +179,7 @@ def pca_plots(trainer):
                 data.edge_index_dict,
                 node_ids={
                     "materials": data["materials"].node_ids,
-                    "elements": data["elements"].node_id,
+                    "elements": data["elements"].node_ids,
                 },
             )
 

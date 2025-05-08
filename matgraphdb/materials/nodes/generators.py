@@ -27,7 +27,7 @@ BASE_ELEMENT_FILE = os.path.join(
 
 
 @node_generator
-def elements(base_file=BASE_ELEMENT_FILE):
+def element(base_file=BASE_ELEMENT_FILE):
     """
     Creates Element nodes if no file exists, otherwise loads them from a file.
     """
@@ -69,7 +69,7 @@ def elements(base_file=BASE_ELEMENT_FILE):
 
 
 @node_generator
-def chemenvs(base_file=BASE_CHEMENV_FILE):
+def chemenv(base_file=BASE_CHEMENV_FILE):
     """
     Creates ChemEnv nodes if no file exists, otherwise loads them from a file.
     """
@@ -96,7 +96,7 @@ def chemenvs(base_file=BASE_CHEMENV_FILE):
 
 
 @node_generator
-def crystal_systems():
+def crystal_system():
     """
     Creates Crystal System nodes if no file exists, otherwise loads them from a file.
     """
@@ -120,7 +120,7 @@ def crystal_systems():
 
 
 @node_generator
-def magnetic_states():
+def magnetic_state():
     """
     Creates Magnetic State nodes if no file exists, otherwise loads them from a file.
     """
@@ -136,7 +136,7 @@ def magnetic_states():
 
 
 @node_generator
-def oxidation_states():
+def oxidation_state():
     """
     Creates Oxidation State nodes if no file exists, otherwise loads them from a file.
     """
@@ -152,7 +152,7 @@ def oxidation_states():
 
 
 @node_generator
-def space_groups():
+def space_group():
     """
     Creates Space Group nodes if no file exists, otherwise loads them from a file.
     """
@@ -173,7 +173,7 @@ def space_groups():
 
 
 @node_generator
-def wyckoffs():
+def wyckoff():
     """
     Creates Wyckoff Position nodes if no file exists, otherwise loads them from a file.
     """

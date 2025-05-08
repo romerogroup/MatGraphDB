@@ -41,9 +41,9 @@ class MatGraphDB(GraphDB):
         )
         logger.info(f"Initializing MatGraphDB at: {self.storage_path}")
 
-        self.materials_path = os.path.join(self.nodes_path, "materials")
+        self.materials_path = os.path.join(self.nodes_path, "material")
 
-        if not self.node_exists("materials"):
+        if not self.node_exists("material"):
             logger.info(
                 "Material nodes do not exist. Adding empty materials node store"
             )
@@ -51,17 +51,19 @@ class MatGraphDB(GraphDB):
                 self.add_node_store(MaterialStore(storage_path=self.materials_path))
             else:
                 self.add_node_store(materials_store)
-        self.material_store = self.node_stores["materials"]
+        self.material_store = self.node_stores.get("material", None)
+        if self.material_store is None:
+            raise ValueError("Material node store not found.")
 
     def create_material(self, **kwargs):
         logger.info("Creating material.")
         self.material_store.create_material(**kwargs)
-        self._run_dependent_generators("materials")
+        self._run_dependent_generators("material")
 
     def create_materials(self, data, **kwargs):
         logger.info("Creating materials.")
         self.material_store.create_materials(data, **kwargs)
-        self._run_dependent_generators("materials")
+        self._run_dependent_generators("material")
 
     def read_materials(
         self, ids: List[int] = None, columns: List[str] = None, **kwargs
@@ -72,9 +74,9 @@ class MatGraphDB(GraphDB):
     def update_materials(self, data, **kwargs):
         logger.info("Updating materials.")
         self.material_store.update_materials(data, **kwargs)
-        self._run_dependent_generators("materials")
+        self._run_dependent_generators("material")
 
     def delete_materials(self, ids: List[int] = None, columns: List[str] = None):
         logger.info("Deleting materials.")
         self.material_store.delete_materials(ids=ids, columns=columns)
-        self._run_dependent_generators("materials")
+        self._run_dependent_generators("material")

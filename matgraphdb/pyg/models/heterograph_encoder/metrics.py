@@ -36,8 +36,8 @@ class ROCCurve:
 
     def add_curve(self, pred, target, label, split_label, is_baseline=False):
         """Adds a curve to the plot. Determines color and linestyle based on split and model type."""
-        fpr, tpr, _ = roc_curve(target.cpu().numpy(), pred.cpu().numpy())
-        auc_score = roc_auc_score(target.cpu().numpy(), pred.cpu().numpy())
+        fpr, tpr, _ = roc_curve(target.cpu().detach().numpy(), pred.cpu().detach().numpy())
+        auc_score = roc_auc_score(target.cpu().detach().numpy(), pred.cpu().detach().numpy())
 
         # Assign consistent colors per split
         if split_label not in self.split_colors:
@@ -163,13 +163,13 @@ def plot_pca(
     for x_comp in x_comps:
         for y_comp in y_comps:
             # Get row and column index for subplot
-            row_idx = y_comps.index(y_comp)
-            col_idx = x_comps.index(x_comp)
-
+            row_idx = y_comp - 1  # Subtract 1 since PCA components are 1-based but array indices are 0-based
+            col_idx = x_comp - 1
+            
             ax = axes[row_idx, col_idx]
             ax.scatter(
-                embeddings_pca[:, x_comp],
-                embeddings_pca[:, y_comp],
+                embeddings_pca[:, x_comp - 1],  # Also adjust indices for embeddings_pca
+                embeddings_pca[:, y_comp - 1],
                 c=colors[0],
                 alpha=0.6,
             )
