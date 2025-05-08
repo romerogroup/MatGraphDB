@@ -32,20 +32,19 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "pyyaml",
-    "jupyterlab",
-    "nglview",
-    "ipywidgets",
-    "pylint",
-    "autopep8",
     "pymatgen",
     "parquetdb",
     "variconfig",
-    "gdown",
-    "mlflow",
     "huggingface_hub[cli,torch]",
 ]
 
 [project.optional-dependencies]
+
+tests = [
+    "pytest",
+    "pytest-cov",
+    "pymatgen"
+]
 
 torch = [
     "torch",
@@ -63,11 +62,6 @@ graph-tool = [
     "graph-tool; platform_system == 'Linux'"
 ]
 
-llm = [
-    "openai",
-    "tiktoken",
-]
-
 neo4j = [
     "neo4j",
 ]
@@ -80,11 +74,10 @@ materials=[
     "crystals",
 ]
 
-dev = [
 
+docs= [
     "ipython",
-    "pymongo",
-    "pymatgen",
+    "imageio-ffmpeg",
     "sphinx", 
     "sphinx_rtd_theme",
     "sphinx-copybutton",
@@ -95,8 +88,38 @@ dev = [
     "sphinxcontrib-video",
     "pandoc",
     "furo",
-    "numpydoc",
+    "numpydoc"
 ]
+
+
+dev = [
+    "pymongo",
+    "pytest",
+    "mlflow",
+    "ipywidgets",
+    "jupyterlab",
+    "nglview",
+    "pylint",
+    "autopep8",
+    "openai",
+    "python-dotenv",
+    "PyGithub",
+    "pytest-cov",
+    "ipython",
+    "imageio-ffmpeg",
+    "sphinx", 
+    "sphinx_rtd_theme",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "sphinx_design",
+    "sphinx-new-tab-link",
+    "sphinxcontrib-youtube",
+    "sphinxcontrib-video",
+    "pandoc",
+    "furo",
+    "numpydoc"
+]
+
 
 
 [project.urls]
