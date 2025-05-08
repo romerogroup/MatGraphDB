@@ -35,7 +35,7 @@ dependencies = [
     "pymatgen",
     "parquetdb",
     "variconfig",
-    "huggingface_hub[cli,torch]",
+    "huggingface_hub[cli]",
 ]
 
 [project.optional-dependencies]
@@ -46,11 +46,11 @@ tests = [
     "pymatgen"
 ]
 
-torch = [
+ml = [
     "torch",
     "torchvision",
     "torchaudio",
-    "pyg_lib ; platform_system == 'Linux'" ,
+    "pyg_lib" ,
     "torch_geometric",
     "torch_scatter",
     "torch_sparse",
