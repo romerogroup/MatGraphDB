@@ -1,52 +1,55 @@
 import os
 import shutil
+import tempfile
+from pathlib import Path
 
 import pyarrow as pa
 import pytest
 
 from matgraphdb.core.edges import *
-from matgraphdb.core.matgraphdb_base import MatGraphDB
+from matgraphdb.core.matgraphdb import MatGraphDB
 from matgraphdb.core.nodes import *
-from matgraphdb.utils.config import DATA_DIR, PKG_DIR, config
 
-config.logging_config.loggers.matgraphdb.level = "DEBUG"
-config.apply()
+current_dir = Path(__file__).parent
+TEST_DATA_DIR = current_dir / "test_data"
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-TEST_DATA_DIR = os.path.join(current_dir, "test_data")
+VERBOSE = 1
 
-
-@pytest.fixture
-def tmp_dir(tmp_path):
-    """Fixture for temporary directory."""
-    tmp_dir = str(tmp_path)
-    yield tmp_dir
-    if os.path.exists(tmp_dir):
-        shutil.rmtree(tmp_dir)
+TMP_DIR = Path(tempfile.mkdtemp())
 
 
 @pytest.fixture
-def matgraphdb(tmp_dir, material_store):
+def matgraphdb(material_store):
     """Fixture to create a MatGraphDB instance."""
-    return MatGraphDB(storage_path=tmp_dir, materials_store=material_store)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+    return MatGraphDB(
+        storage_path=matgraphdb_path, materials_store=material_store, verbose=VERBOSE
+    )
 
 
 @pytest.fixture
-def empty_matgraphdb(tmp_dir):
+def empty_matgraphdb():
     """Fixture to create a MatGraphDB instance."""
-    return MatGraphDB(storage_path=tmp_dir)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+    return MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
 
 
 @pytest.fixture
-def empty_material_store(tmp_dir):
-    materials_path = os.path.join(tmp_dir, "material")
-    return MaterialStore(storage_path=materials_path)
+def empty_material_store():
+    materials_path = TMP_DIR / "material"
+    if materials_path.exists():
+        shutil.rmtree(materials_path)
+    return MaterialStore(storage_path=materials_path, verbose=VERBOSE)
 
 
 @pytest.fixture
 def material_store():
-    materials_path = os.path.join(TEST_DATA_DIR, "material")
-    return MaterialStore(storage_path=materials_path)
+    materials_path = TEST_DATA_DIR / "material"
+    return MaterialStore(storage_path=materials_path, verbose=VERBOSE)
 
 
 @pytest.fixture
@@ -274,14 +277,18 @@ def test_delete_materials(empty_matgraphdb, test_material_data):
     ], f"Materials not deleted: {materials.to_pydict()['material_id']}"
 
 
-def test_persistence(tmp_dir, test_material_data):
+def test_persistence(test_material_data):
     """Test that materials persist when recreating the MatGraphDB instance."""
     # Create initial graph instance and add materials
-    db = MatGraphDB(storage_path=tmp_dir)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+
+    db = MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
     db.create_materials(test_material_data)
 
     # Create new graph instance (simulating program restart)
-    new_db = MatGraphDB(storage_path=tmp_dir)
+    new_db = MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
 
     # Verify materials persisted
     materials = new_db.read_materials()
@@ -298,6 +305,7 @@ def test_add_node_generators(node_generator_data):
     matgraphdb, node_generators_list = node_generator_data
 
     material_store = matgraphdb.material_store
+    
     for generator in node_generators_list[:]:
         generator_func = generator.get("generator_func")
         generator_args = generator.get("generator_args", None)
@@ -314,14 +322,14 @@ def test_add_node_generators(node_generator_data):
     ), f"Node generators not found in node_stores: {generator_names}"
 
 
-def test_moving_matgraphdb(tmp_dir, edge_generator_data):
+def test_moving_matgraphdb(edge_generator_data):
     """Test adding an edge generator."""
     matgraphdb, edge_generators = edge_generator_data
 
-    current_dir = matgraphdb.storage_path
+    current_dir = Path(matgraphdb.storage_path)
 
-    parent_dir = os.path.dirname(current_dir)
-    new_dir = os.path.join(parent_dir, "new_dir")
+    parent_dir = current_dir.parent
+    new_dir = parent_dir / "new_dir"
     shutil.move(current_dir, new_dir)
 
     matgraphdb = MatGraphDB(storage_path=new_dir)
