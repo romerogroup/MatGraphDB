@@ -23,17 +23,48 @@ Check out the [docs](https://romerogroup.github.io/MatGraphDB/)
 
 ## Installing
 
-### Installing via pip
+### Regular install
+
+#### Install via pip    
+
 ```bash
 pip install matgraphdb
 ```
 
-### Installing from github
+
+#### Install from github
+
 ```bash
 git clone https://github.com/romerogroup/MatGraphDB.git
 cd MatGraphDB
 pip install -e .
 ```
+
+
+### Install with ML dependencies
+
+You may want to install the package with its ML dependencies. This will install the latest version of PyTorch and the PyTorch Geometric package. This will be dependent on the CUDA version you have installed. 
+
+#### Easy install (cpu)
+
+The easiest way to install the package with ML dependencies is to use the `[ml]` flag. 
+```bash
+pip install matgraphdb[ml]
+```
+
+#### Manual install (gpu)
+
+Here is an example of how to install the package with GPU support with CUDA 11.8. If you have a different version of CUDA installed, you can replace the version numbers `cu118` with the appropriate version for your system. 
+
+
+```bash
+pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
+
+pip install torch_geometric
+
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.6.0+cu118.html
+```
+
 
 ## Usage
 

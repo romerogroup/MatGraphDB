@@ -14,8 +14,8 @@ import torch_geometric.transforms as T
 from omegaconf import OmegaConf
 from torch_geometric import nn as pyg_nn
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data import HeteroGraphBuilder
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 from matgraphdb.pyg.models.hetero_encoder.model import HeteroEncoder
 from matgraphdb.pyg.models.hetero_encoder.trainer import (
     Trainer,
@@ -55,7 +55,9 @@ CONFIG = OmegaConf.create(
             "use_shallow_embedding_for_materials": False,
         },
         "training": {
-            "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
+            "training_dir": os.path.join(
+                "data", "training_runs", "heterograph_encoder"
+            ),
             "learning_rate": 0.001,
             "num_epochs": 40001,
             "eval_interval": 2000,
@@ -68,7 +70,7 @@ CONFIG = OmegaConf.create(
             "mlflow_experiment_name": "heterograph_encoder",
             "mlflow_tracking_uri": "${training.training_dir}/mlflow",
             "mlflow_record_system_metrics": True,
-        }
+        },
     }
 )
 
@@ -246,10 +248,10 @@ builder = None
 # print(type(random_link_split_args))
 # for i,edge_type in enumerate(random_link_split_args['edge_types']):
 #     random_link_split_args['edge_types'][i] = tuple(edge_type)
-    
+
 # for i,edge_type in enumerate(random_link_split_args['rev_edge_types']):
 #     random_link_split_args['rev_edge_types'][i] = tuple(edge_type)
-    
+
 # print(random_link_split_args)
 # # Perform a link-level split into training, validation, and test edges:
 # train_data, _, _ = T.RandomLinkSplit(**random_link_split_args)(original_train_data)
@@ -265,7 +267,6 @@ train_data = original_train_data
 train_val_data = original_train_val_data
 test_data = original_test_data
 test_val_data = original_test_val_data
-
 
 
 print(train_data)
@@ -360,7 +361,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=CONFIG.training.learning_rat
 
 if CONFIG.training.use_scheduler:
     scheduler = lr_scheduler.MultiStepLR(
-        optimizer, milestones=CONFIG.training.scheduler_milestones, gamma=0.1, verbose=False
+        optimizer,
+        milestones=CONFIG.training.scheduler_milestones,
+        gamma=0.1,
+        verbose=False,
     )
 else:
     scheduler = None
