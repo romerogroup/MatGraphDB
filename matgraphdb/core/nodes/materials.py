@@ -590,7 +590,6 @@ def material_site(material_store: NodeStore):
         )
         # table=material_nodes.read(columns=['structure.sites', *id_names])#, *lattice_names])
         material_sites = table["structure.sites"].combine_chunks()
-
         flatten_material_sites = pc.list_flatten(material_sites)
         material_sites_length_list = pc.list_value_length(material_sites).to_numpy()
 
@@ -602,7 +601,11 @@ def material_site(material_store: NodeStore):
         table = None
 
         arrays = flatten_material_sites.flatten()
-        names = flatten_material_sites.type.names
+
+        if hasattr(flatten_material_sites, "names"):
+            names = flatten_material_sites.type.names 
+        else:
+            names= [val.name for val in flatten_material_sites.type]
 
         flatten_material_sites = None
         material_sites_length_list = None
@@ -625,5 +628,5 @@ def material_site(material_store: NodeStore):
 
     except Exception as e:
         logger.error(f"Error creating site nodes: {e}")
-        return None
+        raise e
     return table

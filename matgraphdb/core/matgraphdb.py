@@ -24,6 +24,7 @@ class MatGraphDB(ParquetGraphDB):
         storage_path: str,
         materials_store: MaterialStore = None,
         load_custom_stores: bool = True,
+        **kwargs,
     ):
         """
         Parameters
@@ -37,7 +38,9 @@ class MatGraphDB(ParquetGraphDB):
         """
         self.storage_path = os.path.abspath(storage_path)
         super().__init__(
-            storage_path=self.storage_path, load_custom_stores=load_custom_stores
+            storage_path=self.storage_path,
+            load_custom_stores=load_custom_stores,
+            **kwargs,
         )
         logger.info(f"Initializing MatGraphDB at: {self.storage_path}")
 
