@@ -5,10 +5,10 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import torch
+from parquetdb import ParquetGraphDB
 from torch_geometric.data import HeteroData
 
-from matgraphdb.core.graph_db import GraphDB
-from matgraphdb.pyg.data.hetero_graph import GraphBuilder
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def tmp_dir(tmp_path):
 @pytest.fixture
 def graph_db(tmp_dir):
     """Fixture to create a GraphDB instance with test data."""
-    db = GraphDB(storage_path=tmp_dir)
+    db = ParquetGraphDB(storage_path=tmp_dir)
 
     # Add test materials
     materials_data = pd.DataFrame(
@@ -58,7 +58,7 @@ def graph_db(tmp_dir):
 @pytest.fixture
 def graph_builder(graph_db):
     """Fixture to create a GraphBuilder instance."""
-    return GraphBuilder(graph_db)
+    return HeteroGraphBuilder(graph_db)
 
 
 def test_init(graph_builder):
@@ -139,7 +139,7 @@ def test_save_load(graph_builder, tmp_dir, graph_db):
     graph_builder.save(save_path)
 
     # Load the graph
-    loaded_builder = GraphBuilder.load(graph_db, save_path)
+    loaded_builder = HeteroGraphBuilder.load(graph_db, save_path)
 
     # Check if loaded graph matches original
     assert len(loaded_builder.node_types) == len(graph_builder.node_types)

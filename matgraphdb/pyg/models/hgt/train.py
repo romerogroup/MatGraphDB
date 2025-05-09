@@ -14,8 +14,8 @@ import torch_geometric.transforms as T
 from omegaconf import OmegaConf
 from torch_geometric import nn as pyg_nn
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data import HeteroGraphBuilder
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
+from matgraphdb.pyg.builders import HeteroGraphBuilder
 from matgraphdb.pyg.models.hgt.model import HGT
 from matgraphdb.pyg.models.hgt.trainer import (
     Trainer,
@@ -45,13 +45,15 @@ CONFIG = OmegaConf.create(
             },
         },
         "model": {
-            "hidden_channels": 128, 
+            "hidden_channels": 128,
             "out_channels": 1,
             "num_heads": 8,
             "num_layers": 3,
         },
         "training": {
-            "training_dir": os.path.join("data", "training_runs", "heterograph_encoder"),
+            "training_dir": os.path.join(
+                "data", "training_runs", "heterograph_encoder"
+            ),
             "learning_rate": 0.001,
             "num_epochs": 40001,
             "eval_interval": 2000,
@@ -64,7 +66,7 @@ CONFIG = OmegaConf.create(
             "mlflow_experiment_name": "heterograph_encoder",
             "mlflow_tracking_uri": "${training.training_dir}/mlflow",
             "mlflow_record_system_metrics": True,
-        }
+        },
     }
 )
 
@@ -233,7 +235,6 @@ test_data = original_test_data
 test_val_data = original_test_val_data
 
 
-
 print(train_data)
 print(train_val_data)
 print(test_data)
@@ -260,11 +261,13 @@ print(f"Max memory allocated: {torch.cuda.max_memory_allocated()}")
 ####################################################################################################
 # Model
 ####################################################################################################
-model = HGT(hidden_channels=CONFIG.model.hidden_channels,
-           out_channels=CONFIG.model.out_channels,
-           num_heads=CONFIG.model.num_heads,
-           num_layers=CONFIG.model.num_layers,
-           data=train_data).to(device)
+model = HGT(
+    hidden_channels=CONFIG.model.hidden_channels,
+    out_channels=CONFIG.model.out_channels,
+    num_heads=CONFIG.model.num_heads,
+    num_layers=CONFIG.model.num_layers,
+    data=train_data,
+).to(device)
 print(model)
 
 
@@ -283,8 +286,8 @@ def train():
     model.train()
     optimizer.zero_grad()
     out = model(data.x_dict, data.edge_index_dict)
-    mask = data['author'].train_mask
-    loss = F.cross_entropy(out[mask], data['author'].y[mask])
+    mask = data["author"].train_mask
+    loss = F.cross_entropy(out[mask], data["author"].y[mask])
     loss.backward()
     optimizer.step()
     return float(loss)
@@ -296,9 +299,9 @@ def test():
     pred = model(data.x_dict, data.edge_index_dict).argmax(dim=-1)
 
     accs = []
-    for split in ['train_mask', 'val_mask', 'test_mask']:
-        mask = data['author'][split]
-        acc = (pred[mask] == data['author'].y[mask]).sum() / mask.sum()
+    for split in ["train_mask", "val_mask", "test_mask"]:
+        mask = data["author"][split]
+        acc = (pred[mask] == data["author"].y[mask]).sum() / mask.sum()
         accs.append(float(acc))
     return accs
 
@@ -306,5 +309,7 @@ def test():
 for epoch in range(1, 101):
     loss = train()
     train_acc, val_acc, test_acc = test()
-    print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, '
-          f'Val: {val_acc:.4f}, Test: {test_acc:.4f}')
+    print(
+        f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, "
+        f"Val: {val_acc:.4f}, Test: {test_acc:.4f}"
+    )

@@ -14,8 +14,8 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import CGConv, SAGEConv, global_mean_pool
 
-from matgraphdb.materials.datasets.mp_near_hull import MPNearHull
-from matgraphdb.pyg.data.crystal_graph import CrystalGraphBuilder
+from matgraphdb.core.datasets.mp_near_hull import MPNearHull
+from matgraphdb.pyg.builders.crystal_graph import CrystalGraphBuilder
 from matgraphdb.pyg.models.cg_bond_order.model import BondOrderPredictor
 
 os.environ["MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"] = "true"

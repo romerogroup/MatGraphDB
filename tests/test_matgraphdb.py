@@ -1,71 +1,74 @@
 import os
 import shutil
+import tempfile
+from pathlib import Path
 
 import pyarrow as pa
 import pytest
 
-from matgraphdb.materials.core import MatGraphDB
-from matgraphdb.materials.edges import *
-from matgraphdb.materials.nodes import *
-from matgraphdb.utils.config import DATA_DIR, PKG_DIR, config
+from matgraphdb.core.edges import *
+from matgraphdb.core.matgraphdb import MatGraphDB
+from matgraphdb.core.nodes import *
 
-config.logging_config.loggers.matgraphdb.level = "DEBUG"
-config.apply()
+current_dir = Path(__file__).parent
+TEST_DATA_DIR = current_dir / "test_data"
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-TEST_DATA_DIR = os.path.join(current_dir, "test_data")
+VERBOSE = 1
 
-
-@pytest.fixture
-def tmp_dir(tmp_path):
-    """Fixture for temporary directory."""
-    tmp_dir = str(tmp_path)
-    yield tmp_dir
-    if os.path.exists(tmp_dir):
-        shutil.rmtree(tmp_dir)
+TMP_DIR = Path(tempfile.mkdtemp())
 
 
 @pytest.fixture
-def matgraphdb(tmp_dir, material_store):
+def matgraphdb(material_store):
     """Fixture to create a MatGraphDB instance."""
-    return MatGraphDB(storage_path=tmp_dir, materials_store=material_store)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+    return MatGraphDB(
+        storage_path=matgraphdb_path, materials_store=material_store, verbose=VERBOSE
+    )
 
 
 @pytest.fixture
-def empty_matgraphdb(tmp_dir):
+def empty_matgraphdb():
     """Fixture to create a MatGraphDB instance."""
-    return MatGraphDB(storage_path=tmp_dir)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+    return MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
 
 
 @pytest.fixture
-def empty_material_store(tmp_dir):
-    materials_path = os.path.join(tmp_dir, "materials")
-    return MaterialStore(storage_path=materials_path)
+def empty_material_store():
+    materials_path = TMP_DIR / "material"
+    if materials_path.exists():
+        shutil.rmtree(materials_path)
+    return MaterialStore(storage_path=materials_path, verbose=VERBOSE)
 
 
 @pytest.fixture
 def material_store():
-    materials_path = os.path.join(TEST_DATA_DIR, "materials")
-    return MaterialStore(storage_path=materials_path)
+    materials_path = TEST_DATA_DIR / "material"
+    return MaterialStore(storage_path=materials_path, verbose=VERBOSE)
 
 
 @pytest.fixture
 def node_generator_data(matgraphdb):
     node_generators = [
-        {"generator_func": elements},
-        {"generator_func": chemenvs},
-        {"generator_func": crystal_systems},
-        {"generator_func": magnetic_states},
-        {"generator_func": oxidation_states},
-        {"generator_func": space_groups},
-        {"generator_func": wyckoffs},
+        {"generator_func": element},
+        {"generator_func": chemenv},
+        {"generator_func": crystal_system},
+        {"generator_func": magnetic_state},
+        {"generator_func": oxidation_state},
+        {"generator_func": space_group},
+        {"generator_func": wyckoff},
         {
-            "generator_func": material_sites,
-            "generator_args": {"material_store": matgraphdb.node_stores["materials"]},
+            "generator_func": material_site,
+            "generator_args": {"material_store": matgraphdb.node_stores["material"]},
         },
         {
-            "generator_func": material_lattices,
-            "generator_args": {"material_store": matgraphdb.node_stores["materials"]},
+            "generator_func": material_lattice,
+            "generator_args": {"material_store": matgraphdb.node_stores["material"]},
         },
     ]
 
@@ -87,56 +90,56 @@ def edge_generator_data(node_generator_data):
     edge_generators = [
         {
             "generator_func": element_element_neighborsByGroupPeriod,
-            "generator_args": {"element_store": matgraphdb.node_stores["elements"]},
+            "generator_args": {"element_store": matgraphdb.node_stores["element"]},
         },
         {
             "generator_func": element_oxiState_canOccur,
             "generator_args": {
-                "element_store": matgraphdb.node_stores["elements"],
-                "oxiState_store": matgraphdb.node_stores["oxidation_states"],
+                "element_store": matgraphdb.node_stores["element"],
+                "oxiState_store": matgraphdb.node_stores["oxidation_state"],
             },
         },
         {
             "generator_func": material_chemenv_containsSite,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "chemenv_store": matgraphdb.node_stores["chemenvs"],
+                "material_store": matgraphdb.node_stores["material"],
+                "chemenv_store": matgraphdb.node_stores["chemenv"],
             },
         },
         {
             "generator_func": material_crystalSystem_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "crystal_system_store": matgraphdb.node_stores["crystal_systems"],
+                "material_store": matgraphdb.node_stores["material"],
+                "crystal_system_store": matgraphdb.node_stores["crystal_system"],
             },
         },
         {
             "generator_func": material_element_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "element_store": matgraphdb.node_stores["elements"],
+                "material_store": matgraphdb.node_stores["material"],
+                "element_store": matgraphdb.node_stores["element"],
             },
         },
         {
             "generator_func": material_lattice_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "lattice_store": matgraphdb.node_stores["material_lattices"],
+                "material_store": matgraphdb.node_stores["material"],
+                "lattice_store": matgraphdb.node_stores["material_lattice"],
             },
         },
         {
             "generator_func": material_spg_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "spg_store": matgraphdb.node_stores["space_groups"],
+                "material_store": matgraphdb.node_stores["material"],
+                "spg_store": matgraphdb.node_stores["space_group"],
             },
         },
         {
             "generator_func": element_chemenv_canOccur,
             "generator_args": {
-                "element_store": matgraphdb.node_stores["elements"],
-                "chemenv_store": matgraphdb.node_stores["chemenvs"],
-                "material_store": matgraphdb.node_stores["materials"],
+                "element_store": matgraphdb.node_stores["element"],
+                "chemenv_store": matgraphdb.node_stores["chemenv"],
+                "material_store": matgraphdb.node_stores["material"],
             },
         },
     ]
@@ -173,14 +176,14 @@ def test_initialize_matgraphdb(empty_matgraphdb):
     # Check if materials node store exists
     matgraphdb = empty_matgraphdb
     assert (
-        "materials" in matgraphdb.node_stores
+        "material" in matgraphdb.node_stores
     ), f"Materials node store not found in node_stores: {matgraphdb.node_stores}"
     assert isinstance(
         matgraphdb.material_store, MaterialStore
     ), f"MaterialStore instance not found in matgraphdb: {matgraphdb.material_store}"
 
     # Check if materials directory was created
-    materials_path = os.path.join(matgraphdb.nodes_path, "materials")
+    materials_path = os.path.join(matgraphdb.nodes_path, "material")
     assert os.path.exists(
         materials_path
     ), f"Materials directory not created: {materials_path}"
@@ -212,6 +215,8 @@ def test_read_materials_with_filters(empty_matgraphdb, test_material_data):
 
     # Read specific columns
     columns = ["material_id", "elements"]
+
+    print(matgraphdb.summary(show_column_names=True))
     materials = matgraphdb.read_materials(columns=columns)
 
     assert isinstance(materials, pa.Table), f"Materials not read: {materials}"
@@ -272,14 +277,18 @@ def test_delete_materials(empty_matgraphdb, test_material_data):
     ], f"Materials not deleted: {materials.to_pydict()['material_id']}"
 
 
-def test_persistence(tmp_dir, test_material_data):
+def test_persistence(test_material_data):
     """Test that materials persist when recreating the MatGraphDB instance."""
     # Create initial graph instance and add materials
-    db = MatGraphDB(storage_path=tmp_dir)
+    matgraphdb_path = TMP_DIR / "MatGraphDB"
+    if matgraphdb_path.exists():
+        shutil.rmtree(matgraphdb_path)
+
+    db = MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
     db.create_materials(test_material_data)
 
     # Create new graph instance (simulating program restart)
-    new_db = MatGraphDB(storage_path=tmp_dir)
+    new_db = MatGraphDB(storage_path=matgraphdb_path, verbose=VERBOSE)
 
     # Verify materials persisted
     materials = new_db.read_materials()
@@ -296,6 +305,7 @@ def test_add_node_generators(node_generator_data):
     matgraphdb, node_generators_list = node_generator_data
 
     material_store = matgraphdb.material_store
+    
     for generator in node_generators_list[:]:
         generator_func = generator.get("generator_func")
         generator_args = generator.get("generator_args", None)
@@ -312,70 +322,70 @@ def test_add_node_generators(node_generator_data):
     ), f"Node generators not found in node_stores: {generator_names}"
 
 
-def test_moving_matgraphdb(tmp_dir, edge_generator_data):
+def test_moving_matgraphdb(edge_generator_data):
     """Test adding an edge generator."""
     matgraphdb, edge_generators = edge_generator_data
 
-    current_dir = matgraphdb.storage_path
+    current_dir = Path(matgraphdb.storage_path)
 
-    parent_dir = os.path.dirname(current_dir)
-    new_dir = os.path.join(parent_dir, "new_dir")
+    parent_dir = current_dir.parent
+    new_dir = parent_dir / "new_dir"
     shutil.move(current_dir, new_dir)
 
     matgraphdb = MatGraphDB(storage_path=new_dir)
     edge_generators = [
         {
             "generator_func": element_element_neighborsByGroupPeriod,
-            "generator_args": {"element_store": matgraphdb.node_stores["elements"]},
+            "generator_args": {"element_store": matgraphdb.node_stores["element"]},
         },
         {
             "generator_func": element_oxiState_canOccur,
             "generator_args": {
-                "element_store": matgraphdb.node_stores["elements"],
-                "oxiState_store": matgraphdb.node_stores["oxidation_states"],
+                "element_store": matgraphdb.node_stores["element"],
+                "oxiState_store": matgraphdb.node_stores["oxidation_state"],
             },
         },
         {
             "generator_func": material_chemenv_containsSite,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "chemenv_store": matgraphdb.node_stores["chemenvs"],
+                "material_store": matgraphdb.node_stores["material"],
+                "chemenv_store": matgraphdb.node_stores["chemenv"],
             },
         },
         {
             "generator_func": material_crystalSystem_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "crystal_system_store": matgraphdb.node_stores["crystal_systems"],
+                "material_store": matgraphdb.node_stores["material"],
+                "crystal_system_store": matgraphdb.node_stores["crystal_system"],
             },
         },
         {
             "generator_func": material_element_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "element_store": matgraphdb.node_stores["elements"],
+                "material_store": matgraphdb.node_stores["material"],
+                "element_store": matgraphdb.node_stores["element"],
             },
         },
         {
             "generator_func": material_lattice_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "lattice_store": matgraphdb.node_stores["material_lattices"],
+                "material_store": matgraphdb.node_stores["material"],
+                "lattice_store": matgraphdb.node_stores["material_lattice"],
             },
         },
         {
             "generator_func": material_spg_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "spg_store": matgraphdb.node_stores["space_groups"],
+                "material_store": matgraphdb.node_stores["material"],
+                "spg_store": matgraphdb.node_stores["space_group"],
             },
         },
         {
             "generator_func": element_chemenv_canOccur,
             "generator_args": {
-                "element_store": matgraphdb.node_stores["elements"],
-                "chemenv_store": matgraphdb.node_stores["chemenvs"],
-                "material_store": matgraphdb.node_stores["materials"],
+                "element_store": matgraphdb.node_stores["element"],
+                "chemenv_store": matgraphdb.node_stores["chemenv"],
+                "material_store": matgraphdb.node_stores["material"],
             },
         },
     ]
@@ -413,8 +423,8 @@ def test_dependency_updates(matgraphdb, node_generator_data):
         {
             "generator_func": material_crystalSystem_has,
             "generator_args": {
-                "material_store": matgraphdb.node_stores["materials"],
-                "crystal_system_store": matgraphdb.node_stores["crystal_systems"],
+                "material_store": matgraphdb.node_stores["material"],
+                "crystal_system_store": matgraphdb.node_stores["crystal_system"],
             },
         },
     ]
@@ -440,9 +450,9 @@ def test_dependency_updates(matgraphdb, node_generator_data):
         generator_name="material_crystalSystem_has",
     )
     # Adding nodes
-    matgraphdb.add_nodes(node_type="materials", data=data)
+    matgraphdb.add_nodes(node_type="material", data=data)
     df = matgraphdb.read_nodes(
-        "materials",
+        "material",
         columns=["id", "symmetry.crystal_system"],
         filters=[pc.field("id") == 1000],
     ).to_pandas()
@@ -454,7 +464,7 @@ def test_dependency_updates(matgraphdb, node_generator_data):
     df = df[df["source_id"] == 1000]
     assert df.iloc[0]["target_id"] == 6  # Cubic id
 
-    df = matgraphdb.read_nodes("materials", columns=["core.material_id"]).to_pandas()
+    df = matgraphdb.read_nodes("material", columns=["core.material_id"]).to_pandas()
 
     # Updating nodes
     data = pd.DataFrame(
@@ -465,10 +475,10 @@ def test_dependency_updates(matgraphdb, node_generator_data):
             "symmetry.crystal_system": ["Hexagonal"],
         }
     )
-    matgraphdb.update_nodes("materials", data)
+    matgraphdb.update_nodes("material", data)
 
     df = matgraphdb.read_nodes(
-        "materials",
+        "material",
         columns=["id", "symmetry.crystal_system"],
         filters=[pc.field("id") == 1000],
     ).to_pandas()
@@ -480,10 +490,10 @@ def test_dependency_updates(matgraphdb, node_generator_data):
     df = df[df["source_id"] == 1000]
     assert df.iloc[0]["target_id"] == 5  # Hexagonal id
 
-    matgraphdb.delete_nodes("materials", ids=[1000])
+    matgraphdb.delete_nodes("material", ids=[1000])
 
     df = matgraphdb.read_nodes(
-        "materials",
+        "material",
         columns=["id", "symmetry.crystal_system"],
         filters=[pc.field("id") == 1000],
     ).to_pandas()

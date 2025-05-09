@@ -1,441 +1,715 @@
 import logging
-import os
-from functools import wraps
-from typing import Dict, List, Union
+import shutil
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
-from parquetdb import ParquetDB
-from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
+from parquetdb import EdgeStore, NodeStore, ParquetDB, edge_generator
+from parquetdb.utils import pyarrow_utils
 
-from matgraphdb.core.utils import get_dataframe_column_names
+from matgraphdb.utils.chem_utils.periodic import get_group_period_edge_index
 
 logger = logging.getLogger(__name__)
 
-REQUIRED_EDGE_COLUMNS_FIELDS = set(
-    ["source_id", "source_type", "target_id", "target_type", "edge_type"]
-)
 
+@edge_generator
+def element_element_neighborsByGroupPeriod(element_store):
 
-def validate_edge_dataframe(df):
-    column_names = get_dataframe_column_names(df)
-    fields = set(column_names)
-    missing_fields = REQUIRED_EDGE_COLUMNS_FIELDS - fields
-    if missing_fields:
-        raise ValueError(
-            f"Edge dataframe is missing required fields: {missing_fields}. Edge dataframe must contain the following columns: {REQUIRED_EDGE_COLUMNS_FIELDS}"
+    try:
+        connection_name = "neighborsByGroupPeriod"
+        table = element_store.read_nodes(
+            columns=["atomic_number", "extended_group", "period", "symbol"]
         )
-    return df
+        element_df = table.to_pandas(split_blocks=True, self_destruct=True)
 
+        # Getting group-period edge index
+        edge_index = get_group_period_edge_index(element_df)
 
-def edge_generator(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # Perform pre-execution checks
-        logger.debug(f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
-        df = func(*args, **kwargs)
-        validate_edge_dataframe(df)
-        return df
+        # Creating the relationships dataframe
+        df = pd.DataFrame(edge_index, columns=[f"source_id", f"target_id"])
 
-    wrapper.__name__ = func.__name__
-    wrapper.__doc__ = func.__doc__
-    return wrapper
+        # Dropping rows with NaN values and casting to int64
+        df = df.dropna().astype(np.int64)
 
+        # Add source and target type columns
+        df["source_type"] = element_store.node_type
+        df["target_type"] = element_store.node_type
+        df["edge_type"] = connection_name
+        df["weight"] = 1.0
 
-class EdgeStore(ParquetDB):
-    """
-    A wrapper around ParquetDB specifically for storing edge features
-    of a given edge type.
-    """
+        table = ParquetDB.construct_table(df)
 
-    required_fields = REQUIRED_EDGE_COLUMNS_FIELDS
-    edge_metadata_keys = ["class", "class_module"]
-
-    def __init__(self, storage_path: str, setup_kwargs: dict = None):
-        """
-        Parameters
-        ----------
-        storage_path : str
-            The path where ParquetDB files for this edge type are stored.
-        """
-
-        super().__init__(
-            db_path=storage_path,
-            initial_fields=[
-                pa.field("source_id", pa.int64()),
-                pa.field("source_type", pa.string()),
-                pa.field("target_id", pa.int64()),
-                pa.field("target_type", pa.string()),
-                pa.field("edge_type", pa.string()),
-            ],
+        reduced_table = element_store.read(
+            columns=["symbol", "id", "extended_group", "period"]
+        )
+        reduced_source_table = reduced_table.rename_columns(
+            {
+                "symbol": "source_name",
+                "extended_group": "source_extended_group",
+                "period": "source_period",
+            }
+        )
+        reduced_target_table = reduced_table.rename_columns(
+            {
+                "symbol": "target_name",
+                "extended_group": "target_extended_group",
+                "period": "target_period",
+            }
         )
 
-        self._initialize_metadata()
-        self._initialize_field_metadata()
-
-        logger.debug(f"Initialized EdgeStore at {storage_path}")
-        if self.is_empty():
-            if setup_kwargs is None:
-                setup_kwargs = {}
-            self._setup(**setup_kwargs)
-
-    def __repr__(self):
-        return self.summary(show_column_names=False)
-
-    @property
-    def storage_path(self):
-        return self._db_path
-
-    @storage_path.setter
-    def storage_path(self, value):
-        self._db_path = value
-        self.edge_type = os.path.basename(value)
-
-    @property
-    def edge_type(self):
-        return os.path.basename(self.storage_path)
-
-    @edge_type.setter
-    def edge_type(self, value):
-        self._edge_type = value
-
-    @property
-    def n_edges(self):
-        return self.read_edges(columns=["id"]).num_rows
-
-    @property
-    def n_features(self):
-        return len(self.get_schema().names)
-
-    @property
-    def columns(self):
-        return self.get_schema().names
-
-    def summary(self, show_column_names: bool = False):
-        fields_metadata = self.get_field_metadata()
-        metadata = self.get_metadata()
-        # Header section
-        tmp_str = f"{'=' * 60}\n"
-        tmp_str += f"EDGE STORE SUMMARY\n"
-        tmp_str += f"{'=' * 60}\n"
-        tmp_str += f"Edge type: {self.edge_type}\n"
-        tmp_str += f"• Number of edges: {self.n_edges}\n"
-        tmp_str += f"• Number of features: {self.n_features}\n"
-        tmp_str += f"Storage path: {os.path.relpath(self.storage_path)}\n\n"
-
-        # Metadata section
-        tmp_str += f"\n{'#' * 60}\n"
-        tmp_str += f"METADATA\n"
-        tmp_str += f"{'#' * 60}\n"
-        for key, value in metadata.items():
-            tmp_str += f"• {key}: {value}\n"
-
-        # Node details
-        tmp_str += f"\n{'#' * 60}\n"
-        tmp_str += f"EDGE DETAILS\n"
-        tmp_str += f"{'#' * 60}\n"
-        if show_column_names:
-            tmp_str += f"• Columns:\n"
-            for col in self.columns:
-                tmp_str += f"    - {col}\n"
-
-                if fields_metadata[col]:
-                    tmp_str += f"       - Field metadata\n"
-                    for key, value in fields_metadata[col].items():
-                        tmp_str += f"           - {key}: {value}\n"
-
-        return tmp_str
-
-    def _setup(self, **kwargs):
-        data = self.setup(**kwargs)
-        if data is not None:
-            self.create_edges(data=data)
-            self.set_metadata(kwargs)
-
-    def setup(self, **kwargs):
-        return None
-
-    def _initialize_metadata(self, **kwargs):
-        metadata = self.get_metadata()
-        update_metadata = False
-        for key in self.edge_metadata_keys:
-            if key not in metadata:
-                update_metadata = update_metadata or key not in metadata
-
-        if update_metadata:
-            self.set_metadata(
-                {
-                    "class": f"{self.__class__.__name__}",
-                    "class_module": f"{self.__class__.__module__}",
-                }
-            )
-
-    def _initialize_field_metadata(self, **kwargs):
-        pass
-
-    def create_edges(
-        self,
-        data: Union[List[dict], dict, pd.DataFrame],
-        schema: pa.Schema = None,
-        metadata: dict = None,
-        fields_metadata: dict = None,
-        treat_fields_as_ragged: List[str] = None,
-        convert_to_fixed_shape: bool = True,
-        normalize_dataset: bool = False,
-        normalize_config: dict = NormalizeConfig(),
-    ):
-        """
-        Adds new data to the database.
-
-        Parameters
-        ----------
-        data : dict, list of dict, or pandas.DataFrame
-            The data to be added to the database.
-        schema : pyarrow.Schema, optional
-            The schema for the incoming data.
-        metadata : dict, optional
-            Metadata to be attached to the table.
-        fields_metadata : dict, optional
-            A dictionary containing the metadata to be set for the fields.
-        normalize_dataset : bool, optional
-            If True, the dataset will be normalized after the data is added (default is True).
-        treat_fields_as_ragged : list of str, optional
-            A list of fields to treat as ragged arrays.
-        convert_to_fixed_shape : bool, optional
-            If True, the ragged arrays will be converted to fixed shape arrays.
-        normalize_config : NormalizeConfig, optional
-            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-        Examples
-        --------
-        >>> db.create_nodes(data=my_data, schema=my_schema, metadata={'source': 'api'}, normalize_dataset=True)
-        """
-        create_kwargs = dict(
-            data=data,
-            schema=schema,
-            metadata=metadata,
-            fields_metadata=fields_metadata,
-            treat_fields_as_ragged=treat_fields_as_ragged,
-            convert_to_fixed_shape=convert_to_fixed_shape,
-            normalize_dataset=normalize_dataset,
-            normalize_config=normalize_config,
+        table = pyarrow_utils.join_tables(
+            table,
+            reduced_source_table,
+            left_keys=["source_id"],
+            right_keys=["id"],
+            join_type="left outer",
         )
-        self.create(**create_kwargs)
 
-    def create(self, **kwargs):
-        logger.debug(f"Creating edges")
-
-        if not self.validate_edges(kwargs["data"]):
-            logger.error("Edge data validation failed - missing required fields")
-            raise ValueError(
-                "Edge data is missing required fields. Must include: "
-                + ", ".join(EdgeStore.required_fields)
-            )
-
-        super().create(**kwargs)
-
-        logger.info(f"Successfully created edges")
-
-    def read_edges(
-        self,
-        ids: List[int] = None,
-        columns: List[str] = None,
-        filters: List[pc.Expression] = None,
-        load_format: str = "table",
-        batch_size: int = None,
-        include_cols: bool = True,
-        rebuild_nested_struct: bool = False,
-        rebuild_nested_from_scratch: bool = False,
-        load_config: LoadConfig = LoadConfig(),
-        normalize_config: NormalizeConfig = NormalizeConfig(),
-    ):
-        """
-        Reads data from the database.
-
-        Parameters
-        ----------
-
-        ids : list of int, optional
-            A list of IDs to read. If None, all data is read (default is None).
-        columns : list of str, optional
-            The columns to include in the output. If None, all columns are included (default is None).
-        filters : list of pyarrow.compute.Expression, optional
-            Filters to apply to the data (default is None).
-        load_format : str, optional
-            The format of the returned data: 'table' or 'batches' (default is 'table').
-        batch_size : int, optional
-            The batch size to use for loading data in batches. If None, data is loaded as a whole (default is None).
-        include_cols : bool, optional
-            If True, includes only the specified columns. If False, excludes the specified columns (default is True).
-        rebuild_nested_struct : bool, optional
-            If True, rebuilds the nested structure (default is False).
-        rebuild_nested_from_scratch : bool, optional
-            If True, rebuilds the nested structure from scratch (default is False).
-        load_config : LoadConfig, optional
-            Configuration for loading data, optimizing performance by managing memory usage.
-        normalize_config : NormalizeConfig, optional
-            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-
-        Returns
-        -------
-        pa.Table, generator, or dataset
-            The data read from the database. The output can be in table format or as a batch generator.
-
-        Examples
-        --------
-        >>> data = db.read_edges(ids=[1, 2, 3], columns=['name', 'age'], filters=[pc.field('age') > 18])
-        """
-        logger.debug(f"Reading edges with ids: {ids}, columns: {columns}")
-
-        read_kwargs = dict(
-            ids=ids,
-            columns=columns,
-            filters=filters,
-            load_format=load_format,
-            batch_size=batch_size,
-            include_cols=include_cols,
-            rebuild_nested_struct=rebuild_nested_struct,
-            rebuild_nested_from_scratch=rebuild_nested_from_scratch,
-            load_config=load_config,
-            normalize_config=normalize_config,
+        table = pyarrow_utils.join_tables(
+            table,
+            reduced_target_table,
+            left_keys=["target_id"],
+            right_keys=["id"],
+            join_type="left outer",
         )
-        return self.read(**read_kwargs)
 
-    def update(self, **kwargs):
-        logger.debug(f"Updating edges")
-        # if not self.validate_edges(kwargs["data"]):
-        #     logger.error("Edge data validation failed - missing required fields")
-        #     raise ValueError(
-        #         "Edge data is missing required fields. Must include: "
-        #         + ", ".join(EdgeStore.required_fields)
-        #     )
-
-        super().update(**kwargs)
-        logger.info("Successfully updated edges")
-
-    def update_edges(
-        self,
-        data: Union[List[dict], dict, pd.DataFrame],
-        schema: pa.Schema = None,
-        metadata: dict = None,
-        fields_metadata: dict = None,
-        update_keys: Union[List[str], str] = "id",
-        treat_fields_as_ragged=None,
-        convert_to_fixed_shape: bool = True,
-        normalize_config: NormalizeConfig = NormalizeConfig(),
-    ):
-        """
-        Updates existing records in the database.
-
-        Parameters
-        ----------
-        data : dict, list of dicts, or pandas.DataFrame
-            The data to be updated in the database. Each record must contain an 'id' key
-            corresponding to the record to be updated.
-        schema : pyarrow.Schema, optional
-            The schema for the data being added. If not provided, it will be inferred.
-        metadata : dict, optional
-            Additional metadata to store alongside the data.
-        fields_metadata : dict, optional
-            A dictionary containing the metadata to be set for the fields.
-        update_keys : list of str or str, optional
-            The keys to use for updating the data. If a list, the data must contain a value for each key.
-        treat_fields_as_ragged : list of str, optional
-            A list of fields to treat as ragged arrays.
-        convert_to_fixed_shape : bool, optional
-            If True, the ragged arrays will be converted to fixed shape arrays.
-        normalize_config : NormalizeConfig, optional
-            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
-
-        Examples
-        --------
-        >>> db.update(data=[{'id': 1, 'name': 'John', 'age': 30}, {'id': 2, 'name': 'Jane', 'age': 25}])
-        """
-        logger.debug(f"Updating edges")
-
-        # if not self.validate_edges(data):
-        #     logger.error("Edge data validation failed - missing required fields")
-        #     raise ValueError(
-        #         "Edge data is missing required fields. Must include: "
-        #         + ", ".join(EdgeStore.required_fields)
-        #     )
-
-        update_kwargs = dict(
-            data=data,
-            schema=schema,
-            metadata=metadata,
-            update_keys=update_keys,
-            treat_fields_as_ragged=treat_fields_as_ragged,
-            convert_to_fixed_shape=convert_to_fixed_shape,
-            normalize_config=normalize_config,
+        names = pc.binary_join_element_wise(
+            pc.cast(table["source_name"], pa.string()),
+            pc.cast(table["target_name"], pa.string()),
+            f"_{connection_name}_",
         )
-        self.update(**update_kwargs)
-        logger.info("Successfully updated edges")
 
-    def delete_edges(
-        self,
-        ids: List[int] = None,
-        columns: List[str] = None,
-        normalize_config: NormalizeConfig = NormalizeConfig(),
-    ):
-        """
-        Deletes records from the database.
+        table = table.append_column("name", names)
 
-        Parameters
-        ----------
-        ids : list of int
-            A list of record IDs to delete from the database.
-        columns : list of str, optional
-            A list of column names to delete from the dataset. If not provided, it will be inferred from the existing data (default: None).
-        normalize_config : NormalizeConfig, optional
-            Configuration for the normalization process, optimizing performance by managing row distribution and file structure.
+        logger.debug(
+            f"Created element-group-period relationships. Shape: {table.shape}"
+        )
+    except Exception as e:
+        logger.exception(f"Error creating element-group-period relationships: {e}")
+        raise e
 
-        Returns
-        -------
-        None
+    return table
 
-        Examples
-        --------
-        >>> db.delete(ids=[1, 2, 3])
-        """
-        logger.debug(f"Deleting edges with ids: {ids}, columns: {columns}")
-        self.delete(ids=ids, columns=columns, normalize_config=normalize_config)
-        logger.info(f"Successfully deleted edges")
 
-    def normalize_edges(self, normalize_config: NormalizeConfig = NormalizeConfig()):
-        """
-        Triggers file restructuring and compaction to optimize edge storage.
-        """
-        logger.info("Starting edge store normalization")
-        self.normalize(normalize_config=normalize_config)
-        logger.info("Completed edge store normalization")
+@edge_generator
+def element_element_bonds(element_store, material_store):
+    try:
+        connection_name = "canBondTo"
+        material_table = material_store.read_nodes(
+            columns=[
+                "id",
+                "core.material_id",
+                "core.species",
+                "chemenv.coordination_environments_multi_weight",
+                "bonding.geometric_consistent.bond_connections",
+            ]
+        )
 
-    def validate_edges(
-        self, data: Union[List[dict], dict, pd.DataFrame, pa.Table, pa.RecordBatch]
-    ):
-        """
-        Validates the edges to ensure they contain the required fields.
-        """
-        logger.debug("Validating edge data")
+        element_table = element_store.read_nodes(columns=["id", "symbol"])
 
-        data = ParquetDB.construct_table(data)
+        element_table = element_table.rename_columns({"symbol": "name"})
+        element_table = element_table.append_column(
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
+        )
 
-        if isinstance(data, pa.Table) or isinstance(data, pa.RecordBatch):
-            fields = data.schema.names
-        else:
-            logger.error(f"Invalid data type for edge validation: {type(data)}")
-            raise ValueError("Invalid data type for edge validation")
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
 
-        is_valid = True
-        missing_fields = []
-        for required_field in EdgeStore.required_fields:
-            if required_field not in fields:
-                is_valid = False
-                missing_fields.append(required_field)
+        element_target_id_map = {
+            row["name"]: row["id"] for _, row in element_df.iterrows()
+        }
 
-        if not is_valid:
-            logger.warning(f"Edge validation failed. Missing fields: {missing_fields}")
-        else:
-            logger.debug("Edge validation successful")
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+        }
 
-        return is_valid
+        for _, row in material_df.iterrows():
+            bond_connections = row["bonding.geometric_consistent.bond_connections"]
+
+            if bond_connections is None:
+                continue
+
+            elements = row["core.species"]
+            element_graph = {}
+            for i, site_connections in enumerate(bond_connections):
+                site_element_name = elements[i]
+                for i_neighbor_element in site_connections:
+                    i_neighbor_element = int(i_neighbor_element)
+                    neighbor_element_name = elements[i_neighbor_element]
+
+                    source_id = element_target_id_map[site_element_name]
+                    target_id = element_target_id_map[neighbor_element_name]
+
+                    table_dict["source_id"].append(source_id)
+                    table_dict["source_type"].append(element_store.node_type)
+                    table_dict["target_id"].append(target_id)
+                    table_dict["target_type"].append(element_store.node_type)
+                    table_dict["edge_type"].append(connection_name)
+
+                    name = (
+                        f"{site_element_name}_{connection_name}_{neighbor_element_name}"
+                    )
+                    table_dict["name"].append(name)
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created element-chemenv-canOccur relationships. Shape: {edge_table.shape}"
+        )
+
+    except Exception as e:
+        logger.exception(f"Error creating element-chemenv-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def element_oxiState_canOccur(element_store, oxiState_store):
+    try:
+        connection_name = "canOccur"
+
+        element_table = element_store.read_nodes(
+            columns=["id", "experimental_oxidation_states", "symbol"]
+        )
+        oxiState_table = oxiState_store.read_nodes(
+            columns=["id", "oxidation_state", "value"]
+        )
+
+        # element_table=element_table.rename_columns({'id':'source_id'})
+        element_table = element_table.append_column(
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
+        )
+
+        # oxiState_table=oxiState_table.rename_columns({'id':'target_id'})
+        oxiState_table = oxiState_table.append_column(
+            "target_type",
+            pa.array([oxiState_store.node_type] * oxiState_table.num_rows),
+        )
+
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
+        oxiState_df = oxiState_table.to_pandas(split_blocks=True, self_destruct=True)
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+            "weight": [],
+        }
+
+        oxiState_id_map = {}
+        id_oxidationState_map = {}
+        for i, oxiState_row in oxiState_df.iterrows():
+            oxiState_id_map[oxiState_row["value"]] = oxiState_row["id"]
+            id_oxidationState_map[oxiState_row["id"]] = oxiState_row["oxidation_state"]
+
+        for i, element_row in element_df.iterrows():
+            exp_oxidation_states = element_row["experimental_oxidation_states"]
+            source_id = element_row["id"]
+            source_type = element_store.node_type
+            symbol = element_row["symbol"]
+            for exp_oxidation_state in exp_oxidation_states:
+                target_id = oxiState_id_map[exp_oxidation_state]
+                target_type = oxiState_store.node_type
+                oxi_state_name = id_oxidationState_map[target_id]
+
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(source_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(target_type)
+                table_dict["edge_type"].append(connection_name)
+                table_dict["weight"].append(1.0)
+                table_dict["name"].append(
+                    f"{symbol}_{connection_name}_{oxi_state_name}"
+                )
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created element-oxiState-canOccur relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(f"Error creating element-oxiState-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def material_chemenv_containsSite(material_store, chemenv_store):
+    try:
+        connection_name = "containsSite"
+
+        material_table = material_store.read_nodes(
+            columns=[
+                "id",
+                "core.material_id",
+                "chemenv.coordination_environments_multi_weight",
+            ]
+        )
+        chemenv_table = chemenv_store.read_nodes(columns=["id", "mp_symbol"])
+
+        material_table = material_table.rename_columns(
+            {"id": "source_id", "core.material_id": "material_name"}
+        )
+        material_table = material_table.append_column(
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
+        )
+
+        chemenv_table = chemenv_table.rename_columns(
+            {"id": "target_id", "mp_symbol": "chemenv_name"}
+        )
+        chemenv_table = chemenv_table.append_column(
+            "target_type", pa.array([chemenv_store.node_type] * chemenv_table.num_rows)
+        )
+
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        chemenv_df = chemenv_table.to_pandas(split_blocks=True, self_destruct=True)
+        chemenv_target_id_map = {
+            row["chemenv_name"]: row["target_id"] for _, row in chemenv_df.iterrows()
+        }
+
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+            "weight": [],
+        }
+
+        for _, row in material_df.iterrows():
+            coord_envs = row["chemenv.coordination_environments_multi_weight"]
+            if coord_envs is None:
+                continue
+
+            source_id = row["source_id"]
+            material_name = row["material_name"]
+
+            for coord_env in coord_envs:
+                try:
+                    chemenv_name = coord_env[0]["ce_symbol"]
+                    target_id = chemenv_target_id_map[chemenv_name]
+                except:
+                    continue
+
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(material_store.node_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(chemenv_store.node_type)
+                table_dict["edge_type"].append(connection_name)
+
+                name = f"{material_name}_{connection_name}_{chemenv_name}"
+                table_dict["name"].append(name)
+                table_dict["weight"].append(1.0)
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created material-chemenv-containsSite relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(
+            f"Error creating material-chemenv-containsSite relationships: {e}"
+        )
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def material_crystalSystem_has(material_store, crystal_system_store):
+    try:
+        connection_name = "has"
+
+        material_table = material_store.read_nodes(
+            columns=["id", "core.material_id", "symmetry.crystal_system"]
+        )
+        crystal_system_table = crystal_system_store.read_nodes(
+            columns=["id", "crystal_system"]
+        )
+
+        material_table = material_table.rename_columns(
+            {"id": "source_id", "symmetry.crystal_system": "crystal_system"}
+        )
+        material_table = material_table.append_column(
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
+        )
+
+        crystal_system_table = crystal_system_table.rename_columns({"id": "target_id"})
+        crystal_system_table = crystal_system_table.append_column(
+            "target_type",
+            pa.array([crystal_system_store.node_type] * crystal_system_table.num_rows),
+        )
+
+        edge_table = pyarrow_utils.join_tables(
+            material_table,
+            crystal_system_table,
+            left_keys=["crystal_system"],
+            right_keys=["crystal_system"],
+            join_type="left outer",
+        )
+        edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
+        edge_table = edge_table.append_column(
+            "weight", pa.array([1.0] * edge_table.num_rows)
+        )
+
+        names = pc.binary_join_element_wise(
+            pc.cast(edge_table["core.material_id"], pa.string()),
+            pc.cast(edge_table["crystal_system"], pa.string()),
+            f"_{connection_name}_",
+        )
+
+        edge_table = edge_table.append_column("name", names)
+
+        logger.debug(
+            f"Created material-crystalSystem-has relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(
+            f"Error creating material-crystalSystem-has relationships: {e}"
+        )
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def material_element_has(material_store, element_store):
+    try:
+        connection_name = "has"
+
+        material_table = material_store.read_nodes(
+            columns=["id", "core.material_id", "core.elements"]
+        )
+        element_table = element_store.read_nodes(columns=["id", "symbol"])
+
+        material_table = material_table.rename_columns(
+            {"id": "source_id", "core.material_id": "material_name"}
+        )
+        material_table = material_table.append_column(
+            "source_type", pa.array(["material"] * material_table.num_rows)
+        )
+
+        element_table = element_table.rename_columns({"id": "target_id"})
+        element_table = element_table.append_column(
+            "target_type", pa.array(["elements"] * element_table.num_rows)
+        )
+
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_target_id_map = {
+            row["symbol"]: row["target_id"] for _, row in element_df.iterrows()
+        }
+
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+            "weight": [],
+        }
+
+        for _, row in material_df.iterrows():
+            elements = row["core.elements"]
+            source_id = row["source_id"]
+            material_name = row["material_name"]
+            if elements is None:
+                continue
+
+            # Append the material name for each element in the species list
+            for element in elements:
+
+                target_id = element_target_id_map[element]
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(material_store.node_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(element_store.node_type)
+                table_dict["edge_type"].append(connection_name)
+
+                name = f"{material_name}_{connection_name}_{element}"
+                table_dict["name"].append(name)
+                table_dict["weight"].append(1.0)
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created material-element-has relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(f"Error creating material-element-has relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def material_lattice_has(material_store, lattice_store):
+    try:
+        connection_name = "has"
+
+        material_table = material_store.read_nodes(columns=["id", "core.material_id"])
+        lattice_table = lattice_store.read_nodes(columns=["material_node_id"])
+
+        material_table = material_table.rename_columns(
+            {"id": "source_id", "core.material_id": "material_id"}
+        )
+        material_table = material_table.append_column(
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
+        )
+
+        lattice_table = lattice_table.append_column(
+            "target_id", lattice_table["material_node_id"].combine_chunks()
+        )
+        lattice_table = lattice_table.append_column(
+            "target_type", pa.array([lattice_store.node_type] * lattice_table.num_rows)
+        )
+
+        edge_table = pyarrow_utils.join_tables(
+            material_table,
+            lattice_table,
+            left_keys=["source_id"],
+            right_keys=["material_node_id"],
+            join_type="left outer",
+        )
+        edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
+        edge_table = edge_table.append_column(
+            "weight", pa.array([1.0] * edge_table.num_rows)
+        )
+
+        logger.debug(
+            f"Created material-lattice-has relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(f"Error creating material-lattice-has relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def material_spg_has(material_store, spg_store):
+    try:
+        connection_name = "has"
+
+        material_table = material_store.read_nodes(
+            columns=["id", "core.material_id", "symmetry.number"]
+        )
+        spg_table = spg_store.read_nodes(columns=["id", "spg"])
+
+        material_table = material_table.rename_columns(
+            {"id": "source_id", "symmetry.number": "spg"}
+        )
+        material_table = material_table.append_column(
+            "source_type",
+            pa.array([material_store.node_type] * material_table.num_rows),
+        )
+
+        spg_table = spg_table.rename_columns({"id": "target_id"})
+        spg_table = spg_table.append_column(
+            "target_type", pa.array([spg_store.node_type] * spg_table.num_rows)
+        )
+
+        edge_table = pyarrow_utils.join_tables(
+            material_table,
+            spg_table,
+            left_keys=["spg"],
+            right_keys=["spg"],
+            join_type="left outer",
+        )
+
+        edge_table = edge_table.append_column(
+            "edge_type", pa.array([connection_name] * edge_table.num_rows)
+        )
+
+        edge_table = edge_table.append_column(
+            "weight", pa.array([1.0] * edge_table.num_rows)
+        )
+
+        names = pc.binary_join_element_wise(
+            pc.cast(edge_table["core.material_id"], pa.string()),
+            pc.cast(edge_table["spg"], pa.string()),
+            f"_{connection_name}_SpaceGroup",
+        )
+
+        edge_table = edge_table.append_column("name", names)
+
+        logger.debug(
+            f"Created material-spg-has relationships. Shape: {edge_table.shape}"
+        )
+    except Exception as e:
+        logger.exception(f"Error creating material-spg-has relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def element_chemenv_canOccur(element_store, chemenv_store, material_store):
+    try:
+        connection_name = "canOccur"
+        material_table = material_store.read_nodes(
+            columns=[
+                "id",
+                "core.material_id",
+                "core.elements",
+                "chemenv.coordination_environments_multi_weight",
+            ]
+        )
+
+        chemenv_table = chemenv_store.read_nodes(columns=["id", "mp_symbol"])
+        element_table = element_store.read_nodes(columns=["id", "symbol"])
+
+        chemenv_table = chemenv_table.rename_columns({"mp_symbol": "name"})
+        chemenv_table = chemenv_table.append_column(
+            "target_type", pa.array([chemenv_store.node_type] * chemenv_table.num_rows)
+        )
+
+        element_table = element_table.rename_columns({"symbol": "name"})
+        element_table = element_table.append_column(
+            "source_type", pa.array([element_store.node_type] * element_table.num_rows)
+        )
+
+        material_df = material_table.to_pandas(split_blocks=True, self_destruct=True)
+        chemenv_df = chemenv_table.to_pandas(split_blocks=True, self_destruct=True)
+        element_df = element_table.to_pandas(split_blocks=True, self_destruct=True)
+
+        chemenv_target_id_map = {
+            row["name"]: row["id"] for _, row in chemenv_df.iterrows()
+        }
+        element_target_id_map = {
+            row["name"]: row["id"] for _, row in element_df.iterrows()
+        }
+
+        table_dict = {
+            "source_id": [],
+            "source_type": [],
+            "target_id": [],
+            "target_type": [],
+            "edge_type": [],
+            "name": [],
+        }
+
+        for _, row in material_df.iterrows():
+            coord_envs = row["chemenv.coordination_environments_multi_weight"]
+
+            if coord_envs is None:
+                continue
+
+            elements = row["core.elements"]
+
+            for i, coord_env in enumerate(coord_envs):
+                try:
+                    chemenv_name = coord_env[0]["ce_symbol"]
+                    element_name = elements[i]
+
+                    source_id = element_target_id_map[element_name]
+                    target_id = chemenv_target_id_map[chemenv_name]
+                except:
+                    continue
+
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(element_store.node_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(chemenv_store.node_type)
+                table_dict["edge_type"].append(connection_name)
+
+                name = f"{element_name}_{connection_name}_{chemenv_name}"
+                table_dict["name"].append(name)
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created element-chemenv-canOccur relationships. Shape: {edge_table.shape}"
+        )
+
+    except Exception as e:
+        logger.exception(f"Error creating element-chemenv-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
+
+
+@edge_generator
+def spg_crystalSystem_isApart(spg_store, crystal_system_store):
+    try:
+        connection_name = "isApart"
+
+    except Exception as e:
+        logger.exception(f"Error creating spg-crystalSystem-isApart relationships: {e}")
+        raise e
+
+    spg_table = spg_store.read_nodes(columns=["id", "spg"])
+    crystal_system_table = crystal_system_store.read_nodes(
+        columns=["id", "crystal_system"]
+    )
+
+    spg_df = spg_table.to_pandas(split_blocks=True, self_destruct=True)
+    crystal_system_df = crystal_system_table.to_pandas(
+        split_blocks=True, self_destruct=True
+    )
+
+    spg_target_id_map = {row["spg"]: row["id"] for _, row in spg_df.iterrows()}
+    crystal_system_target_id_map = {
+        row["crystal_system"]: row["id"] for _, row in crystal_system_df.iterrows()
+    }
+
+    crys_spg_map = {
+        "Triclinic": np.arange(1, 3),
+        "Monoclinic": np.arange(3, 16),
+        "Orthorhombic": np.arange(16, 75),
+        "Tetragonal": np.arange(75, 143),
+        "Trigonal": np.arange(143, 168),
+        "Hexagonal": np.arange(168, 195),
+        "Cubic": np.arange(195, 231),
+    }
+    table_dict = {
+        "source_id": [],
+        "source_type": [],
+        "target_id": [],
+        "target_type": [],
+        "edge_type": [],
+        "name": [],
+    }
+    try:
+        for crystal_system, spg_range in crys_spg_map.items():
+            for spg in spg_range:
+                source_id = spg_target_id_map[spg]
+                target_id = crystal_system_target_id_map[crystal_system]
+
+                table_dict["source_id"].append(source_id)
+                table_dict["source_type"].append(spg_store.node_type)
+                table_dict["target_id"].append(target_id)
+                table_dict["target_type"].append(crystal_system_store.node_type)
+                table_dict["edge_type"].append(connection_name)
+                table_dict["name"].append(f"{crystal_system}_{connection_name}_{spg}")
+
+        edge_table = ParquetDB.construct_table(table_dict)
+
+        logger.debug(
+            f"Created spg-crystalSystem-isApart relationships. Shape: {edge_table.shape}"
+        )
+
+    except Exception as e:
+        logger.exception(f"Error creating element-chemenv-canOccur relationships: {e}")
+        raise e
+
+    return edge_table
