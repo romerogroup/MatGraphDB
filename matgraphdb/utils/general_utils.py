@@ -78,35 +78,6 @@ def get_function_args(func: Callable):
     return args, kwargs
 
 
-def set_verbosity(verbose: int):
-    """
-    Sets the verbosity level for the logger.
-
-    Args:
-        verbose (int): The verbosity level. 0 is no logging, 1 is INFO level logging, and 2 is DEBUG level logging.
-    """
-    if not isinstance(verbose, int):
-        raise TypeError(
-            "Verbose must be an integer. The higher the number, the more verbose the logging."
-        )
-    if verbose == 0:
-        config.logging_config.loggers.matgraphdb.level = logging.CRITICAL
-    elif verbose == 1:
-        config.logging_config.loggers.matgraphdb.level = logging.ERROR
-    elif verbose == 2:
-        config.logging_config.loggers.matgraphdb.level = logging.WARNING
-    elif verbose == 3:
-        config.logging_config.loggers.matgraphdb.level = logging.INFO
-    elif verbose == 4:
-        config.logging_config.loggers.matgraphdb.level = logging.DEBUG
-        config.logging_config.loggers.parquetdb.level = logging.DEBUG
-    else:
-        raise ValueError(
-            "Verbose must be an integer between 0 and 4. The higher the number, the more verbose the logging."
-        )
-    config.apply()
-
-
 def download_test_data(save_path: str):
     import requests
 

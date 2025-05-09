@@ -1,9 +1,9 @@
 MaterialStore
 ========================
 
-- :class:`MaterialStore <matgraphdb.core.nodes.materials.MaterialStore>` - A store for managing materials in a graph database.
+- :class:`MaterialStore <matgraphdb.core.material_store.MaterialStore>` - A store for managing materials in a graph database.
 
 .. autosummary::
    :toctree: _autosummary
 
-   matgraphdb.core.nodes.materials.MaterialStore
+   matgraphdb.core.material_store.MaterialStore

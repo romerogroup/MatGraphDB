@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from matgraphdb.core.nodes.materials import MaterialStore
+from matgraphdb.core.material_store import MaterialStore
 
 TEMP_DIR = Path(tempfile.mkdtemp())
 
