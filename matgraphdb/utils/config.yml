@@ -2,7 +2,7 @@ root_dir: "."
 data_dir: "{{ root_dir }}/data"
 external_data_dir: "{{ data_dir }}/external"
 log_dir: "{{ root_dir }}/logs"
-db_name: 'MatGraphDB'
+tests_dir: "{{ root_dir }}/tests"
 
 n_cores: 
 use_multiprocessing: True
@@ -11,78 +11,3 @@ numpy_config:
   np_printoptions:
     linewidth:  400
     precision: 3
-
-matgraphdb_config:
-  normalize_kwargs:
-    load_kwargs:
-      batch_readahead: 16
-      fragment_readahead: 4
-      batch_size: 131072
-    use_threads: True
-    max_partitions: 1024
-    max_open_files: 1024
-    max_rows_per_file: 1000000
-    min_rows_per_group: 0
-    max_rows_per_group: 1000000
-    existing_data_behavior: overwrite_or_ignore
-    create_dir: True
-  load_kwargs:
-    batch_readahead: 16
-    fragment_readahead: 4
-    batch_size: 131072
-
-
-
-logging_config:
-  version: 1
-  disable_existing_loggers: False
-
-  formatters:
-    simple:
-      format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-      datefmt: '%Y-%m-%d %H:%M:%S'
-
-    user:
-      format: '%(message)s'
-      datefmt: '%Y-%m-%d %H:%M:%S'
-
-  handlers:
-    console:
-      class: logging.StreamHandler
-      formatter: simple
-      stream: ext://sys.stdout
-
-    user_console:
-      class: logging.StreamHandler
-      formatter: user
-      stream: ext://sys.stdout
-
-    # file:
-    #   class: logging.FileHandler
-    #   formatter: simple
-    #   filename: "{{ log_dir }}/matgraphdb.log"
-    #   mode: a
-
-  loggers:
-    matgraphdb:
-      level: CRITICAL
-      handlers: [console]
-      propagate: no
-    parquetdb:
-      level: CRITICAL
-      handlers: [console]
-      propagate: no
-    timing:
-      level: DEBUG
-      handlers: [console]
-      propagate: no
-    tests:
-      level: DEBUG
-      handlers: [console]
-      propagate: no
-
-
-  # root:
-  #   level: INFO
-  #   handlers: [console]
-  #   propagate: no

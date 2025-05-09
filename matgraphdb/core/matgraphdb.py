@@ -1,11 +1,10 @@
 import logging
 import os
-from typing import Dict, List, Union
+from typing import List
 
-import pyarrow as pa
 from parquetdb import ParquetGraphDB
 
-from matgraphdb.core.nodes import MaterialStore
+from matgraphdb.core.material_store import MaterialStore
 
 logger = logging.getLogger(__name__)
 
