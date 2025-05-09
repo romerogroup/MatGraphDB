@@ -12,7 +12,7 @@ from matgraphdb.core.nodes.materials import MaterialStore
 def material_store():
     """Fixture that creates a temporary MaterialStore instance."""
     temp_dir = tempfile.mkdtemp()
-    store = MaterialStore(storage_path=temp_dir)
+    store = MaterialStore(storage_path=temp_dir, verbose=3)
     yield store
     # Cleanup after test
     if os.path.exists(temp_dir):

@@ -43,7 +43,6 @@ class MaterialStore(NodeStore):
         convert_to_fixed_shape: bool = True,
         normalize_dataset: bool = False,
         normalize_config: NormalizeConfig = NormalizeConfig(),
-        verbose: int = 3,
         save_db: bool = True,
         **kwargs,
     ):
@@ -82,8 +81,6 @@ class MaterialStore(NodeStore):
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
             The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
         save_db : bool, optional
             If True, saves the material to the database.
         **kwargs
@@ -94,7 +91,6 @@ class MaterialStore(NodeStore):
         dict
             A dictionary containing the material's data, including calculated properties and additional information.
         """
-        set_verbosity(verbose)
 
         # Generating entry data
         entry_data = {}
@@ -236,7 +232,6 @@ class MaterialStore(NodeStore):
         convert_to_fixed_shape: bool = True,
         normalize_dataset: bool = False,
         normalize_config: NormalizeConfig = NormalizeConfig(),
-        verbose: int = 3,
         **kwargs,
     ):
         """
@@ -265,8 +260,6 @@ class MaterialStore(NodeStore):
             If True, normalizes the dataset.
         normalize_config : NormalizeConfig, optional
             The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
         **kwargs
             Additional keyword arguments passed to the ParquetDB `create` method.
 
@@ -275,7 +268,6 @@ class MaterialStore(NodeStore):
 
         None
         """
-        set_verbosity(verbose)
         logger.info(f"Adding {len(materials)} materials to the database.")
 
         add_kwargs = dict(
@@ -284,7 +276,6 @@ class MaterialStore(NodeStore):
             fields_metadata=fields_metadata,
             normalize_dataset=normalize_dataset,
             normalize_config=normalize_config,
-            verbose=verbose,
             treat_fields_as_ragged=treat_fields_as_ragged,
             convert_to_fixed_shape=convert_to_fixed_shape,
         )
