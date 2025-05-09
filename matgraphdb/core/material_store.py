@@ -9,7 +9,7 @@ from parquetdb import NodeStore
 from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
 from pymatgen.core import Structure
 
-from matgraphdb.utils.general_utils import set_verbosity
+from matgraphdb.utils.log_utils import set_verbose_level
 from matgraphdb.utils.mp_utils import multiprocess_task
 
 logger = logging.getLogger(__name__)
@@ -442,7 +442,6 @@ class MaterialStore(NodeStore):
         ids: List[int] = None,
         columns: List[str] = None,
         normalize_config: NormalizeConfig = NormalizeConfig(),
-        verbose: int = 3,
     ):
         """
         Deletes records from the database by ID.
@@ -457,8 +456,6 @@ class MaterialStore(NodeStore):
             A list of column names to delete from the database.
         normalize_config : NormalizeConfig, optional
             The normalize configuration to be applied to the data. This is the NormalizeConfig object from Parquet
-        verbose : int, optional
-            The verbosity level for logging (default is 3).
 
         Returns
         -------
@@ -472,7 +469,6 @@ class MaterialStore(NodeStore):
         .. code-block:: python
             manager.delete(ids=[1, 2, 3])
         """
-        set_verbosity(verbose)
 
         logger.info(f"Deleting data {ids}")
         self.delete(ids=ids, columns=columns, normalize_config=normalize_config)
