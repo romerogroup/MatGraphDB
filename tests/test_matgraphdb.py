@@ -3,12 +3,12 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import pandas as pd
 import pyarrow as pa
+import pyarrow.compute as pc
 import pytest
 
-from matgraphdb.core.edges import *
-from matgraphdb.core.matgraphdb import MatGraphDB
-from matgraphdb.core.nodes import *
+from matgraphdb import MaterialStore, MatGraphDB, generators
 
 current_dir = Path(__file__).parent
 TEST_DATA_DIR = current_dir / "test_data"
@@ -55,19 +55,19 @@ def material_store():
 @pytest.fixture
 def node_generator_data(matgraphdb):
     node_generators = [
-        {"generator_func": element},
-        {"generator_func": chemenv},
-        {"generator_func": crystal_system},
-        {"generator_func": magnetic_state},
-        {"generator_func": oxidation_state},
-        {"generator_func": space_group},
-        {"generator_func": wyckoff},
+        {"generator_func": generators.element},
+        {"generator_func": generators.chemenv},
+        {"generator_func": generators.crystal_system},
+        {"generator_func": generators.magnetic_state},
+        {"generator_func": generators.oxidation_state},
+        {"generator_func": generators.space_group},
+        {"generator_func": generators.wyckoff},
         {
-            "generator_func": material_site,
+            "generator_func": generators.material_site,
             "generator_args": {"material_store": matgraphdb.node_stores["material"]},
         },
         {
-            "generator_func": material_lattice,
+            "generator_func": generators.material_lattice,
             "generator_args": {"material_store": matgraphdb.node_stores["material"]},
         },
     ]
@@ -89,53 +89,53 @@ def edge_generator_data(node_generator_data):
 
     edge_generators = [
         {
-            "generator_func": element_element_neighborsByGroupPeriod,
+            "generator_func": generators.element_element_neighborsByGroupPeriod,
             "generator_args": {"element_store": matgraphdb.node_stores["element"]},
         },
         {
-            "generator_func": element_oxiState_canOccur,
+            "generator_func": generators.element_oxiState_canOccur,
             "generator_args": {
                 "element_store": matgraphdb.node_stores["element"],
                 "oxiState_store": matgraphdb.node_stores["oxidation_state"],
             },
         },
         {
-            "generator_func": material_chemenv_containsSite,
+            "generator_func": generators.material_chemenv_containsSite,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "chemenv_store": matgraphdb.node_stores["chemenv"],
             },
         },
         {
-            "generator_func": material_crystalSystem_has,
+            "generator_func": generators.material_crystalSystem_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "crystal_system_store": matgraphdb.node_stores["crystal_system"],
             },
         },
         {
-            "generator_func": material_element_has,
+            "generator_func": generators.material_element_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "element_store": matgraphdb.node_stores["element"],
             },
         },
         {
-            "generator_func": material_lattice_has,
+            "generator_func": generators.material_lattice_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "lattice_store": matgraphdb.node_stores["material_lattice"],
             },
         },
         {
-            "generator_func": material_spg_has,
+            "generator_func": generators.material_spg_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "spg_store": matgraphdb.node_stores["space_group"],
             },
         },
         {
-            "generator_func": element_chemenv_canOccur,
+            "generator_func": generators.element_chemenv_canOccur,
             "generator_args": {
                 "element_store": matgraphdb.node_stores["element"],
                 "chemenv_store": matgraphdb.node_stores["chemenv"],
@@ -335,53 +335,53 @@ def test_moving_matgraphdb(edge_generator_data):
     matgraphdb = MatGraphDB(storage_path=new_dir)
     edge_generators = [
         {
-            "generator_func": element_element_neighborsByGroupPeriod,
+            "generator_func": generators.element_element_neighborsByGroupPeriod,
             "generator_args": {"element_store": matgraphdb.node_stores["element"]},
         },
         {
-            "generator_func": element_oxiState_canOccur,
+            "generator_func": generators.element_oxiState_canOccur,
             "generator_args": {
                 "element_store": matgraphdb.node_stores["element"],
                 "oxiState_store": matgraphdb.node_stores["oxidation_state"],
             },
         },
         {
-            "generator_func": material_chemenv_containsSite,
+            "generator_func": generators.material_chemenv_containsSite,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "chemenv_store": matgraphdb.node_stores["chemenv"],
             },
         },
         {
-            "generator_func": material_crystalSystem_has,
+            "generator_func": generators.material_crystalSystem_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "crystal_system_store": matgraphdb.node_stores["crystal_system"],
             },
         },
         {
-            "generator_func": material_element_has,
+            "generator_func": generators.material_element_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "element_store": matgraphdb.node_stores["element"],
             },
         },
         {
-            "generator_func": material_lattice_has,
+            "generator_func": generators.material_lattice_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "lattice_store": matgraphdb.node_stores["material_lattice"],
             },
         },
         {
-            "generator_func": material_spg_has,
+            "generator_func": generators.material_spg_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "spg_store": matgraphdb.node_stores["space_group"],
             },
         },
         {
-            "generator_func": element_chemenv_canOccur,
+            "generator_func": generators.element_chemenv_canOccur,
             "generator_args": {
                 "element_store": matgraphdb.node_stores["element"],
                 "chemenv_store": matgraphdb.node_stores["chemenv"],
@@ -421,7 +421,7 @@ def test_dependency_updates(matgraphdb, node_generator_data):
 
     edge_generators = [
         {
-            "generator_func": material_crystalSystem_has,
+            "generator_func": generators.material_crystalSystem_has,
             "generator_args": {
                 "material_store": matgraphdb.node_stores["material"],
                 "crystal_system_store": matgraphdb.node_stores["crystal_system"],

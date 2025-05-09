@@ -1,21 +1,13 @@
-import json
 import logging
-import os
-from functools import partial
-from glob import glob
 from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.dataset as ds
-import pyarrow.parquet as pq
-import spglib
-from parquetdb import NodeStore, node_generator
+from parquetdb import NodeStore
 from parquetdb.core.parquetdb import LoadConfig, NormalizeConfig
-from pymatgen.core import Composition, Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.core import Structure
 
 from matgraphdb.utils.general_utils import set_verbosity
 from matgraphdb.utils.mp_utils import multiprocess_task
@@ -526,107 +518,3 @@ def check_all_params_provided(**kwargs):
         )
 
 
-@node_generator
-def material_lattice(material_store: NodeStore):
-    """
-    Creates Lattice nodes if no file exists, otherwise loads them from a file.
-    """
-    # Retrieve material nodes with lattice properties
-    try:
-        # material_nodes = NodeStore(material_store_path)
-        material_nodes = material_store
-
-        table = material_nodes.read(
-            columns=[
-                "structure.lattice.a",
-                "structure.lattice.b",
-                "structure.lattice.c",
-                "structure.lattice.alpha",
-                "structure.lattice.beta",
-                "structure.lattice.gamma",
-                "structure.lattice.volume",
-                "structure.lattice.pbc",
-                "structure.lattice.matrix",
-                "id",
-                "core.material_id",
-            ]
-        )
-
-        for i, column in enumerate(table.columns):
-            field = table.schema.field(i)
-            field_name = field.name
-            if "." in field_name:
-                field_name = field_name.split(".")[-1]
-            if "id" == field_name:
-                field_name = "material_node_id"
-            new_field = field.with_name(field_name)
-            table = table.set_column(i, new_field, column)
-
-    except Exception as e:
-        logger.error(f"Error creating lattice nodes: {e}")
-        return None
-
-    return table
-
-
-@node_generator
-def material_site(material_store: NodeStore):
-    try:
-        material_nodes = material_store
-        lattice_names = [
-            "structure.lattice.a",
-            "structure.lattice.b",
-            "structure.lattice.c",
-            "structure.lattice.alpha",
-            "structure.lattice.beta",
-            "structure.lattice.gamma",
-            "structure.lattice.volume",
-        ]
-        id_names = ["id", "core.material_id"]
-        tmp_dict = {field: [] for field in id_names}
-        tmp_dict.update({field: [] for field in lattice_names})
-        table = material_nodes.read(
-            columns=["structure.sites", *id_names, *lattice_names]
-        )
-        # table=material_nodes.read(columns=['structure.sites', *id_names])#, *lattice_names])
-        material_sites = table["structure.sites"].combine_chunks()
-        flatten_material_sites = pc.list_flatten(material_sites)
-        material_sites_length_list = pc.list_value_length(material_sites).to_numpy()
-
-        for i, legnth in enumerate(material_sites_length_list):
-            for field_name in tmp_dict.keys():
-                column = table[field_name].combine_chunks()
-                value = column[i]
-                tmp_dict[field_name].extend([value] * legnth)
-        table = None
-
-        arrays = flatten_material_sites.flatten()
-
-        if hasattr(flatten_material_sites, "names"):
-            names = flatten_material_sites.type.names 
-        else:
-            names= [val.name for val in flatten_material_sites.type]
-
-        flatten_material_sites = None
-        material_sites_length_list = None
-
-        for name, column_values in tmp_dict.items():
-            arrays.append(pa.array(column_values))
-            names.append(name)
-
-        table = pa.Table.from_arrays(arrays, names=names)
-
-        for i, column in enumerate(table.columns):
-            field = table.schema.field(i)
-            field_name = field.name
-            if "." in field_name:
-                field_name = field_name.split(".")[-1]
-            if "id" == field_name:
-                field_name = "material_node_id"
-            new_field = field.with_name(field_name)
-            table = table.set_column(i, new_field, column)
-
-    except Exception as e:
-        logger.error(f"Error creating site nodes: {e}")
-        raise e
-    return table
