@@ -45,8 +45,6 @@ shutil.copytree(REPO_EXAMPLES_PATH, SRC_EXAMPLES_PATH)
 
 shutil.copy(CONTRIBUTING_PATH, SRC_DIR / "CONTRIBUTING.md")
 
-# examples_path = os.path.join(repo_root, "examples")
-# sys.path.insert(0, examples_path)
 
 
 if os.environ.get("READTHEDOCS") == "True":
