@@ -91,31 +91,7 @@ docs= [
 
 
 dev = [
-    "pymongo",
-    "pytest",
-    "mlflow",
-    "ipywidgets",
-    "jupyterlab",
-    "nglview",
-    "pylint",
-    "autopep8",
-    "openai",
-    "python-dotenv",
-    "PyGithub",
-    "pytest-cov",
-    "ipython",
-    "imageio-ffmpeg",
-    "sphinx", 
-    "sphinx_rtd_theme",
-    "sphinx-copybutton",
-    "nbsphinx",
-    "sphinx_design",
-    "sphinx-new-tab-link",
-    "sphinxcontrib-youtube",
-    "sphinxcontrib-video",
-    "pandoc",
-    "furo",
-    "numpydoc"
+    "matgraphdb[docs,tests]"
 ]
 
 
