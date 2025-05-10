@@ -26,7 +26,7 @@ author = "Logan Lang"
 
 sys.path.insert(0, os.path.abspath("."))
 
-SRC_DIR = Path(__file__)
+SRC_DIR = Path(__file__).parent
 REPO_ROOT = SRC_DIR.parent.parent
 SRC_EXAMPLES_PATH = SRC_DIR / "examples"
 REPO_EXAMPLES_PATH = REPO_ROOT / "examples"
