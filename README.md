@@ -18,7 +18,7 @@
 
 ## Documentation
 
-Check out the [docs](https://romerogroup.github.io/MatGraphDB/)
+Check out the [docs](https://matgraphdb.readthedocs.io/en/latest/)
 
 
 ## Installing
