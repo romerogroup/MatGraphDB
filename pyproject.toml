@@ -75,7 +75,8 @@ materials=[
 docs= [
     "ipython",
     "imageio-ffmpeg",
-    "sphinx", 
+    "sphinx",
+    "myst_parser",
     "sphinx_rtd_theme",
     "sphinx-copybutton",
     "nbsphinx",
