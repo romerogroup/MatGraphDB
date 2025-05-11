@@ -1,6 +1,8 @@
 # MatGraphDB
 
-**MatGraphDB** is a Python package designed to simplify graph-based data management and analysis in materials and molecular science. It enables researchers to efficiently transform complex theoretical data into structured graph representations, leveraging:
+[Documentation][docs] | [PyPI][pypi] | [GitHub][github]
+
+**MatGraphDB** is a Python package designed to simplify graph-based data management and analysis in materials and molecular science. It is built on top of `ParquetGraphDB` [ParquetDB][parquetdb], which is a graph database which uses Apache Parquet for storage. It enables researchers to efficiently transform complex theoretical data into structured graph representations, leveraging:
 
 - **High-performance storage:** Utilizes Apache Parquet for scalable and rapid data access.
 - **Automated workflows:** Converts theoretical and computational data into graph structures.
@@ -9,16 +11,11 @@
 ## Table of Contents
 - [MatGraphDB](#matgraphdb)
     - [Table of Contents](#table-of-contents)
-    - [Documentation](#documentation)
     - [Installing](#installing)
     - [Usage](#usage)
     - [Contributing](#contributing)
     - [License](#license)
-
-
-## Documentation
-
-Check out the [docs](https://matgraphdb.readthedocs.io/en/latest/)
+    - [Authors](#authors)
 
 
 ## Installing
@@ -175,11 +172,11 @@ materials = mgdb.delete_materials(ids=[0])
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request on GitHub. More information can be found in the [CONTRIBUTING.md](https://github.com/lllangWV/ParquetDB/blob/main/CONTRIBUTING.md) file.
+Contributions are welcome! Please open an issue or submit a pull request on GitHub. More information can be found in the [CONTRIBUTING][contributing] file.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE][license] file for details.
 
 
 ## Authors
@@ -194,3 +191,9 @@ Eduardo Hernandez,
 
 
 
+[docs]: https://matgraphdb.readthedocs.io/en/latest/
+[pypi]: https://pypi.org/project/matgraphdb/
+[github]: https://github.com/romerogroup/MatGraphDB
+[contributing]: https://github.com/romerogroup/MatGraphDB/blob/main/CONTRIBUTING.md
+[license]: https://github.com/romerogroup/MatGraphDB/blob/main/LICENSE
+[parquetdb]: https://github.com/lllangWV/ParquetDB
