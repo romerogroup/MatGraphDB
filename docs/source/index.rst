@@ -89,7 +89,7 @@ Index
     :glob:
 
 
-    01_tutorials/index
+    examples/01_tutorials/index
     02_internal/index
     examples/index.rst
     03_api/index
