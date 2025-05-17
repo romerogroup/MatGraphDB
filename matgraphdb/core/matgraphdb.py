@@ -22,7 +22,6 @@ class MatGraphDB(ParquetGraphDB):
         self,
         storage_path: str,
         materials_store: MaterialStore = None,
-        load_custom_stores: bool = True,
         **kwargs,
     ):
         """
@@ -32,13 +31,12 @@ class MatGraphDB(ParquetGraphDB):
             The root directory for the entire MatGraphDB (nodes, edges, materials, etc.).
         materials_store : MaterialsStore
             The materials store to use. If None, a new materials store will be created in the storage_path.
-        load_custom_stores : bool
-            Whether to load custom stores.
+        kwargs : dict
+            Additional keyword arguments to pass to the ParquetGraphDB constructor.
         """
         self.storage_path = os.path.abspath(storage_path)
         super().__init__(
             storage_path=self.storage_path,
-            load_custom_stores=load_custom_stores,
             **kwargs,
         )
         logger.info(f"Initializing MatGraphDB at: {self.storage_path}")
