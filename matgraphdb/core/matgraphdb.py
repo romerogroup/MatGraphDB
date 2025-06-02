@@ -1,10 +1,10 @@
 import logging
 import os
+from pathlib import Path
 from typing import List
 
-from parquetdb import ParquetGraphDB
-
 from matgraphdb.core.material_store import MaterialStore
+from parquetdb import ParquetGraphDB
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +34,15 @@ class MatGraphDB(ParquetGraphDB):
         kwargs : dict
             Additional keyword arguments to pass to the ParquetGraphDB constructor.
         """
-        self.storage_path = os.path.abspath(storage_path)
+        self.storage_path = Path(os.path.abspath(storage_path))
         super().__init__(
             storage_path=self.storage_path,
+            node_store_types={"material": MaterialStore},
             **kwargs,
         )
         logger.info(f"Initializing MatGraphDB at: {self.storage_path}")
 
-        self.materials_path = os.path.join(self.nodes_path, "material")
+        self.materials_path = self.storage_path / "material"
 
         if not self.node_exists("material"):
             logger.info(
